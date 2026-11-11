@@ -529,6 +529,49 @@ class FriendsScreenLogicTest {
         assertEquals("Zara", thirdCall.get(1).displayName());
     }
 
+    @Test
+    void dmPicturesGetRowsAndTheScreenshotButtonListsOnlyTheScreenshotsFolder(@org.junit.jupiter.api.io.TempDir java.nio.file.Path game) throws Exception {
+        java.nio.file.Path shots = java.nio.file.Files.createDirectories(game.resolve("screenshots"));
+        java.nio.file.Path shot = java.nio.file.Files.write(shots.resolve("2026-11-11_qa.png"), new byte[]{1, 2, 3});
+        UUID u1 = UUID.randomUUID();
+        FriendEntry friend = new FriendEntry(u1, "PlayerOne", null, Presence.OFFLINE, 100);
+        FakeCallbacks callbacks = new FakeCallbacks();
+        callbacks.friends.add(friend);
+        callbacks.gameDir = game;
+        // Not a Tenor/Giphy file and not a backend id: neither is ever fetched, both say so
+        callbacks.dms.add(new FriendsScreenLogic.DmEntry(u1, "https://example.com/x.gif", 1, null, "https://example.com/x.gif"));
+        callbacks.dms.add(new FriendsScreenLogic.DmEntry(UUID.randomUUID(), "[Screenshot]", 2, "not an id", null));
+        callbacks.dms.add(new FriendsScreenLogic.DmEntry(u1, "plain text", 3));
+
+        FriendsScreenLogic logic = new FriendsScreenLogic(callbacks);
+        logic.openDm(friend);
+        TestGraphics g = new TestGraphics(480, 520);
+        logic.render(g, 0, 0);
+        assertTrue(g.drawnTexts().contains("PlayerOne: GIF"), "texts: " + g.drawnTexts());
+        assertTrue(g.drawnTexts().contains("You: Screenshot"));
+        assertTrue(g.drawnTexts().contains("PlayerOne: plain text"));
+        assertFalse(g.drawnTexts().contains("PlayerOne: https://example.com/x.gif"), "a GIF shows as a picture, not its link");
+        assertTrue(g.drawnTexts().stream().filter(t -> t.startsWith("Can't show")).count() >= 2);
+
+        FriendsScreenLogic.Box button = logic.screenshotButton();
+        assertTrue(logic.mouseClicked(button.x() + 2, button.y() + 2, 0));
+        assertTrue(logic.screenshotPickerOpen());
+        g.drawnTexts().clear();
+        logic.render(g, 0, 0);
+        assertTrue(g.drawnTexts().contains("2026-11-11_qa.png"), "texts: " + g.drawnTexts());
+        FriendsScreenLogic.Box row = logic.screenshotPicker().row(0);
+        assertTrue(logic.mouseClicked(row.x() + 2, row.y() + 2, 0));
+        assertEquals(List.of(shot), callbacks.sentShots);
+        assertFalse(logic.screenshotPickerOpen());
+
+        // Esc closes the list first, the conversation stays
+        logic.mouseClicked(button.x() + 2, button.y() + 2, 0);
+        assertTrue(logic.screenshotPickerOpen());
+        logic.keyPressed(256, 0, 0);
+        assertFalse(logic.screenshotPickerOpen());
+        assertEquals(friend, logic.activeDmFriend());
+    }
+
     static class FakeCallbacks implements FriendsScreenLogic.Callbacks {
         final List<FriendEntry> friends = new ArrayList<>();
         final List<FriendEntry> incoming = new ArrayList<>();
@@ -547,6 +590,10 @@ class FriendsScreenLogicTest {
         boolean closed = false;
 
         record SentDm(UUID to, String text) {}
+        java.nio.file.Path gameDir;
+        final List<java.nio.file.Path> sentShots = new ArrayList<>();
+        @Override public void sendScreenshot(UUID id, java.nio.file.Path shot) { sentShots.add(shot); }
+        @Override public java.nio.file.Path gameDir() { return gameDir; }
 
         @Override public List<FriendEntry> friends() { return friends; }
         @Override public List<FriendEntry> incomingRequests() { return incoming; }

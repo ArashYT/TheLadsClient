@@ -1,14 +1,17 @@
 package com.thelads.core.client.social.ui;
 
+import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.gui.ConfirmDialog;
 import com.thelads.core.client.gui.LadsPalette;
 import com.thelads.core.client.gui.MenuGraphics;
+import com.thelads.core.client.social.DmMedia;
 import com.thelads.core.client.social.FriendEntry;
 import com.thelads.core.client.social.Presence;
 import com.thelads.core.client.social.SocialBridge;
 import com.thelads.core.client.social.SocialProtocol;
 import com.thelads.core.client.social.SocialState;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -32,7 +35,10 @@ public final class FriendsScreenLogic {
     }
 
     public record JoinCheck(boolean ok, String reason) {}
-    public record DmEntry(UUID from, String text, long timestamp) {}
+    /** img: a screenshot's backend id or our sent copy ("file:..."); gif: a Tenor/Giphy GIF link; null when none (SocialState.Dm). */
+    public record DmEntry(UUID from, String text, long timestamp, String img, String gif) {
+        public DmEntry(UUID from, String text, long timestamp) { this(from, text, timestamp, null, null); }
+    }
 
     public enum Tab {
         FRIENDS("Friends"),
@@ -64,6 +70,10 @@ public final class FriendsScreenLogic {
         default void setNick(UUID id, String nick) {}
         default void sendDm(UUID id, String text) {}
         default List<DmEntry> dms(UUID id) { return List.of(); }
+        /** Sends a screenshot from the game's screenshots folder (DmScreenshotPicker lists nothing else). */
+        default void sendScreenshot(UUID id, Path shot) {}
+        /** The game folder whose screenshots folder the picker lists (null: the working folder). */
+        default Path gameDir() { return null; }
         default void invite(UUID id) {}
         default void requestJoin(UUID id) {}
         /** Game and server invites received and not answered yet (Invites tab). */
@@ -142,6 +152,10 @@ public final class FriendsScreenLogic {
     private Box appearOfflineBtn;
     private Box addSendBtn;
     private Box dmSendBtn;
+    private Box dmShotBtn;
+    private final DmScreenshotPicker shotPicker = new DmScreenshotPicker(this::screenshotsGameDir);
+    private final Map<Box, String> dmLinks = new HashMap<>(); // a shown picture -> the link it opens
+    private int dmMsgTop, dmMsgBottom;
     private Box dmBackBtn;
     private Box addInputBox;
     private Box dmInputBox;
@@ -190,9 +204,11 @@ public final class FriendsScreenLogic {
             @Override public List<DmEntry> dms(UUID id) {
                 List<SocialState.Dm> dms = s.dms(id);
                 List<DmEntry> out = new ArrayList<>(dms.size());
-                for (SocialState.Dm dm : dms) out.add(new DmEntry(dm.from(), dm.text(), dm.ts()));
+                for (SocialState.Dm dm : dms) out.add(new DmEntry(dm.from(), dm.text(), dm.ts(), dm.img(), dm.gif()));
                 return out;
             }
+            @Override public void sendScreenshot(UUID id, Path shot) { s.sendScreenshot(id, shot); }
+            @Override public Path gameDir() { return s.gameDir(); }
             @Override public void invite(UUID id) { s.invite(id); }
             @Override public void requestJoin(UUID id) { s.requestJoin(id); }
             @Override public List<SocialState.Invite> invites() { return s.invites(); }
@@ -249,6 +265,7 @@ public final class FriendsScreenLogic {
         this.prevDmCount = safeDms(friend != null ? friend.id() : null).size();
     }
     public void closeDm() {
+        shotPicker.close();
         this.activeDmFriend = null;
         this.dmInput = "";
         this.typingDmInput = false;
@@ -328,6 +345,7 @@ public final class FriendsScreenLogic {
         if (confirm.isOpen()) return true;
         int delta = (int) (amount * 20);
         if (activeDmFriend != null) {
+            if (shotPicker.isOpen()) return shotPicker.scroll(amount);
             int prev = dmScrollOffset;
             dmScrollOffset = Math.max(0, Math.min(maxDmScroll, dmScrollOffset - delta));
             // If scrolled up from bottom, don't force stick to bottom
@@ -733,7 +751,7 @@ public final class FriendsScreenLogic {
         int scissorH = viewH;
         this.scissorY = scissorY;
         this.scissorH = scissorH;
-        g.enableScissor(x, scissorY, w, viewH);
+        g.enableScissor(x, scissorY, x + w, scissorY + viewH);
 
         int itemY = y + 8 - scrollOffset;
         g.drawText("Incoming Friend Requests (" + incoming.size() + ")", x + 10, itemY, LadsPalette.ACCENT, true);
@@ -809,7 +827,7 @@ public final class FriendsScreenLogic {
         int scissorY = y + 6;
         this.scissorY = scissorY;
         this.scissorH = viewH;
-        g.enableScissor(x, scissorY, w, viewH);
+        g.enableScissor(x, scissorY, x + w, scissorY + viewH);
 
         int itemY = y + 8 - scrollOffset;
         g.drawText("Invites (" + invites.size() + ")", x + 10, itemY, LadsPalette.ACCENT, true);
@@ -857,7 +875,7 @@ public final class FriendsScreenLogic {
         int scissorH = viewH;
         this.scissorY = scissorY;
         this.scissorH = scissorH;
-        g.enableScissor(x, scissorY, w, viewH);
+        g.enableScissor(x, scissorY, x + w, scissorY + viewH);
 
         int itemY = y + 8 - scrollOffset;
         g.drawText("Blocked Players (" + blocked.size() + ")", x + 10, itemY, LadsPalette.ACCENT, true);
@@ -945,7 +963,10 @@ public final class FriendsScreenLogic {
             stickDmToBottom = true;
         }
 
-        int totalDmH = dms.size() * 16 + 8;
+        int mediaMaxW = Math.max(40, Math.min(w - 30, 220));
+        dmMediaH = Math.max(36, Math.min(DM_MEDIA_H, msgAreaH - 22)); // a whole picture fits even a small window's pane
+        int totalDmH = 8;
+        for (DmEntry dm : dms) totalDmH += dmRowHeight(dm);
         maxDmScroll = Math.max(0, totalDmH - msgAreaH);
         if (stickDmToBottom) {
             dmScrollOffset = maxDmScroll;
@@ -953,20 +974,39 @@ public final class FriendsScreenLogic {
             dmScrollOffset = Math.max(0, Math.min(maxDmScroll, dmScrollOffset));
         }
 
-        g.enableScissor(x, msgAreaY, w, msgAreaH);
+        g.enableScissor(x, msgAreaY, x + w, msgAreaY + msgAreaH); // corners: the width/height here hid every message
 
         int msgY = msgAreaY + 4 - dmScrollOffset;
+        dmLinks.clear();
+        dmMsgTop = msgAreaY;
+        dmMsgBottom = msgAreaY + msgAreaH;
+        long now = System.currentTimeMillis();
         if (dms.isEmpty()) {
             g.drawCenteredText("No messages yet. Send a message to start the conversation!", x + w / 2, msgAreaY + msgAreaH / 2 - 5, LadsPalette.MUTED, false);
         } else {
             for (DmEntry dm : dms) {
-                if (msgY + 16 > msgAreaY && msgY < msgAreaY + msgAreaH) {
+                int rowH = dmRowHeight(dm);
+                if (msgY + rowH > msgAreaY && msgY < msgAreaY + msgAreaH) {
                     boolean isFromMe = !activeDmFriend.id().equals(dm.from());
                     int color = isFromMe ? LadsPalette.ACCENT : LadsPalette.TEXT;
                     String prefix = isFromMe ? "You: " : activeDmFriend.name() + ": ";
-                    g.drawText(prefix + dm.text(), x + 10, msgY, color, false);
+                    DmMedia.Media media = dm.img() != null ? DmMedia.image(dm.img()) : dm.gif() != null ? DmMedia.gif(dm.gif()) : null;
+                    if (!hasMedia(dm)) {
+                        g.drawText(prefix + dm.text(), x + 10, msgY, color, false);
+                    } else {
+                        g.drawText(prefix + (dm.img() != null ? "Screenshot" : "GIF"), x + 10, msgY, color, false);
+                        int[] size = DmMedia.fit(media, mediaMaxW, dmMediaH);
+                        int ix = x + 10, iy = msgY + 12;
+                        g.fill(ix, iy, ix + size[0], iy + size[1], LadsPalette.CARD);
+                        if (!DmMedia.draw(g, media, ix, iy, size[0], size[1], now)) {
+                            String state = media == null || media.failed() ? "Can't show this picture" : "Loading...";
+                            g.drawCenteredText(MenuGraphics.fit(g, state, size[0] - 4), ix + size[0] / 2, iy + size[1] / 2 - 4, LadsPalette.MUTED, false);
+                        }
+                        String link = dm.gif() != null ? dm.gif() : !dm.img().startsWith("file:") ? DmMedia.imageUrl(dm.img()) : null;
+                        if (link != null && media != null) dmLinks.put(new Box(ix, iy, size[0], size[1]), link);
+                    }
                 }
-                msgY += 16;
+                msgY += rowH;
             }
         }
 
@@ -974,14 +1014,15 @@ public final class FriendsScreenLogic {
 
         // Input field and send button (outside scissor)
         int inputAreaY = y + h - 26;
-        int sendW = 50;
-        int inW = w - sendW - 16;
+        int sendW = 50, shotW = Math.max(66, g.textWidth("Screenshot") + 12);
+        int inW = w - sendW - shotW - 20;
         dmInputBox = new Box(x + 6, inputAreaY, inW, 20);
-        dmSendBtn = new Box(x + 6 + inW + 4, inputAreaY, sendW, 20);
+        dmShotBtn = new Box(x + 6 + inW + 4, inputAreaY, shotW, 20);
+        dmSendBtn = new Box(dmShotBtn.x + shotW + 4, inputAreaY, sendW, 20);
 
         MenuGraphics.round(g, dmInputBox.x, dmInputBox.y, dmInputBox.w, dmInputBox.h,
                 typingDmInput ? LadsPalette.HOVER : LadsPalette.CARD);
-        String inputDisp = dmInput.isEmpty() ? (typingDmInput ? "_" : "Write a message...") : dmInput + (typingDmInput ? "_" : "");
+        String inputDisp = dmInput.isEmpty() ? (typingDmInput ? "_" : "Write a message or paste a Tenor/Giphy link...") : dmInput + (typingDmInput ? "_" : "");
         int inCol = dmInput.isEmpty() && !typingDmInput ? LadsPalette.MUTED : LadsPalette.TEXT;
         g.drawText(MenuGraphics.fit(g, inputDisp, inW - 8), dmInputBox.x + 6, dmInputBox.y + 6, inCol, false);
 
@@ -989,7 +1030,32 @@ public final class FriendsScreenLogic {
         MenuGraphics.round(g, dmSendBtn.x, dmSendBtn.y, dmSendBtn.w, dmSendBtn.h,
                 sendHov ? LadsPalette.PRIMARY_HOVER : LadsPalette.PRIMARY);
         MenuGraphics.iconLabel(g, "Send", null, dmSendBtn.x + dmSendBtn.w / 2, dmSendBtn.y + 6, dmSendBtn.w, LadsPalette.TEXT, false);
+
+        MenuGraphics.round(g, dmShotBtn.x, dmShotBtn.y, dmShotBtn.w, dmShotBtn.h,
+                dmShotBtn.has(mx, my) || shotPicker.isOpen() ? LadsPalette.HOVER : LadsPalette.CARD);
+        MenuGraphics.iconLabel(g, "Screenshot", null, dmShotBtn.x + dmShotBtn.w / 2, dmShotBtn.y + 6, dmShotBtn.w, LadsPalette.TEXT, false);
+
+        shotPicker.render(g, x + 6, msgAreaY, w - 12, msgAreaH, mx, my);
     }
+
+    /** A picture's row: its "You: Screenshot" line and the picture, fitted in dmMediaH whatever its shape (so rows never jump). */
+    private static final int DM_MEDIA_H = 100;
+    private int dmMediaH = DM_MEDIA_H;
+
+    private static boolean hasMedia(DmEntry dm) {
+        return dm.img() != null || dm.gif() != null;
+    }
+
+    private int dmRowHeight(DmEntry dm) {
+        return hasMedia(dm) ? 12 + dmMediaH + 6 : 16;
+    }
+
+    public boolean screenshotPickerOpen() { return shotPicker.isOpen(); }
+    public DmScreenshotPicker screenshotPicker() { return shotPicker; }
+    /** The DM pane's Screenshot button as last drawn (null when the pane is not shown). */
+    public Box screenshotButton() { return activeDmFriend != null ? dmShotBtn : null; }
+
+    private Path screenshotsGameDir() { return callbacks.gameDir(); }
 
     private void renderMorePopup(LadsGraphics g, int mx, int my) {
         Box moreB = moreBoxes.get(popupFriendId);
@@ -1138,6 +1204,26 @@ public final class FriendsScreenLogic {
 
         // DM pane controls
         if (activeDmFriend != null) {
+            if (shotPicker.isOpen()) { // modal over the messages
+                Path shot = shotPicker.click(x, y);
+                if (shot != null) {
+                    callbacks.sendScreenshot(activeDmFriend.id(), shot);
+                    stickDmToBottom = true;
+                }
+                return true;
+            }
+            if (dmShotBtn != null && dmShotBtn.has(x, y)) {
+                shotPicker.open();
+                return true;
+            }
+            if (y >= dmMsgTop && y < dmMsgBottom) {
+                for (Map.Entry<Box, String> link : dmLinks.entrySet()) {
+                    if (link.getKey().has(x, y)) {
+                        LadsGameBridge.get().openUrl(link.getValue());
+                        return true;
+                    }
+                }
+            }
             if (dmBackBtn != null && dmBackBtn.has(x, y)) {
                 closeDm();
                 return true;
@@ -1312,6 +1398,10 @@ public final class FriendsScreenLogic {
 
         // Escape
         if (keyCode == 256 || keyCode == 1) { // GLFW_KEY_ESCAPE or 1.8.9 esc
+            if (shotPicker.isOpen()) {
+                shotPicker.close();
+                return true;
+            }
             if (popupFriendId != null) {
                 popupFriendId = null;
                 return true;
@@ -1354,6 +1444,12 @@ public final class FriendsScreenLogic {
                 }
                 return true;
             }
+        }
+
+        // Ctrl+V (Cmd+V on macOS) pastes into the message: how a Tenor/Giphy link gets in
+        if (typingDmInput && keyCode == 86 && (modifiers & (2 | 8)) != 0) {
+            setDmInput(dmInput + DmMedia.clipboard().replaceAll("[\\x00-\\x1F\\x7F]+", " "));
+            return true;
         }
 
         if (isEditingText()) {

@@ -31,6 +31,12 @@ public class SocialStateTest {
         String connectedServerAddress = null;
         boolean openFriendsCalled = false;
         List<String> toasts = new ArrayList<>();
+        java.nio.file.Path gameDir;
+
+        @Override
+        public java.nio.file.Path gameDir() {
+            return gameDir;
+        }
         List<String> chatActions = new ArrayList<>();
 
         @Override
@@ -665,6 +671,54 @@ public class SocialStateTest {
         o.addProperty("t", t);
         for (int i = 0; i < kv.length; i += 2) o.addProperty(kv[i], kv[i + 1]);
         return o;
+    }
+
+    /** DM pictures: a screenshot arrives as an id, a GIF as a Tenor/Giphy link; only a file straight from the screenshots folder is sent. */
+    @Test
+    public void dmPicturesArriveAsImgOrGifAndOnlyScreenshotsFolderFilesGoOut(@org.junit.jupiter.api.io.TempDir java.nio.file.Path game) throws Exception {
+        UUID friend = UUID.randomUUID();
+        state.onMessage(message("dm", "from", friend.toString(), "text", "[Screenshot]", "ts", "5", "img", "AbCdEfGhIjKlMnOpQrStUv"));
+        state.onMessage(message("dm", "from", friend.toString(), "text", "https://tenor.com/view/x-gif-1", "ts", "6", "gif", "https://media.tenor.com/abc/x.gif"));
+        List<SocialState.Dm> got = state.dms(friend);
+        assertEquals("AbCdEfGhIjKlMnOpQrStUv", got.get(0).img());
+        assertEquals("https://media.tenor.com/abc/x.gif", got.get(1).gif());
+        assertTrue(bridge.toasts.get(0).contains("Sent a screenshot") && bridge.toasts.get(1).contains("Sent a GIF"), "toasts: " + bridge.toasts);
+
+        JsonObject hello = new JsonObject();
+        JsonArray dms = new JsonArray();
+        dms.add(message("x", "from", friend.toString(), "text", "", "ts", "7", "gif", "https://i.giphy.com/Q.gif"));
+        hello.add("dms", dms);
+        state.onHello(hello);
+        assertEquals("https://i.giphy.com/Q.gif", state.dms(friend).get(2).gif());
+
+        java.nio.file.Path shots = java.nio.file.Files.createDirectories(game.resolve("screenshots"));
+        java.nio.file.Path shot = shots.resolve("2026-11-11_a.png");
+        javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(320, 180, java.awt.image.BufferedImage.TYPE_INT_RGB), "png", shot.toFile());
+        java.nio.file.Path elsewhere = game.resolve("secret.png");
+        java.nio.file.Files.copy(shot, elsewhere);
+        bridge.gameDir = game;
+
+        state.sendScreenshot(friend, elsewhere);
+        state.sendScreenshot(friend, game.resolve("screenshots/../secret.png"));
+        Thread.sleep(300);
+        assertTrue(sentMessages.isEmpty(), "a file outside the screenshots folder must never be sent: " + sentMessages);
+
+        state.sendScreenshot(friend, shot);
+        long until = System.currentTimeMillis() + 10_000;
+        while (state.dms(friend).size() < 4 && System.currentTimeMillis() < until) Thread.sleep(50);
+        StringBuilder data = new StringBuilder();
+        for (JsonObject m : sentMessages) {
+            assertEquals("dm_img", m.get("t").getAsString());
+            assertEquals(friend.toString(), m.get("to").getAsString());
+            data.append(m.get("data").getAsString());
+        }
+        byte[] jpeg = java.util.Base64.getDecoder().decode(data.toString());
+        assertEquals((byte) 0xFF, jpeg[0]);
+        assertEquals((byte) 0xD8, jpeg[1]);
+        assertTrue(state.dms(friend).get(3).img().startsWith("file:"), "our copy shows on our side");
+        assertEquals("Couldn't send that screenshot", SocialState.errorText("bad", "img", null));
+        assertEquals("Only Tenor or Giphy GIF links can be sent", SocialState.errorText("bad", "gif", null));
+        assertNull(SocialState.errorText("bad", "", null));
     }
 
     /** F10 (PocState 3): an action for something this client never received sends nothing (any chat line could carry one). */

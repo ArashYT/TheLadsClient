@@ -13,9 +13,10 @@ public final class SocialProtocol {
     // client -> server
     public static final String PRESENCE = "presence", FRIEND_ADD = "friend_add", FRIEND_ACCEPT = "friend_accept",
             FRIEND_DECLINE = "friend_decline", FRIEND_REMOVE = "friend_remove", BLOCK = "block", UNBLOCK = "unblock",
-            NICK = "nick", DM = "dm", INVITE = "invite", INVITE_ACCEPT = "invite_accept", INVITE_DECLINE = "invite_decline",
+            NICK = "nick", DM = "dm", DM_IMG = "dm_img", INVITE = "invite", INVITE_ACCEPT = "invite_accept", INVITE_DECLINE = "invite_decline",
             JOIN_REQUEST = "join_request", JOIN_ACCEPT = "join_accept", JOIN_DENY = "join_deny", SIGNAL = "signal",
             P2P_END = "p2p_end", SETTINGS = "settings";
+    // DM pictures: DM carries "img" (a screenshot id, uploaded as DM_IMG parts; see DmMedia) or "gif" (a Tenor/Giphy link) next to "text".
     // server -> client (plus PRESENCE, DM, INVITE, JOIN_REQUEST, SIGNAL, P2P_END above)
     public static final String REQUEST_IN = "request_in", REQUEST_SENT = "request_sent", FRIEND_ADDED = "friend_added",
             FRIEND_REMOVED = "friend_removed", JOIN_DENIED = "join_denied", P2P_START = "p2p_start", ERROR = "error";
