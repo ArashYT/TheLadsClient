@@ -41,6 +41,9 @@ public class GuiGraphicsLadsAdapter implements LadsGraphics {
     @Override public boolean drawImage(String source, int x, int y, int width, int height) {
         return com.thelads.core.v1_21_11.gui.CrosshairBackdrop12111.draw(guiGraphics, source, x, y, width, height);
     }
+    @Override public boolean drawImageCell(String source, int cols, int rows, int cell, int x, int y, int width, int height) {
+        return com.thelads.core.v1_21_11.gui.CrosshairBackdrop12111.drawCell(guiGraphics, source, cols, rows, cell, x, y, width, height);
+    }
     @Override public void drawModIcon(String id, int x, int y, int size) {
         if (!com.thelads.core.v1_21_11.gui.ModIcons.draw(guiGraphics, id, x, y, size)) LadsGraphics.super.drawModIcon(id, x, y, size);
     }

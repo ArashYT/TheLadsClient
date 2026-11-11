@@ -2106,3 +2106,104 @@ async def test_offline_dms_retained_if_hello_send_fails(tmp_path):
     dms_left = await store.get_offline_dms(B)
     assert len(dms_left) == 1
     assert dms_left[0]["text"] == "Keep me safe"
+
+
+async def _befriend(alice_ws, bob_ws):
+    await alice_ws.send_json({"t": "friend_add", "name": "Bob"})
+    await recv_type(alice_ws, "request_sent")
+    await recv_type(bob_ws, "request_in")
+    await bob_ws.send_json({"t": "friend_accept", "uuid": A})
+    await recv_type(bob_ws, "friend_added")
+    await recv_type(alice_ws, "friend_added")
+
+
+async def test_dm_gif_only_as_tenor_or_giphy_link(social_app):
+    alice_ws, _ = await auth_ws(social_app, "Alice", A)
+    bob_ws, _ = await auth_ws(social_app, "Bob", B)
+    await _befriend(alice_ws, bob_ws)
+
+    gif = "https://media.tenor.com/abcDEF123AAAAC/cat-dance.gif"
+    await alice_ws.send_json({"t": "dm", "to": B, "text": "https://tenor.com/view/cat-dance-gif-123", "gif": gif})
+    dm = await recv_type(bob_ws, "dm")
+    assert dm["gif"] == gif and "img" not in dm
+
+    for bad in ("https://evil.example/cat.gif", "http://media.tenor.com/a/b.gif", "https://media.giphy.com/media/x/giphy.png",
+                "https://i.giphy.com@evil.example/x.gif", 42):
+        await alice_ws.send_json({"t": "dm", "to": B, "text": "x", "gif": bad})
+        err = await recv_type(alice_ws, "error")
+        assert err["code"] == "bad" and err["ref"] == "gif"
+
+    # Offline: the gif link waits with the text
+    await bob_ws.close()
+    await asyncio.sleep(0.05)
+    await alice_ws.send_json({"t": "dm", "to": B, "text": "", "gif": "https://i.giphy.com/AbC123.gif"})
+    await asyncio.sleep(0.05)
+    _, hello = await auth_ws(social_app, "Bob", B)
+    assert hello["dms"][0]["gif"] == "https://i.giphy.com/AbC123.gif"
+    await alice_ws.close()
+
+
+PNG = b"\x89PNG\r\n\x1a\n" + bytes(range(256)) * 300  # 76 KB: needs two parts
+
+
+def _parts(data: bytes, size: int = 30_000):
+    import base64
+    b64 = base64.b64encode(data).decode()
+    chunks = [b64[i:i + size] for i in range(0, len(b64), size)]
+    return chunks
+
+
+async def test_dm_screenshot_uploaded_in_parts_and_served_by_id(social_app):
+    alice_ws, _ = await auth_ws(social_app, "Alice", A)
+    bob_ws, _ = await auth_ws(social_app, "Bob", B)
+    await _befriend(alice_ws, bob_ws)
+
+    chunks = _parts(PNG)
+    assert len(chunks) > 1
+    for i, c in enumerate(chunks):
+        await alice_ws.send_json({"t": "dm_img", "to": B, "text": "[Screenshot]", "part": i, "parts": len(chunks), "data": c})
+    dm = await recv_type(bob_ws, "dm")
+    sent = await recv_type(alice_ws, "dm_img_sent")
+    assert dm["img"] == sent["img"] and dm["text"] == "[Screenshot]" and dm["from"] == A
+
+    resp = await social_app.get(f"/social/img/{dm['img']}")
+    assert resp.status == 200 and resp.headers["Content-Type"] == "image/png"
+    assert await resp.read() == PNG
+    assert (await social_app.get("/social/img/" + "x" * 22)).status == 404
+    assert (await social_app.get("/social/img/..%2Fsocial.db")).status == 404
+
+    # Not a picture: refused, nothing kept
+    bad = _parts(b"GIF89a" + b"\0" * 100)
+    await alice_ws.send_json({"t": "dm_img", "to": B, "text": "", "part": 0, "parts": 1, "data": bad[0]})
+    err = await recv_type(alice_ws, "error")
+    assert err["ref"] == "img"
+
+    # Parts out of order: refused
+    await alice_ws.send_json({"t": "dm_img", "to": B, "text": "", "part": 1, "parts": 2, "data": chunks[0]})
+    err = await recv_type(alice_ws, "error")
+    assert err["ref"] == "img"
+
+    # Over 1 MB in total: refused
+    big = _parts(b"\xff\xd8\xff" + b"\0" * 1_100_000, 48_000)
+    for i, c in enumerate(big[:30]):
+        await alice_ws.send_json({"t": "dm_img", "to": B, "text": "", "part": i, "parts": min(30, len(big)), "data": c})
+    err = await recv_type(alice_ws, "error")
+    assert err["code"] in ("limit", "bad")
+
+    # Offline: the picture id waits in the queue
+    await bob_ws.close()
+    await asyncio.sleep(0.05)
+    for i, c in enumerate(chunks):
+        await alice_ws.send_json({"t": "dm_img", "to": B, "text": "", "part": i, "parts": len(chunks), "data": c})
+    await recv_type(alice_ws, "dm_img_sent")
+    _, hello = await auth_ws(social_app, "Bob", B)
+    assert hello["dms"][0]["img"]
+    await alice_ws.close()
+
+
+async def test_dm_screenshot_needs_friendship(social_app):
+    alice_ws, _ = await auth_ws(social_app, "Alice", A)
+    await alice_ws.send_json({"t": "dm_img", "to": B, "text": "", "part": 0, "parts": 1, "data": _parts(PNG[:100])[0]})
+    err = await recv_type(alice_ws, "error")
+    assert err["code"] == "not_friend"
+    await alice_ws.close()

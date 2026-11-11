@@ -56,6 +56,7 @@ public class SocialClient {
     public SocialClient(String urlOverride, SocialState state) {
         this.state = state;
         this.endpoint = resolveEndpoint(urlOverride);
+        if (endpoint != null) DmMedia.endpoint = endpoint; // DM screenshots are served next to the socket
         this.local = endpoint != null && "ws".equals(endpoint.getScheme());
     }
 

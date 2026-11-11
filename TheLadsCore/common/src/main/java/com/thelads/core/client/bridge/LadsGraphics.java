@@ -175,6 +175,13 @@ public interface LadsGraphics {
      * where the version cannot draw pictures or this one cannot be read.
      */
     default boolean drawImage(String source, int x, int y, int width, int height) { return false; }
+    /**
+     * Cell number {@code cell} of a picture split into cols x rows equal cells, row by row (a GIF's frames, DmMedia), covering the
+     * box like {@link #drawImage}. False where the version cannot draw pictures or this one cannot be read.
+     */
+    default boolean drawImageCell(String source, int cols, int rows, int cell, int x, int y, int width, int height) {
+        return cols == 1 && rows == 1 && drawImage(source, x, y, width, height);
+    }
 
     int getScaledWidth();
 

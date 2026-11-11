@@ -6,11 +6,13 @@ Mounted on the cosmetics aiohttp server at /social/ws.
 from __future__ import annotations
 
 import asyncio
+import base64
 from collections import OrderedDict
 import ipaddress
 import json
 import logging
 import os
+import re
 import secrets
 import sqlite3
 import time
@@ -34,6 +36,15 @@ JOIN_REQUEST_RATE_LIMIT = 30    # per hour
 OFFLINE_DM_TTL_MS = 7 * 86400 * 1000  # 7 days
 MAX_OFFLINE_DMS_PER_RECIPIENT = 100
 MAX_OFFLINE_DMS_PER_PAIR = 50
+# DM pictures: a screenshot arrives as base64 "dm_img" parts (each frame under the 64 KB socket cap), is kept as a file for the
+# offline-DM lifetime and fetched by id from /social/img/<id>. GIFs are never uploaded: only a Tenor/Giphy media link.
+DM_IMG_MAX_BYTES = 1_000_000
+DM_IMG_PART_B64 = 48_000
+DM_IMG_MAX_PARTS = 30
+DM_IMG_RATE_LIMIT = 20          # per hour
+DM_IMG_DIR_MAX_BYTES = 2 * 10**9
+DM_IMG_ID_RE = re.compile(r"[A-Za-z0-9_-]{22}")
+DM_GIF_URL_RE = re.compile(r"https://(?:media\d?\.tenor\.com|c\.tenor\.com|media\d?\.giphy\.com|i\.giphy\.com)/[A-Za-z0-9_\-./%]{1,256}\.gif")
 INVITE_TTL_SECONDS = 300        # 5 minutes
 JOIN_REQUEST_TTL_SECONDS = 300  # 5 minutes
 MAX_PENDING_INVITES_PER_HOST = 20
@@ -273,10 +284,30 @@ def are_games_compatible(host_game: dict | None, guest_game: dict | None) -> boo
 # Storage
 # ---------------------------------------------------------------------------
 
+def dm_payload(from_uuid: str, text: str, ts: int, img: str | None = None, gif: str | None = None) -> dict:
+    """A DM as both the live "dm" message and the hello "dms" entries carry it: img and gif only when set."""
+    out = {"from": from_uuid, "text": text, "ts": ts}
+    if img:
+        out["img"] = img
+    if gif:
+        out["gif"] = gif
+    return out
+
+
+def sniff_image(data: bytes) -> str | None:
+    """The file extension of a JPEG or PNG, else None: nothing else is kept or served."""
+    if data.startswith(b"\xff\xd8\xff"):
+        return ".jpg"
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return ".png"
+    return None
+
+
 class SocialStore:
     def __init__(self, db_path: Path | str | None = None):
         self.db_path = get_default_db_path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self.img_dir = self.db_path.parent / "dm_images"
         self._init_db()
 
     def _connect(self) -> sqlite3.Connection:
@@ -354,6 +385,10 @@ class SocialStore:
                 );
                 CREATE INDEX IF NOT EXISTS idx_player_names_name ON player_names(name COLLATE NOCASE);
             """)
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(dm_offline)")}
+            for col in ("img", "gif"):
+                if col not in cols:
+                    conn.execute(f"ALTER TABLE dm_offline ADD COLUMN {col} TEXT")
             # One-time migration for legacy epoch seconds: values < 10^11 are seconds
             conn.execute("UPDATE friends SET since = since * 1000 WHERE since < 100000000000;")
 
@@ -645,8 +680,42 @@ class SocialStore:
         await asyncio.to_thread(_op)
         return {"showServer": new_show, "appearOffline": new_appear}
 
+    # --- DM pictures ---
+    def _img_files(self) -> list[Path]:
+        return [f for f in self.img_dir.iterdir() if f.is_file()] if self.img_dir.is_dir() else []
+
+    async def save_dm_image(self, data: bytes, ext: str) -> str | None:
+        """Keeps a DM screenshot; its id, or None when the folder is at its cap."""
+        def _op():
+            self.img_dir.mkdir(parents=True, exist_ok=True)
+            if sum(f.stat().st_size for f in self._img_files()) + len(data) > DM_IMG_DIR_MAX_BYTES:
+                return None
+            img_id = secrets.token_urlsafe(16)
+            (self.img_dir / (img_id + ext)).write_bytes(data)
+            return img_id
+        return await asyncio.to_thread(_op)
+
+    def dm_image_path(self, img_id: str) -> Path | None:
+        if not DM_IMG_ID_RE.fullmatch(img_id or ""):
+            return None
+        for ext in (".jpg", ".png"):
+            f = self.img_dir / (img_id + ext)
+            if f.is_file():
+                return f
+        return None
+
+    def sweep_dm_images(self) -> None:
+        """Pictures live as long as an offline DM can wait for its reader."""
+        cutoff = time.time() - OFFLINE_DM_TTL_MS / 1000
+        for f in self._img_files():
+            try:
+                if f.stat().st_mtime < cutoff:
+                    f.unlink()
+            except OSError:
+                pass
+
     # --- Offline DMs ---
-    async def save_offline_dm(self, from_uuid: str, to_uuid: str, text: str, ts: int) -> None:
+    async def save_offline_dm(self, from_uuid: str, to_uuid: str, text: str, ts: int, img: str | None = None, gif: str | None = None) -> None:
         def _op():
             with self._connect() as conn:
                 # Cap at 50 per (sender, recipient) pair
@@ -688,8 +757,8 @@ class SocialStore:
                         (to_uuid, h_from)
                     )
                 conn.execute(
-                    "INSERT INTO dm_offline (from_uuid, to_uuid, text, ts) VALUES (?, ?, ?, ?)",
-                    (from_uuid, to_uuid, text, ts)
+                    "INSERT INTO dm_offline (from_uuid, to_uuid, text, ts, img, gif) VALUES (?, ?, ?, ?, ?, ?)",
+                    (from_uuid, to_uuid, text, ts, img, gif)
                 )
         await asyncio.to_thread(_op)
 
@@ -700,11 +769,11 @@ class SocialStore:
             with self._connect() as conn:
                 conn.execute("DELETE FROM dm_offline WHERE ts < ?", (cutoff,))
                 cursor = conn.execute(
-                    "SELECT from_uuid, text, ts FROM dm_offline WHERE to_uuid = ? ORDER BY ts ASC LIMIT 100",
+                    "SELECT from_uuid, text, ts, img, gif FROM dm_offline WHERE to_uuid = ? ORDER BY ts ASC LIMIT 100",
                     (user_uuid,)
                 )
                 rows = cursor.fetchall()
-                return [{"from": r[0], "text": r[1], "ts": r[2]} for r in rows]
+                return [dm_payload(r[0], r[1], r[2], r[3], r[4]) for r in rows]
         return await asyncio.to_thread(_op)
 
     async def clear_offline_dms(self, user_uuid: str, max_ts: int | None = None) -> None:
@@ -777,6 +846,7 @@ class SocialPeer:
         self.rate_tokens: float = 40.0
         self.rate_last: float = time.monotonic()
         self.rate_violations: int = 0
+        self.img_upload: dict | None = None  # the "dm_img" parts received so far
 
     async def _writer(self) -> None:
         try:
@@ -840,6 +910,7 @@ class SocialHub:
         self.auth_blocked_until: dict[str, float] = {}
         self._last_sweep = time.monotonic()
         self.dm_limits: dict[str, tuple[float, int]] = {}
+        self.dm_img_limits: dict[str, tuple[float, int]] = {}
         self.invite_limits: dict[str, tuple[float, int]] = {}
         self.join_limits: dict[str, tuple[float, int]] = {}
         self.signal_limits: dict[str, tuple[float, int]] = {}
@@ -899,6 +970,10 @@ class SocialHub:
         if now - self._last_sweep >= 60.0:
             self.sweep_expired()
             self._last_sweep = now
+            try:
+                self.store.sweep_dm_images()
+            except OSError:
+                pass
 
     def sweep_expired(self) -> None:
         now = time.time()
@@ -1193,6 +1268,30 @@ async def authenticate(hub: SocialHub, ws: web.WebSocketResponse, ip: str) -> So
     return peer
 
 
+async def dm_refused(hub: SocialHub, peer: SocialPeer, to_uuid: str, rate: bool = True) -> bool:
+    """Sends the error and returns True when this DM may not go: not friends, a block either way, or the 30/min limit."""
+    if not await hub.store.are_friends(peer.uuid, to_uuid):
+        peer.send_json({"t": "error", "code": "not_friend", "ref": to_uuid})
+        return True
+    if await hub.store.is_any_blocked(peer.uuid, to_uuid):
+        peer.send_json({"t": "error", "code": "blocked", "ref": to_uuid})
+        return True
+    # Rate limit (30 / min) surviving reconnect
+    if rate and not hub.check_rate_limit(hub.dm_limits, peer.uuid, DM_RATE_LIMIT, 60.0):
+        peer.send_json({"t": "error", "code": "rate", "ref": to_uuid})
+        return True
+    return False
+
+
+async def deliver_dm(hub: SocialHub, peer: SocialPeer, to_uuid: str, text: str, img: str | None = None, gif: str | None = None) -> None:
+    now_ms = int(time.time() * 1000)
+    target = hub.peers.get(to_uuid)
+    if target and not target.gone:
+        target.send_json({"t": "dm", **dm_payload(peer.uuid, text, now_ms, img, gif)})
+    else:
+        await hub.store.save_offline_dm(peer.uuid, to_uuid, text, now_ms, img, gif)
+
+
 async def serve(hub: SocialHub, peer: SocialPeer) -> None:
     store = hub.store
 
@@ -1469,33 +1568,77 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
             elif kind == "dm":
                 to_uuid = plain_uuid(msg.get("to"))
                 text = msg.get("text")
+                gif = msg.get("gif")
                 if not to_uuid or not isinstance(text, str):
                     peer.send_json({"t": "error", "code": "bad", "ref": ""})
                     continue
-
+                if gif is not None and not (isinstance(gif, str) and DM_GIF_URL_RE.fullmatch(gif)):
+                    peer.send_json({"t": "error", "code": "bad", "ref": "gif"})
+                    continue
                 if len(text) > DM_MAX_CHARS:
                     peer.send_json({"t": "error", "code": "limit", "ref": to_uuid})
                     continue
-
-                if not await store.are_friends(peer.uuid, to_uuid):
-                    peer.send_json({"t": "error", "code": "not_friend", "ref": to_uuid})
+                if await dm_refused(hub, peer, to_uuid):
                     continue
+                await deliver_dm(hub, peer, to_uuid, text, gif=gif)
 
-                if await store.is_any_blocked(peer.uuid, to_uuid):
-                    peer.send_json({"t": "error", "code": "blocked", "ref": to_uuid})
+            elif kind == "dm_img":
+                # {"t":"dm_img","to","text","part","parts","data"}: base64 parts of one JPEG/PNG in order; the last one delivers it.
+                to_uuid = plain_uuid(msg.get("to"))
+                text = msg.get("text", "")
+                part, parts, data = msg.get("part"), msg.get("parts"), msg.get("data")
+                if (not to_uuid or not isinstance(text, str) or not isinstance(data, str)
+                        or type(part) is not int or type(parts) is not int
+                        or not 0 <= part < parts <= DM_IMG_MAX_PARTS or len(data) > DM_IMG_PART_B64):
+                    peer.img_upload = None
+                    peer.send_json({"t": "error", "code": "bad", "ref": "img"})
                     continue
-
-                # Rate limit (30 / min) surviving reconnect
-                if not hub.check_rate_limit(hub.dm_limits, peer.uuid, DM_RATE_LIMIT, 60.0):
-                    peer.send_json({"t": "error", "code": "rate", "ref": to_uuid})
+                if len(text) > DM_MAX_CHARS:
+                    peer.img_upload = None
+                    peer.send_json({"t": "error", "code": "limit", "ref": to_uuid})
                     continue
-
-                now_ms = int(time.time() * 1000)
-                target = hub.peers.get(to_uuid)
-                if target and not target.gone:
-                    target.send_json({"t": "dm", "from": peer.uuid, "text": text, "ts": now_ms})
-                else:
-                    await store.save_offline_dm(peer.uuid, to_uuid, text, now_ms)
+                if part == 0:
+                    peer.img_upload = None
+                    if await dm_refused(hub, peer, to_uuid, rate=False):
+                        continue
+                    if not hub.check_rate_limit(hub.dm_img_limits, peer.uuid, DM_IMG_RATE_LIMIT, 3600.0):
+                        peer.send_json({"t": "error", "code": "rate", "ref": to_uuid})
+                        continue
+                    peer.img_upload = {"to": to_uuid, "parts": parts, "next": 0, "chunks": [], "size": 0}
+                up = peer.img_upload
+                if not up or up["to"] != to_uuid or up["parts"] != parts or up["next"] != part:
+                    peer.img_upload = None
+                    peer.send_json({"t": "error", "code": "bad", "ref": "img"})
+                    continue
+                try:
+                    chunk = base64.b64decode(data, validate=True)
+                except ValueError:
+                    peer.img_upload = None
+                    peer.send_json({"t": "error", "code": "bad", "ref": "img"})
+                    continue
+                up["size"] += len(chunk)
+                if up["size"] > DM_IMG_MAX_BYTES:
+                    peer.img_upload = None
+                    peer.send_json({"t": "error", "code": "limit", "ref": to_uuid})
+                    continue
+                up["chunks"].append(chunk)
+                up["next"] += 1
+                if up["next"] < parts:
+                    continue
+                peer.img_upload = None
+                image = b"".join(up["chunks"])
+                ext = sniff_image(image)
+                if not ext:
+                    peer.send_json({"t": "error", "code": "bad", "ref": "img"})
+                    continue
+                if await dm_refused(hub, peer, to_uuid):
+                    continue
+                img_id = await store.save_dm_image(image, ext)
+                if not img_id:
+                    peer.send_json({"t": "error", "code": "limit", "ref": to_uuid})
+                    continue
+                await deliver_dm(hub, peer, to_uuid, text, img=img_id)
+                peer.send_json({"t": "dm_img_sent", "to": to_uuid, "img": img_id})
 
             elif kind == "invite":
                 to_uuid = plain_uuid(msg.get("to"))
@@ -1873,6 +2016,19 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
             peer.send_json({"t": "error", "code": "bad", "ref": str(kind)})
 
 
+async def handle_social_img(request: web.Request) -> web.StreamResponse:
+    """A DM screenshot by its unguessable id (only the two friends were told it)."""
+    store: SocialStore = request.app["social_store"]
+    f = store.dm_image_path(request.match_info.get("img_id", ""))
+    if f is None:
+        raise web.HTTPNotFound()
+    return web.FileResponse(f, headers={
+        "Content-Type": "image/png" if f.suffix == ".png" else "image/jpeg",
+        "Cache-Control": "private, max-age=604800, immutable",
+        "X-Content-Type-Options": "nosniff",
+    })
+
+
 async def handle_social_ws(request: web.Request) -> web.WebSocketResponse:
     hub: SocialHub = request.app["social_hub"]
     hub.maybe_sweep()
@@ -1943,4 +2099,5 @@ def mount(app: web.Application, insecure: bool = False, db_path: Path | str | No
     app["social_store"] = store
     app["social_hub"] = hub
     app.router.add_get("/social/ws", handle_social_ws)
+    app.router.add_get("/social/img/{img_id}", handle_social_img)
     app.on_shutdown.append(hub.close_all)
