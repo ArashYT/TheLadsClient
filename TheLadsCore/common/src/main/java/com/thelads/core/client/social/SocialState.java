@@ -47,7 +47,10 @@ public class SocialState {
         t.start();
     };
 
-    public record Dm(UUID from, String text, long ts) {}
+    /** img: a screenshot's backend id, or our sent copy ("file:...", DmMedia.image); gif: a Tenor/Giphy GIF link; null when none. */
+    public record Dm(UUID from, String text, long ts, String img, String gif) {
+        public Dm(UUID from, String text, long ts) { this(from, text, ts, null, null); }
+    }
     public record JoinCheck(boolean ok, String reason) {}
     public record Invite(String inviteId, UUID from, String worldName, boolean isServer, String serverAddress) {}
     public record JoinRequest(String reqId, UUID from, SocialBridge.GameInfo game) {}
@@ -552,11 +555,48 @@ public class SocialState {
     public void sendDm(UUID to, String text) {
         if (to == null || text == null || text.trim().isEmpty()) return;
         String trimmed = text.length() > SocialProtocol.MAX_DM ? text.substring(0, SocialProtocol.MAX_DM) : text;
+        String link = DmMedia.gifLink(trimmed);
+        if (link != null) { // a Tenor/Giphy link goes as a GIF (never an upload); old clients see the link
+            DmMedia.background(() -> {
+                String gif = DmMedia.resolveGif(link); // a Tenor page is fetched for its GIF
+                send(SocialProtocol.DM, "to", to.toString(), "text", link, "gif", gif);
+                recordDm(to, new Dm(selfId(), link, System.currentTimeMillis(), null, gif));
+            });
+            return;
+        }
         send(SocialProtocol.DM, "to", to.toString(), "text", trimmed);
+        recordDm(to, new Dm(selfId(), trimmed, System.currentTimeMillis()));
+    }
 
+    /**
+     * Sends a screenshot, only one straight from the game's screenshots folder: made a JPEG under 1 MB off the render thread,
+     * then sent as "dm_img" parts the backend joins, keeps and passes on by id.
+     */
+    public void sendScreenshot(UUID to, Path shot) {
+        if (to == null || !DmMedia.isScreenshot(gameDir(), shot)) return;
+        DmMedia.background(() -> {
+            try {
+                byte[] jpeg = DmMedia.encodeScreenshot(shot);
+                List<String> parts = DmMedia.parts(jpeg);
+                for (int i = 0; i < parts.size(); i++) {
+                    send(SocialProtocol.DM_IMG, "to", to.toString(), "text", DmMedia.SCREENSHOT_TEXT, "part", i, "parts", parts.size(), "data", parts.get(i));
+                }
+                recordDm(to, new Dm(selfId(), DmMedia.SCREENSHOT_TEXT, System.currentTimeMillis(), DmMedia.keepSent(jpeg), null));
+            } catch (IOException | RuntimeException e) {
+                LOGGER.warn("SocialState: screenshot {} not sent: {}", shot.getFileName(), e.toString());
+                bridge().toast("Friends", "Couldn't send that screenshot", null, null);
+            }
+        });
+    }
+
+    /** The game folder whose screenshots folder DMs may send from. */
+    public Path gameDir() {
+        return bridge().gameDir();
+    }
+
+    private UUID selfId() {
         LadsGameBridge.Session session = session();
-        UUID self = session != null && session.uuid() != null ? session.uuid() : new UUID(0, 0);
-        recordDm(to, new Dm(self, trimmed, System.currentTimeMillis()));
+        return session != null && session.uuid() != null ? session.uuid() : new UUID(0, 0);
     }
 
     public List<Dm> dms(UUID friendUuid) {
@@ -971,6 +1011,7 @@ public class SocialState {
                     JsonObject d = e.getAsJsonObject();
                     UUID from = parseUuid(str(d, "from"));
                     String text = str(d, "text");
+                    String img = str(d, "img"), gif = str(d, "gif");
                     long ts = d.has("ts") ? d.get("ts").getAsLong() : System.currentTimeMillis();
                     if (from != null && text != null) {
                         List<Dm> list = dmsMap.computeIfAbsent(from, k -> new ArrayList<>());
@@ -983,7 +1024,7 @@ public class SocialState {
                                 }
                             }
                             if (!exists) {
-                                list.add(new Dm(from, text, ts));
+                                list.add(new Dm(from, text, ts, img, gif));
                             }
                             while (list.size() > 200) {
                                 list.remove(0);
@@ -1071,12 +1112,13 @@ public class SocialState {
             case SocialProtocol.DM -> {
                 UUID from = parseUuid(str(msg, "from"));
                 String text = str(msg, "text");
+                String img = str(msg, "img"), gif = str(msg, "gif");
                 long ts = msg.has("ts") ? msg.get("ts").getAsLong() : System.currentTimeMillis();
                 if (from != null && text != null) {
-                    recordDm(from, new Dm(from, text, ts));
+                    recordDm(from, new Dm(from, text, ts, img, gif));
                     FriendEntry sender = friendsMap.get(from);
                     String name = sender != null ? sender.displayName() : "Friend";
-                    bridge().toast("Message from " + name, text, "dm:" + from, null);
+                    bridge().toast("Message from " + name, img != null ? "Sent a screenshot" : gif != null ? "Sent a GIF" : text, "dm:" + from, null);
                 }
             }
             case SocialProtocol.INVITE -> {
@@ -1194,6 +1236,7 @@ public class SocialState {
             case SocialProtocol.E_FULL -> them + "'s world is full";
             case SocialProtocol.E_INCOMPATIBLE -> them + "'s world needs another Minecraft version or modpack";
             case SocialProtocol.E_OFFLINE -> "Can't reach " + them + ": offline or not hosting";
+            case "bad" -> "img".equals(ref) ? "Couldn't send that screenshot" : "gif".equals(ref) ? "Only Tenor or Giphy GIF links can be sent" : null;
             default -> null;
         };
     }
