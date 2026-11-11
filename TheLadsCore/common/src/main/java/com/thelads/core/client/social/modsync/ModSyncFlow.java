@@ -90,6 +90,12 @@ public final class ModSyncFlow {
      */
     public static Result guest(Path gameDir, UUID host, InputStream in, OutputStream out, Map<String, String> loaded,
                                ModSyncDownloader.Http http, boolean relaunched, Ui ui) throws IOException {
+        return guest(gameDir, host, "", "", in, out, loaded, http, relaunched, ui);
+    }
+
+    /** As above; <code>world</code> and <code>owner</code> name the launcher's new modpack ("&lt;world&gt; - &lt;owner&gt;"). */
+    public static Result guest(Path gameDir, UUID host, String world, String owner, InputStream in, OutputStream out, Map<String, String> loaded,
+                               ModSyncDownloader.Http http, boolean relaunched, Ui ui) throws IOException {
         ModSyncClient client = new ModSyncClient(in, out);
         ui.status("Checking mods");
         Set<String> own = new HashSet<>();
@@ -135,7 +141,7 @@ public final class ModSyncFlow {
         }
         if (ui.cancelled()) return Result.CANCELLED;
         ui.status("Restarting the game with " + missing.size() + (missing.size() == 1 ? " mod" : " mods"));
-        writeRelaunch(gameDir, host, missing);
+        writeRelaunch(gameDir, host, world, owner, missing);
         client.byeRelaunch();
         return Result.RELAUNCH;
     }
@@ -144,8 +150,12 @@ public final class ModSyncFlow {
         return m.name().isEmpty() ? m.localName() : m.name();
     }
 
-    /** {host, mods: [{file, size, sha512}]}: the launcher checks every file again before it adds the folder to the launch. */
     static void writeRelaunch(Path gameDir, UUID host, List<ModSyncEntry> mods) throws IOException {
+        writeRelaunch(gameDir, host, "", "", mods);
+    }
+
+    /** {host, world, owner, mods: [{file, size, sha512}]}: the launcher checks every file again, then puts them in a modpack of their own. */
+    static void writeRelaunch(Path gameDir, UUID host, String world, String owner, List<ModSyncEntry> mods) throws IOException {
         JsonArray array = new JsonArray();
         for (ModSyncEntry m : mods) {
             JsonObject o = new JsonObject();
@@ -156,6 +166,8 @@ public final class ModSyncFlow {
         }
         JsonObject root = new JsonObject();
         root.addProperty("host", host.toString());
+        root.addProperty("world", world == null ? "" : world);
+        root.addProperty("owner", owner == null ? "" : owner);
         root.add("mods", array);
         Path tmp = gameDir.resolve(RELAUNCH_FILE + ".tmp");
         Files.writeString(tmp, root.toString());

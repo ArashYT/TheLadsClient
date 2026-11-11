@@ -149,38 +149,60 @@ public partial class ModpacksView : UserControl
                 : Cards.Children.Count == 0 ? "No modpacks match the search and filter." : "";
     }
 
+    /// <summary>One modpack as a row, like a profile on the Profiles page: art, name, chips, then Play (the one red button) and Manage.
+    /// A click anywhere else on the row opens it too.</summary>
     private Control Card(ModpackInstance instance)
     {
-        var top = new Grid { Width = 190, Height = 190 };
-        top.Children.Add(new Border { CornerRadius = new CornerRadius(8, 8, 0, 0), ClipToBounds = true, Child = Art(instance, 190) });
-        top.Children.Add(new Border
+        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
+        row.Children.Add(new Border { Width = 56, Height = 56, CornerRadius = new CornerRadius(8), ClipToBounds = true, Margin = new Thickness(0, 0, 14, 0), Child = Art(instance, 56) });
+
+        var title = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        title.Children.Add(new TextBlock { Text = instance.Name, FontSize = 16, FontWeight = FontWeight.Bold, Foreground = Brushes.White, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center }.Untranslated());
+        bool running = _running.ContainsKey(instance.Id), launching = _launching.ContainsKey(instance.Id);
+        if (running) title.Children.Add(Chip("Running", "good"));
+        title.Children.Add(Chip("MC " + instance.McVersion));
+        title.Children.Add(Chip(LoaderName(instance.Loader) + (string.IsNullOrEmpty(instance.LoaderVersion) ? "" : " " + instance.LoaderVersion)));
+        int mods = Modpacks.Mods(instance).Count(m => m.Enabled);
+        title.Children.Add(Chip(mods == 1 ? "1 mod" : $"{mods} mods"));
+        if (instance.ModSyncHost != null) title.Children.Add(Chip("Friend's world", "accent"));
+        var text = new StackPanel { Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
+        text.Children.Add(title);
+        string played = instance.LastPlayedUtc is { } at ? "Played " + RelativeTime(at) : "Never played";
+        text.Children.Add(new TextBlock { Classes = { "muted" }, Text = $"{Byline(instance)}  ·  {played}", TextTrimming = TextTrimming.CharacterEllipsis }.Untranslated(instance.Author is { Length: > 0 }));
+        Grid.SetColumn(text, 1);
+        row.Children.Add(text);
+
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
+        var play = new Button
         {
-            Background = new SolidColorBrush(Color.Parse("#D9101114")), CornerRadius = new CornerRadius(4), Padding = new Thickness(7, 3),
-            Margin = new Thickness(8), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top,
-            Child = new TextBlock { Text = instance.McVersion, FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = Brushes.White }
-        });
-        var icon = LoaderIcon(instance.Loader);
-        icon.Margin = new Thickness(8);
-        icon.HorizontalAlignment = HorizontalAlignment.Right;
-        icon.VerticalAlignment = VerticalAlignment.Bottom;
-        top.Children.Add(icon);
-        if (_running.ContainsKey(instance.Id))
-            top.Children.Add(new Border
-            {
-                Background = new SolidColorBrush(Color.Parse("#E02E7D32")), CornerRadius = new CornerRadius(4), Padding = new Thickness(7, 3),
-                Margin = new Thickness(8), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
-                Child = new TextBlock { Text = "Running", FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = Brushes.White }
-            });
-        var text = new StackPanel { Margin = new Thickness(12, 9, 12, 12), Spacing = 2 };
-        text.Children.Add(new TextBlock { Text = instance.Name, FontSize = 14, FontWeight = FontWeight.SemiBold, Foreground = Brushes.White, TextTrimming = TextTrimming.CharacterEllipsis }.Untranslated());
-        text.Children.Add(new TextBlock { Text = Byline(instance), FontSize = 11, Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")), TextTrimming = TextTrimming.CharacterEllipsis }.Untranslated(instance.Author is { Length: > 0 }));
-        var body = new StackPanel();
-        body.Children.Add(top);
-        body.Children.Add(text);
-        var card = new Button { Classes = { "card" }, Width = 192, Content = body };
+            Classes = { "launch" }, Content = launching ? "Cancel" : running ? "Running" : "Play", MinWidth = 104, Height = 34,
+            HorizontalContentAlignment = HorizontalAlignment.Center, Foreground = Brushes.White, FontWeight = FontWeight.Bold,
+            IsEnabled = !_busy.Contains(instance.Id) && (!running || Host?.ModpackSettings.AllowMultiInstance == true)
+        };
+        Ico.SetName(play, launching ? "cross" : "play");
+        AutomationProperties.SetName(play, $"Play {instance.Name}");
+        play.Click += async (_, e) => { e.Handled = true; await PlayAsync(instance, retry: false); };
+        var manage = new Button { Classes = { "action" }, Content = "Manage", Height = 34 };
+        Ico.SetName(manage, "settings");
+        manage.Click += (_, e) => { e.Handled = true; OpenManage(instance); };
+        actions.Children.Add(play);
+        actions.Children.Add(manage);
+        Grid.SetColumn(actions, 2);
+        row.Children.Add(actions);
+
+        var card = new Border { Classes = { "card", "interactive" }, Padding = new Thickness(12), Cursor = new Cursor(StandardCursorType.Hand), Child = row };
         AutomationProperties.SetName(card, instance.Name);
-        card.Click += (_, _) => OpenManage(instance);
+        card.PointerReleased += (_, e) => { if (e.InitialPressMouseButton == MouseButton.Left) OpenManage(instance); };
         return card;
+    }
+
+    private static string PlaytimeText(long seconds) => seconds >= 1 ? $"·  {InstanceAnalyticsService.FormatPlayTime(seconds)} played" : "";
+
+    private static Border Chip(string text, string? kind = null)
+    {
+        var chip = new Border { Classes = { "chip" }, Child = new TextBlock { Text = text, FontSize = 11 } };
+        if (kind != null) chip.Classes.Add(kind);
+        return chip;
     }
 
     private static string Byline(ModpackInstance i) =>
@@ -402,7 +424,7 @@ public partial class ModpacksView : UserControl
         {
             if (_externalScan.Instances.Count == 0)
             {
-                Status.Text = "No external instances found. Click '+ Add folder' to point to your CurseForge, Modrinth, Prism, or MultiMC folders.";
+                Status.Text = "No external instances found. Use Add folder to point to your CurseForge, Modrinth, Prism, or MultiMC folders.";
             }
             else if (items.Count == 0)
             {
@@ -633,6 +655,15 @@ public partial class ModpacksView : UserControl
     internal void ShowExternal() => Tabs.SelectedItem = ExternalTab;
     internal void ShowManageOverview() => InstanceTabs.SelectedIndex = 0;
     internal void PressPlay() => Play_Click(null, new RoutedEventArgs());
+
+    /// <summary>ModSync: the modpack just made for a friend's world, shown and started; the game rejoins <paramref name="host"/>.</summary>
+    internal async Task PlayModSyncAsync(ModpackInstance instance, string host)
+    {
+        await LoadAsync();
+        instance = Modpacks.List(DataDirectory).FirstOrDefault(i => i.Id == instance.Id) ?? instance;
+        OpenManage(instance);
+        await PlayAsync(instance, retry: false, modSyncHost: host);
+    }
     internal void PressAddContent() => AddMods_Click(null, new RoutedEventArgs());
     internal string ManageStatusText => ManageStatus.Text ?? "";
     internal Process? RunningGame(string id) => _running.GetValueOrDefault(id);
@@ -812,12 +843,12 @@ public partial class ModpacksView : UserControl
         ManageByline.Text = Byline(instance);
         ManageVersionText.Text = string.IsNullOrEmpty(instance.PackVersion) ? (instance.Source != null ? instance.Source.VersionId : "") : $"v{instance.PackVersion}";
         ManageVersionRow.IsVisible = !string.IsNullOrEmpty(instance.PackVersion) || instance.Source != null;
-        ManageLastPlayed.Text = instance.LastPlayedUtc is { } played ? $"▶ {RelativeTime(played)}" : "▶ Never";
+        ManageLastPlayed.Text = instance.LastPlayedUtc is { } played ? "Played " + RelativeTime(played) : "Never played";
         var analytics = InstanceAnalyticsService.GetAnalytics(instance.Directory, instance.Id);
-        ManagePlaytime.Text = $"⏱ {InstanceAnalyticsService.FormatPlayTime(analytics.TotalPlaySeconds)}";
-        ManageCreated.Text = $"📅 {instance.CreatedUtc.ToLocalTime():d}";
-        ManageMcVersion.Text = $"🎮 {instance.McVersion}";
-        ManageLoader.Text = $"🛠 {LoaderName(instance.Loader)}{(string.IsNullOrEmpty(instance.LoaderVersion) ? "" : $" - {instance.LoaderVersion}")}";
+        ManagePlaytime.Text = PlaytimeText(analytics.TotalPlaySeconds);
+        ManageCreated.Text = $"·  Created {instance.CreatedUtc.ToLocalTime():d}";
+        ManageMcVersion.Text = $"MC {instance.McVersion}";
+        ManageLoader.Text = $"{LoaderName(instance.Loader)}{(string.IsNullOrEmpty(instance.LoaderVersion) ? "" : $" {instance.LoaderVersion}")}";
         NameBox.Text = instance.Name;
         _updatingRam = true;
         RamBox.Value = instance.MaxRamMb;
@@ -3290,7 +3321,8 @@ public partial class ModpacksView : UserControl
 
     /// <param name="retry">The launcher's own one retry after a known mod-loading race (ModLoadingRace).</param>
     /// <param name="relaunch">The game closed itself to switch renderer (shader toggle): back to the world or server it was in.</param>
-    private async Task PlayAsync(ModpackInstance instance, bool retry, GraphicsRenderer.Relaunch? relaunch = null)
+    /// <param name="modSyncHost">ModSync: the friend whose world the game rejoins (first launch of that world's modpack only).</param>
+    private async Task PlayAsync(ModpackInstance instance, bool retry, GraphicsRenderer.Relaunch? relaunch = null, string? modSyncHost = null)
     {
         if (Host is not { } host) return;
         if (_launching.TryGetValue(instance.Id, out var pending)) { pending.Cancel(); return; }
@@ -3300,18 +3332,18 @@ public partial class ModpacksView : UserControl
         _launching[instance.Id] = launch;
         Refresh();
         // Another launcher's instance has no Manage page: its card and the tab's status line show the launch.
-        void Refresh() { RefreshButtons(); RenderMods(); if (instance.IsExternal) RenderExternalCards(); }
+        void Refresh() { RefreshButtons(); RenderMods(); if (instance.IsExternal) RenderExternalCards(); else RenderCards(); }
         void Report(string message) => Dispatcher.UIThread.Post(() =>
         {
-            if (_selected == instance) ManageStatus.Text = message;
-            else if (instance.IsExternal) Status.Text = $"{instance.Name}: {message}";
+            if (_selected == instance && ManagePanel.IsVisible) ManageStatus.Text = message;
+            else Status.Text = $"{instance.Name}: {message}";
         });
         try
         {
             Report("Signing in...");
             var session = await host.ResolveModpackSessionAsync(launch.Token, instance.IsExternal ? null : instance.GameDirectory);
             var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, launch.Token,
-                relaunch?.Server, relaunch?.World);
+                relaunch?.Server, relaunch?.World, modSyncHost);
             var launchedUtc = DateTime.UtcNow;
             InstanceAnalyticsService.RecordLaunch(instance.Directory, instance.Id);
             _running[instance.Id] = process;
@@ -3330,10 +3362,10 @@ public partial class ModpacksView : UserControl
                 {
                     ManageStatus.Text = code == 0 ? "Game closed." : $"Minecraft closed with exit code {code}. See minecraft\\logs\\latest.log (and crash-reports) in Open folder.";
                     var analytics = InstanceAnalyticsService.GetAnalytics(instance.Directory, instance.Id);
-                    ManagePlaytime.Text = $"⏱ {InstanceAnalyticsService.FormatPlayTime(analytics.TotalPlaySeconds)}";
+                    ManagePlaytime.Text = PlaytimeText(analytics.TotalPlaySeconds);
                 }
-                else if (instance.IsExternal)
-                    Status.Text = code == 0 ? $"{instance.Name} closed." : $"{instance.Name} closed with exit code {code}. See logs\\latest.log (and crash-reports) in its folder.";
+                else
+                    Status.Text = code == 0 ? $"{instance.Name} closed." : $"{instance.Name} closed with exit code {code}. See {(instance.IsExternal ? "" : "minecraft\\")}logs\\latest.log (and crash-reports) in its folder.";
                 Refresh();
                 RenderCards();
                 // The in-game account / version / renderer switches are Lads files, never prepared in another launcher's instance.

@@ -6,14 +6,14 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using CmlLib.Core.ProcessBuilder;
 
 namespace TheLadsLauncher.Services;
 
 /// <summary>ModSync, the launcher's part (the game's part: TheLadsCore client/social/modsync). Before a launch it writes the
 /// profile's own mod jars with their hashes and, when Modrinth or CurseForge has the very same file, where to download it: a friend
 /// who joins this player's world fetches what they miss. After the game closed itself to start again with a host's mods, it checks
-/// every synced jar once more and adds that folder to the next launch only. The player's own mods folder is never touched.</summary>
+/// every synced jar once more and puts them, with the profile's mods and settings, in a modpack of their own ("&lt;world&gt; - &lt;owner&gt;")
+/// that it starts instead. The player's own profile is never touched.</summary>
 public static class ModSyncService
 {
     /// <summary>In .lads-mod-cache: the list the game publishes, and what earlier launches learned about each jar.</summary>
@@ -31,9 +31,11 @@ public static class ModSyncService
     private sealed record ModList(int V, List<Mod> Mods);
     /// <summary>What is known about one jar (keyed by name, size and write time): its hashes and, once the sites were asked, its site.</summary>
     public sealed record Known(string Sha1, string Sha512, uint Fingerprint, bool Asked, string Source, string Url);
-    /// <summary>A checked restart request: the host's UUID and the folder whose jars the next launch adds.</summary>
-    public sealed record Relaunch(string Host, string Folder);
-    private sealed record Request(string? Host, List<RequestMod>? Mods);
+    /// <summary>A checked restart request: the host's UUID, the folder of checked jars, and the host's world and username (may be empty).</summary>
+    public sealed record Relaunch(string Host, string Folder, string World = "", string Owner = "");
+    /// <summary>The player's settings a ModSync modpack starts with: copied once, when it is made.</summary>
+    public static readonly string[] SettingsFiles = { "options.txt", "optionsof.txt", "optionsshaders.txt", "servers.dat" };
+    private sealed record Request(string? Host, string? World, string? Owner, List<RequestMod>? Mods);
     private sealed record RequestMod(string? File, long Size, string? Sha512);
 
     /// <summary>Writes <see cref="ListFile"/> for this launch: the enabled jars the player added themselves. With a
@@ -160,7 +162,75 @@ public static class ModSyncService
             }
         }
         log($"ModSync: starting again with {named.Count} mod(s) from the host's world.");
-        return new Relaunch(host.ToString("D"), folder);
+        return new Relaunch(host.ToString("D"), folder, request.World ?? "", request.Owner ?? "");
+    }
+
+    /// <summary>"&lt;world&gt; - &lt;owner&gt;": control characters dropped, each part capped, a placeholder for a missing one.</summary>
+    public static string PackName(Relaunch relaunch)
+    {
+        static string Clean(string? text, int max, string fallback)
+        {
+            var clean = new string((text ?? "").Where(c => !char.IsControl(c)).ToArray()).Trim();
+            if (clean.Length > max) clean = clean[..max].Trim();
+            return clean.Length == 0 ? fallback : clean;
+        }
+        return Clean(relaunch.World, 48, "Friend's world") + " - " + Clean(relaunch.Owner, 32, "Host");
+    }
+
+    /// <summary>The modpack a ModSync restart starts: the one made for this host and name before, else a new one with the player's
+    /// settings (<see cref="SettingsFiles"/> and config/) copied from <paramref name="game"/>. Its mods are made again every time:
+    /// the profile's enabled jars, then the host's checked jars (a jar of the same name is the host's). The Lads Core stays on.</summary>
+    public static ModpackInstance BuildInstance(string dataDirectory, Relaunch relaunch, string game, string mcVersion, string loaderVersion, Action<string> log)
+    {
+        string name = PackName(relaunch);
+        var instance = Modpacks.List(dataDirectory).FirstOrDefault(i => !i.IsExternal && i.ModSyncHost == relaunch.Host && i.Name == name);
+        if (instance == null)
+        {
+            instance = Modpacks.NewInstance(dataDirectory, name);
+            instance.Author = string.IsNullOrWhiteSpace(relaunch.Owner) ? null : relaunch.Owner;
+            instance.ModSyncHost = relaunch.Host;
+            foreach (var file in SettingsFiles)
+            {
+                string from = Path.Combine(game, file);
+                if (File.Exists(from) && !SafeFileOps.IsLink(from)) File.Copy(from, Path.Combine(instance.GameDirectory, file), overwrite: true);
+            }
+            CopyFolder(Path.Combine(game, "config"), Path.Combine(instance.GameDirectory, "config"));
+            log($"ModSync: made the modpack '{name}' with your settings.");
+        }
+        instance.McVersion = mcVersion;
+        instance.Loader = "fabric";
+        instance.LoaderVersion = loaderVersion;
+        instance.LadsCore = true;
+        string mods = Path.Combine(instance.GameDirectory, "mods");
+        Directory.CreateDirectory(mods);
+        foreach (var old in Directory.EnumerateFiles(mods).Where(IsJar).ToList()) File.Delete(old);
+        int own = 0, host = 0;
+        string profileMods = Path.Combine(game, "mods");
+        if (Directory.Exists(profileMods))
+            foreach (var jar in Directory.EnumerateFiles(profileMods, "*.jar").Where(f => !SafeFileOps.IsLink(f)))
+            {
+                File.Copy(jar, Path.Combine(mods, Path.GetFileName(jar)), overwrite: true);
+                own++;
+            }
+        foreach (var jar in Directory.EnumerateFiles(relaunch.Folder, "*.jar"))
+        {
+            File.Copy(jar, Path.Combine(mods, Path.GetFileName(jar)), overwrite: true);
+            host++;
+        }
+        Modpacks.Save(instance);
+        log($"ModSync: '{name}' has your {own} mod(s) and {host} from the host.");
+        return instance;
+    }
+
+    private static bool IsJar(string file) => file.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase);
+
+    private static void CopyFolder(string from, string to)
+    {
+        if (!Directory.Exists(from) || SafeFileOps.IsLink(from)) return;
+        Directory.CreateDirectory(to);
+        foreach (var file in Directory.EnumerateFiles(from).Where(f => !SafeFileOps.IsLink(f)))
+            File.Copy(file, Path.Combine(to, Path.GetFileName(file)), overwrite: true);
+        foreach (var dir in Directory.EnumerateDirectories(from)) CopyFolder(dir, Path.Combine(to, Path.GetFileName(dir)));
     }
 
     /// <summary>A launch that is not a ModSync restart drops a request nobody took (the launcher was closed when the game asked).</summary>
@@ -170,12 +240,8 @@ public static class ModSyncService
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
     }
 
-    /// <summary>The JVM arguments of a ModSync restart: Fabric Loader also loads the jars in the host's folder, and the mod rejoins that host.</summary>
-    public static string[] JvmArguments(Relaunch relaunch) => new[] { "-Dfabric.addMods=" + relaunch.Folder, "-Dlads.modsync.host=" + relaunch.Host };
-
-    public static void AddJvmArguments(MLaunchOption options, Relaunch relaunch) =>
-        options.ExtraJvmArguments = (options.ExtraJvmArguments ?? Array.Empty<MArgument>())
-            .Concat(JvmArguments(relaunch).Select(argument => new MArgument(argument))).ToArray(); // one value each: the folder may hold spaces
+    /// <summary>The JVM argument of a ModSync modpack's first launch: the mod rejoins that host.</summary>
+    public static string JvmArgument(string host) => "-Dlads.modsync.host=" + host;
 
     private static string Sha512(string path)
     {
