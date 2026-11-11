@@ -12,6 +12,12 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class HostScreenLogicTest {
+    @Test
+    void ruleLabelsAreReadable() {
+        assertEquals("Daylight Cycle", HostScreenLogic.ruleLabel("doDaylightCycle"));
+        assertEquals("Keep Inventory", HostScreenLogic.ruleLabel("keepInventory"));
+        assertEquals("Players Sleeping Percentage", HostScreenLogic.ruleLabel("playersSleepingPercentage"));
+    }
 
     @Test
     void optionsRoundTripToHostOptions() {

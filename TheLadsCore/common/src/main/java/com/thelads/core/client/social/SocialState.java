@@ -614,8 +614,21 @@ public class SocialState {
         }
     }
 
+    /** An invite to the same friend goes out at most once per 10 s. */
+    public static final long INVITE_COOLDOWN_MS = 10_000L;
+    private final Map<UUID, Long> lastInviteAt = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** True (and starts the cooldown) when an invite to this friend may go out now. */
+    boolean inviteAllowed(UUID friendUuid, long nowMs) {
+        Long last = lastInviteAt.get(friendUuid);
+        if (last != null && nowMs - last < INVITE_COOLDOWN_MS) return false;
+        lastInviteAt.put(friendUuid, nowMs);
+        return true;
+    }
+
     public void invite(UUID friendUuid) {
         if (friendUuid == null || hostSession.isHosting() && hostSession.options().isBanned(friendUuid)) return;
+        if (!inviteAllowed(friendUuid, System.currentTimeMillis())) return;
         if (hostSession.isHosting()) {
             Presence.WorldAd ad = currentPresence().world();
             if (ad == null) return; // LAN scope: friends join through the LAN, not an invite
