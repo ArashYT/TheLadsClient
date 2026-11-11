@@ -15,43 +15,43 @@
     </Style>
   </UserControl.Styles>
   <Grid>
-    <!-- My Modpacks and Browse -->
+    <!-- My Modpacks, External Instances and Browse: header, sub-tabs and toolbar laid out as Profiles and Servers. -->
     <Grid x:Name="LibraryPanel" RowDefinitions="Auto,Auto,Auto,*" Margin="28,24,28,12">
       <StackPanel Spacing="4">
-        <TextBlock Text="Modpacks" FontSize="22" FontWeight="Bold" />
-        <TextBlock Text="Modrinth modpacks as separate instances: their own mods, worlds and settings. They never use the Lads profiles' mods; Lads Core is added where it is supported (Lads Core in each modpack's settings)." Foreground="#A0A1AA" TextWrapping="Wrap" MaxWidth="680" HorizontalAlignment="Left" />
+        <TextBlock Classes="pageTitle" Text="Modpacks" />
+        <TextBlock Classes="pageSubtitle" Text="Each modpack is its own instance with its own mods, worlds and settings; your Lads profiles stay as they are. The Lads Core is added wherever it is supported." />
       </StackPanel>
-      <TabControl x:Name="Tabs" Classes="pills" Padding="0" Grid.Row="1" Margin="0,12,0,0" SelectionChanged="Tabs_Changed">
+      <TabControl x:Name="Tabs" Classes="pills" Padding="0" Grid.Row="1" Margin="0,16,0,0" HorizontalAlignment="Left" SelectionChanged="Tabs_Changed">
         <TabItem x:Name="MineTab" Header="My Modpacks" />
-        <TabItem x:Name="ExternalTab" Header="External Instances" />
+        <TabItem x:Name="ExternalTab" Header="Other Launchers" />
         <TabItem x:Name="BrowseTab" Header="Browse" />
       </TabControl>
-      <Grid Grid.Row="2" Margin="0,4,0,14">
-        <Grid x:Name="MineToolbar" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto">
-          <Button c:Ico.Name="plus" Classes="launch" Content="Create" Height="34" Padding="16,0" Click="Create_Click" />
-          <Button c:Ico.Name="file-import" Grid.Column="1" Classes="action" Content="Import .mrpack / .zip" Height="34" Margin="8,0,0,0" Click="Import_Click" />
-          <TextBox x:Name="MineSearch" Grid.Column="3" Width="210" PlaceholderText="Search my modpacks…" TextChanged="MineFilter_Changed" />
-          <ComboBox x:Name="MineSort" Grid.Column="4" Width="160" Margin="8,0,0,0" SelectionChanged="MineFilter_Changed" />
-          <ComboBox x:Name="MineLoader" Grid.Column="5" Width="140" Margin="8,0,0,0" SelectionChanged="MineFilter_Changed" />
+      <Grid Grid.Row="2" Margin="0,12,0,12">
+        <Grid x:Name="MineToolbar" ColumnDefinitions="*,160,140,Auto,Auto">
+          <TextBox x:Name="MineSearch" Height="34" PlaceholderText="Search my modpacks…" VerticalContentAlignment="Center" Margin="0,0,8,0" TextChanged="MineFilter_Changed" />
+          <ComboBox x:Name="MineSort" Grid.Column="1" Height="34" HorizontalAlignment="Stretch" Margin="0,0,8,0" SelectionChanged="MineFilter_Changed" />
+          <ComboBox x:Name="MineLoader" Grid.Column="2" Height="34" HorizontalAlignment="Stretch" Margin="0,0,8,0" SelectionChanged="MineFilter_Changed" />
+          <Button c:Ico.Name="file-import" Grid.Column="3" Classes="action" Content="Import…" ToolTip.Tip="Import a Modrinth .mrpack or CurseForge .zip" Height="34" Margin="0,0,8,0" Click="Import_Click" />
+          <Button c:Ico.Name="plus" Grid.Column="4" Classes="launch" Content="New Modpack" Height="34" Padding="16,0" Foreground="White" FontWeight="Bold" Click="Create_Click" />
         </Grid>
-        <Grid x:Name="ExternalToolbar" ColumnDefinitions="Auto,Auto,*,Auto,Auto" IsVisible="False">
-          <Button c:Ico.Name="add-folder" Classes="action" Content="Add folder" Height="34" Click="AddExternalFolder_Click" />
-          <Button c:Ico.Name="refresh" Grid.Column="1" Classes="action" Content="Rescan" Height="34" Margin="8,0,0,0" Click="RescanExternal_Click" />
-          <TextBox x:Name="ExternalSearch" Grid.Column="2" Width="210" HorizontalAlignment="Right" PlaceholderText="Search external instances…" TextChanged="ExternalFilter_Changed" />
-          <ComboBox x:Name="ExternalLauncherFilter" Grid.Column="3" Width="160" Margin="8,0,0,0" SelectionChanged="ExternalFilter_Changed" />
-          <ComboBox x:Name="ExternalSort" Grid.Column="4" Width="160" Margin="8,0,0,0" SelectionChanged="ExternalFilter_Changed" />
+        <Grid x:Name="ExternalToolbar" ColumnDefinitions="*,160,160,Auto,Auto" IsVisible="False">
+          <TextBox x:Name="ExternalSearch" Height="34" PlaceholderText="Search instances from other launchers…" VerticalContentAlignment="Center" Margin="0,0,8,0" TextChanged="ExternalFilter_Changed" />
+          <ComboBox x:Name="ExternalLauncherFilter" Grid.Column="1" Height="34" HorizontalAlignment="Stretch" Margin="0,0,8,0" SelectionChanged="ExternalFilter_Changed" />
+          <ComboBox x:Name="ExternalSort" Grid.Column="2" Height="34" HorizontalAlignment="Stretch" Margin="0,0,8,0" SelectionChanged="ExternalFilter_Changed" />
+          <Button c:Ico.Name="refresh" Grid.Column="3" Classes="action" Content="Rescan" Height="34" Margin="0,0,8,0" Click="RescanExternal_Click" />
+          <Button c:Ico.Name="add-folder" Grid.Column="4" Classes="action" Content="Add folder" Height="34" Click="AddExternalFolder_Click" />
         </Grid>
-        <Grid x:Name="BrowseToolbar" ColumnDefinitions="*,Auto,Auto,Auto,Auto" IsVisible="False">
-          <TextBox x:Name="BrowseSearch" PlaceholderText="Search Modrinth modpacks…" KeyDown="BrowseSearch_KeyDown" />
-          <ComboBox x:Name="BrowseVersion" Grid.Column="1" Width="130" Margin="8,0,0,0" SelectionChanged="BrowseFilter_Changed" />
-          <ComboBox x:Name="BrowseLoader" Grid.Column="2" Width="130" Margin="8,0,0,0" SelectionChanged="BrowseFilter_Changed" />
-          <ComboBox x:Name="BrowseSort" Grid.Column="3" Width="150" Margin="8,0,0,0" SelectionChanged="BrowseFilter_Changed" />
-          <Button c:Ico.Name="search" Grid.Column="4" Classes="action" Content="Search" Height="34" Margin="8,0,0,0" Click="BrowseSearch_Click" />
+        <Grid x:Name="BrowseToolbar" ColumnDefinitions="*,130,130,150,Auto" IsVisible="False">
+          <TextBox x:Name="BrowseSearch" Height="34" PlaceholderText="Search Modrinth modpacks…" VerticalContentAlignment="Center" Margin="0,0,8,0" KeyDown="BrowseSearch_KeyDown" />
+          <ComboBox x:Name="BrowseVersion" Grid.Column="1" Height="34" HorizontalAlignment="Stretch" Margin="0,0,8,0" SelectionChanged="BrowseFilter_Changed" />
+          <ComboBox x:Name="BrowseLoader" Grid.Column="2" Height="34" HorizontalAlignment="Stretch" Margin="0,0,8,0" SelectionChanged="BrowseFilter_Changed" />
+          <ComboBox x:Name="BrowseSort" Grid.Column="3" Height="34" HorizontalAlignment="Stretch" Margin="0,0,8,0" SelectionChanged="BrowseFilter_Changed" />
+          <Button c:Ico.Name="search" Grid.Column="4" Classes="action" Content="Search" Height="34" Click="BrowseSearch_Click" />
         </Grid>
       </Grid>
       <Grid Grid.Row="3" RowDefinitions="Auto,*">
         <TextBlock x:Name="Status" Foreground="#A0A1AA" TextWrapping="Wrap" Margin="0,0,0,10" />
-        <ScrollViewer x:Name="MineScroll" Grid.Row="1"><WrapPanel x:Name="Cards" /></ScrollViewer>
+        <ScrollViewer x:Name="MineScroll" Grid.Row="1"><StackPanel x:Name="Cards" Spacing="8" /></ScrollViewer>
         <ScrollViewer x:Name="ExternalScroll" Grid.Row="1" IsVisible="False">
           <WrapPanel x:Name="ExternalCards" />
         </ScrollViewer>
@@ -64,7 +64,7 @@
       </Grid>
     </Grid>
 
-    <!-- One instance (CurseForge style) -->
+    <!-- One instance -->
     <Grid x:Name="ManagePanel" IsVisible="False" RowDefinitions="Auto,Auto,*" Margin="24,18,24,12">
       <!-- Top Header Area -->
       <Grid RowDefinitions="Auto,Auto" Margin="0,0,0,4">
@@ -87,30 +87,27 @@
               <TextBlock x:Name="ManageByline" Foreground="#9CA0AB" FontSize="13" VerticalAlignment="Center" />
             </StackPanel>
 
-            <!-- Subtitle row (Release badge + pack version / source) -->
+            <!-- Pack version (Modrinth packs) -->
             <StackPanel x:Name="ManageVersionRow" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
               <Border x:Name="ManageReleaseBadge" Classes="chip good" Padding="6,1" Height="19" VerticalAlignment="Center">
                 <TextBlock Text="R" FontSize="10" FontWeight="Bold" Foreground="#7FD99A" />
               </Border>
               <TextBlock x:Name="ManageVersionText" Foreground="#C5C7D0" FontSize="11.5" VerticalAlignment="Center" />
-              <Border Classes="chip" Padding="8,1" Height="19" VerticalAlignment="Center">
-                <TextBlock Text="Modpacks" FontSize="10.5" />
-              </Border>
             </StackPanel>
 
-            <!-- Info chips / glyphs row (Played, playtime, created, MC version, Loader) -->
-            <StackPanel Orientation="Horizontal" Spacing="14" Margin="0,3,0,0">
-              <TextBlock x:Name="ManageLastPlayed" Foreground="#8F919C" FontSize="11" />
-              <TextBlock x:Name="ManagePlaytime" Foreground="#8F919C" FontSize="11" />
-              <TextBlock x:Name="ManageCreated" Foreground="#8F919C" FontSize="11" />
-              <TextBlock x:Name="ManageMcVersion" Foreground="#B0B2BD" FontSize="11" FontWeight="SemiBold" />
-              <TextBlock x:Name="ManageLoader" Foreground="#B0B2BD" FontSize="11" FontWeight="SemiBold" />
+            <!-- Version and loader as chips (as on Profiles), then when it was played -->
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+              <Border Classes="chip"><TextBlock x:Name="ManageMcVersion" /></Border>
+              <Border Classes="chip"><TextBlock x:Name="ManageLoader" /></Border>
+              <TextBlock x:Name="ManageLastPlayed" Classes="muted" VerticalAlignment="Center" Margin="4,0,0,0" />
+              <TextBlock x:Name="ManagePlaytime" Classes="muted" VerticalAlignment="Center" />
+              <TextBlock x:Name="ManageCreated" Classes="muted" VerticalAlignment="Center" />
             </StackPanel>
           </StackPanel>
 
-          <!-- Big CurseForge Play Button -->
+          <!-- The page's one primary button -->
           <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="6" HorizontalAlignment="Right">
-            <Button c:Ico.Name="play" x:Name="PlayButton" Classes="cfPlay" Content="Play" MinWidth="130" Height="40" HorizontalContentAlignment="Center" Click="Play_Click" />
+            <Button c:Ico.Name="play" x:Name="PlayButton" Classes="launch" Content="Play" MinWidth="130" Height="40" Foreground="White" FontWeight="Bold" HorizontalContentAlignment="Center" Click="Play_Click" />
           </StackPanel>
         </Grid>
       </Grid>
@@ -224,7 +221,7 @@
               <Button x:Name="UpdateAllButton" Classes="action" Height="32" Padding="10,0" VerticalAlignment="Center" Click="UpdateAll_Click">
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                   <c:Glyph Kind="refresh" Size="13" VerticalAlignment="Center" /><TextBlock Text="Update all" VerticalAlignment="Center" />
-                  <Border x:Name="UpdateAllBadge" Background="#F16436" CornerRadius="10" MinWidth="18" Height="18" Padding="5,0" VerticalAlignment="Center" IsVisible="False">
+                  <Border x:Name="UpdateAllBadge" Background="{DynamicResource LadsAccent}" CornerRadius="10" MinWidth="18" Height="18" Padding="5,0" VerticalAlignment="Center" IsVisible="False">
                     <TextBlock x:Name="UpdateAllBadgeText" Text="1" FontSize="11" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
                   </Border>
                 </StackPanel>

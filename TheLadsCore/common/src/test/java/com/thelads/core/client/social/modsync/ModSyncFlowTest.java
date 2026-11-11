@@ -96,7 +96,7 @@ public class ModSyncFlowTest {
         }, "modsync-flow-host");
         serving.setDaemon(true);
         serving.start();
-        return ModSyncFlow.guest(guestDir, HOST, guest.in(P2PSession.MODSYNC), guest.out(P2PSession.MODSYNC), loaded, this::site, relaunched, ui);
+        return ModSyncFlow.guest(guestDir, HOST, "Survival", "HostPlayer", guest.in(P2PSession.MODSYNC), guest.out(P2PSession.MODSYNC), loaded, this::site, relaunched, ui);
     }
 
     private Path synced(ModSyncEntry m) {
@@ -121,6 +121,8 @@ public class ModSyncFlowTest {
 
         JsonObject request = JsonParser.parseString(Files.readString(guestDir.resolve(ModSyncFlow.RELAUNCH_FILE))).getAsJsonObject();
         assertEquals(HOST.toString(), request.get("host").getAsString());
+        assertEquals("Survival", request.get("world").getAsString(), "names the launcher's new modpack");
+        assertEquals("HostPlayer", request.get("owner").getAsString());
         JsonArray mods = request.getAsJsonArray("mods");
         assertEquals(2, mods.size());
         for (int i = 0; i < 2; i++) {

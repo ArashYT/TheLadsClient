@@ -171,11 +171,12 @@ public static class ModpackLauncher
 
     /// <summary>Installs what the instance needs and starts it with <paramref name="session"/> and the Java its version needs.
     /// <paramref name="joinServer"/> ("host" or "host:port"): the game joins it as soon as it has loaded; <paramref name="joinWorld"/>
-    /// (a saves folder name): it opens that world.</summary>
+    /// (a saves folder name): it opens that world. <paramref name="modSyncHost"/> (a UUID): the game rejoins that friend (ModSync).</summary>
     public static async Task<Process> LaunchAsync(string dataDirectory, ModpackInstance instance, MSession session, LauncherSettings settings,
-        IJavaService java, HttpClient http, Action<string>? status, CancellationToken token, string? joinServer = null, string? joinWorld = null)
+        IJavaService java, HttpClient http, Action<string>? status, CancellationToken token, string? joinServer = null, string? joinWorld = null,
+        string? modSyncHost = null)
     {
-        var process = await PrepareAsync(dataDirectory, instance, session, settings, java, http, status, token, joinServer, joinWorld);
+        var process = await PrepareAsync(dataDirectory, instance, session, settings, java, http, status, token, joinServer, joinWorld, modSyncHost);
         token.ThrowIfCancellationRequested();
         process.EnableRaisingEvents = true;
         if (!instance.IsExternal) process.Exited += (_, _) => SyncLadsConfigFromInstance(instance.GameDirectory, dataDirectory);
@@ -233,7 +234,8 @@ public static class ModpackLauncher
 
     /// <summary>Everything <see cref="LaunchAsync"/> does short of starting the game: Java, loader, game files; the process to start.</summary>
     public static async Task<Process> PrepareAsync(string dataDirectory, ModpackInstance instance, MSession session, LauncherSettings settings,
-        IJavaService java, HttpClient http, Action<string>? status, CancellationToken token, string? joinServer = null, string? joinWorld = null)
+        IJavaService java, HttpClient http, Action<string>? status, CancellationToken token, string? joinServer = null, string? joinWorld = null,
+        string? modSyncHost = null)
     {
         var path = GamePath(dataDirectory, instance);
         // Another launcher's instance (CurseForge, Prism, Modrinth): only the game writes to its folder, so it stays as that launcher
@@ -295,6 +297,8 @@ public static class ModpackLauncher
         LimitBackgroundThreads(instance, options, Environment.ProcessorCount);
         // Lads Core leaves the client-only extras out of a modpack (the title screen's "The Lads Network" button).
         options.ExtraJvmArguments = (options.ExtraJvmArguments ?? Array.Empty<MArgument>()).Append(MArgument.FromCommandLine("-Dlads.modpack=true"));
+        if (own && Guid.TryParseExact(modSyncHost, "D", out _))
+            options.ExtraJvmArguments = options.ExtraJvmArguments.Append(new MArgument(ModSyncService.JvmArgument(modSyncHost!)));
         LaunchService.ConfigureCachedNativesDirectory(launcher.MinecraftPath, versionId, options);
         // Agent check and the security flags always; the Lads GC tuning only when the instance brings no JVM arguments of its own (two
         // collectors on one command line stop the JVM), and no clean-up of stray files in a folder that is not ours.

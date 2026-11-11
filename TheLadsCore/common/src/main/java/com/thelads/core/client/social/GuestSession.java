@@ -213,7 +213,7 @@ public final class GuestSession {
                         jars.size() + (jars.size() == 1 ? " mod file (" : " mod files (") + size + ") in " + hostName + "'s world "
                                 + (jars.size() == 1 ? "is" : "are") + " not on Modrinth or CurseForge and would come straight from "
                                 + hostName + "'s PC. A mod is a program: it can do anything on your PC. Continue only if you trust "
-                                + hostName + ". The game restarts with these mods; your own mods and settings stay as they are.",
+                                + hostName + ". The game restarts as a new modpack with these mods and your settings; your own profile stays as it is.",
                         new CompletableFuture<>());
                 status = "Waiting for your answer";
                 trustQuestion = q;
@@ -232,7 +232,10 @@ public final class GuestSession {
         };
         ModSyncFlow.Result result;
         try {
-            result = ModSyncFlow.guest(gameDir, host, session.in(P2PSession.MODSYNC), session.out(P2PSession.MODSYNC),
+            FriendEntry friend = owner.friends().stream().filter(f -> host.equals(f.id())).findFirst().orElse(null);
+            String world = friend != null && friend.presence() != null && friend.presence().world() != null ? friend.presence().world().name() : "";
+            String ownerName = friend != null && friend.name() != null ? friend.name() : hostName;
+            result = ModSyncFlow.guest(gameDir, host, world, ownerName, session.in(P2PSession.MODSYNC), session.out(P2PSession.MODSYNC),
                     owner.loadedMods(), ModSyncDownloader.http(), ModSyncFlow.relaunchedFor(host), ui);
         } catch (IOException | RuntimeException e) {
             LOGGER.warn("GuestSession: ModSync failed: {}", e.toString());

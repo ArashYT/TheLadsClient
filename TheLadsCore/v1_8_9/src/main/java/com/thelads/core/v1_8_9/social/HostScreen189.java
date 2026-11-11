@@ -31,6 +31,16 @@ public final class HostScreen189 extends GuiScreen {
     }
 
     @Override
+    protected void mouseClickMove(int mx, int my, int button, long held) {
+        ui.mouseDragged(mx, my, button);
+    }
+
+    @Override
+    protected void mouseReleased(int mx, int my, int button) {
+        if (!ui.mouseReleased(mx, my, button)) super.mouseReleased(mx, my, button);
+    }
+
+    @Override
     public void handleMouseInput() throws IOException {
         super.handleMouseInput();
         int wheel = Mouse.getEventDWheel();

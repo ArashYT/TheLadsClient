@@ -72,6 +72,13 @@ public final class HostSession {
         return options;
     }
 
+    /** Settings changed while hosting (Host screen): they count from now; the scope it opened with stays. */
+    public void update(HostOptions changed) {
+        if (!hosting || changed == null) return;
+        changed.scope = options.scope;
+        options = changed;
+    }
+
     public int port() {
         return port;
     }
