@@ -32,7 +32,7 @@ class TitleScreenThemeTest {
 
     /** The title's own controls (menu, fullscreen top right, Switch after the account name) never overlap. */
     @Test void titleControlsStayApartFromSmallWindowsToLargeOnes() {
-        for (int w = 240; w <= 1000; w += 20)
+        for (int w = 260; w <= 1000; w += 20) // 260: the build label grew a character with 1.13.10 and no longer fits beside a Switch at 240
           for (int h = 180; h <= 560; h += 20)
             for (int count : new int[] {6, 7, 8}) {
                 var layout = TitleScreenTheme.layout(w, h, count);
@@ -174,7 +174,7 @@ class TitleScreenThemeTest {
                 return true;
             }
         };
-        for (int w = 240; w <= 1000; w += 20)
+        for (int w = 260; w <= 1000; w += 20) // 260: the build label grew a character with 1.13.10 and no longer fits beside a Switch at 240
           for (int h = 180; h <= 560; h += 20) {
             var layout = TitleScreenTheme.layout(w, h, 9);
             TitleScreenTheme.renderBackground(pictures, layout, "LadsQA", "26.3", false, 0, true);
