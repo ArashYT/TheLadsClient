@@ -74,7 +74,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
             com.thelads.core.v26_2.social.FriendsScreen26 friends = new com.thelads.core.v26_2.social.FriendsScreen26(this);
             friends.ui().setTab(com.thelads.core.client.social.ui.FriendsScreenLogic.Tab.INVITES);
             minecraft.setScreenAndShow(friends);
-        }).bounds(width - 204, 8, 76, 20).build());
+        }).bounds(48, 8, 76, 20).build());
         ladsFriendsButton.setTooltip(Tooltip.create(Component.literal("Invites from friends, and your friends list")));
         ladsUpdateColumns();
         ladsPlaceDiscover();
@@ -105,31 +105,33 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
         ladsColumnsButton.setTooltip(Tooltip.create(Component.literal("Server list columns: " + columns + ". Click to change.")));
     }
 
-    /** Top right, unless another button (ViaFabricPlus' default spot) is there: then top left, the columns control next to it. */
+    /** Top right, unless another button (ViaFabricPlus' default spot) is there: then top left, the columns control next to it. Friends top left. */
     @Unique
     private void ladsPlaceDiscover() {
         if (ladsDiscoverButton == null) return;
         ladsDiscoverButton.setPosition(width - 124, 8);
         ladsColumnsButton.setPosition(8, 8);
-        if (ladsFriendsButton != null) ladsFriendsButton.setPosition(width - 204, 8);
-        if (ladsDiscoverCovered()) {
+        if (ladsFriendsButton != null) ladsFriendsButton.setPosition(ladsColumnsButton.visible ? 48 : 8, 8); // top left: clear of the title
+        int cover = ladsCoverX();
+        if (cover >= 0) { // Friends goes left of the button that took the corner, clear of the centred title
             ladsDiscoverButton.setPosition(8, 8);
             ladsColumnsButton.setPosition(128, 8);
-            if (ladsFriendsButton != null) ladsFriendsButton.setPosition(168, 8);
+            if (ladsFriendsButton != null) ladsFriendsButton.setPosition(cover - 80, 8);
         }
     }
 
+    /** The x of another button on Discover's spot (ViaFabricPlus' default), else -1. */
     @Unique
-    private boolean ladsDiscoverCovered() {
+    private int ladsCoverX() {
         Button d = ladsDiscoverButton;
         for (var child : children()) {
             if (child instanceof Button b && b != d && b != ladsColumnsButton && b != ladsFriendsButton && b.visible
                 && b.getX() < d.getX() + d.getWidth() && d.getX() < b.getX() + b.getWidth()
                 && b.getY() < d.getY() + d.getHeight() && d.getY() < b.getY() + b.getHeight()) {
-                return true;
+                return b.getX();
             }
         }
-        return false;
+        return -1;
     }
 
     @Unique
