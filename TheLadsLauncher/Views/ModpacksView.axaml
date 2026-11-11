@@ -13,6 +13,34 @@
       <Setter Property="Background" Value="#24252B" />
       <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}" />
     </Style>
+    <!-- Loader picker in the New modpack dialog: one chip per loader, the checked one outlined in the accent. -->
+    <Style Selector="RadioButton.loaderChip">
+      <Setter Property="Background" Value="#1E1F24" />
+      <Setter Property="BorderBrush" Value="#2E2F36" />
+      <Setter Property="Foreground" Value="#C5C7D0" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Margin" Value="0,0,6,0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1.5" CornerRadius="8" Padding="6,10">
+            <ContentPresenter Content="{TemplateBinding Content}" HorizontalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="RadioButton.loaderChip:pointerover">
+      <Setter Property="Background" Value="#24252B" />
+      <Setter Property="BorderBrush" Value="#4A4B55" />
+    </Style>
+    <Style Selector="RadioButton.loaderChip:checked">
+      <Setter Property="Background" Value="#2A1C1F" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="RadioButton.loaderChip:focus-visible">
+      <Setter Property="BorderBrush" Value="#E6E7EC" />
+    </Style>
   </UserControl.Styles>
   <Grid>
     <!-- My Modpacks, External Instances and Browse: header, sub-tabs and toolbar laid out as Profiles and Servers. -->
@@ -326,23 +354,47 @@
     </Grid>
 
     <!-- + Create Modal -->
-    <Border x:Name="CreatePanel" IsVisible="False" Background="#CC000000">
-      <Border Background="#17181B" BorderBrush="#303137" BorderThickness="1" CornerRadius="10" Padding="22" Width="380" HorizontalAlignment="Center" VerticalAlignment="Center">
-        <StackPanel Spacing="10">
-          <TextBlock Text="Create a modpack" FontSize="18" FontWeight="Bold" />
-          <TextBlock Classes="caption" Text="NAME" />
-          <TextBox x:Name="CreateName" PlaceholderText="My modpack" />
-          <TextBlock Classes="caption" Text="MINECRAFT VERSION" />
-          <ComboBox x:Name="CreateVersion" HorizontalAlignment="Stretch" />
-          <TextBlock Classes="caption" Text="LOADER" />
-          <ComboBox x:Name="CreateLoader" HorizontalAlignment="Stretch" />
-          <TextBlock Text="The newest loader version for that Minecraft version is used. Add mods to its mods folder (Open folder)." Foreground="#A0A1AA" FontSize="11" TextWrapping="Wrap" MaxWidth="680" HorizontalAlignment="Left" />
-          <TextBlock x:Name="CreateStatus" Foreground="#FFC07D" TextWrapping="Wrap" />
-          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-            <Button c:Ico.Name="cross" Content="Cancel" Click="CreateCancel_Click" />
-            <Button c:Ico.Name="check" x:Name="CreateConfirm" Classes="launch" Content="Create" Padding="18,8" Click="CreateConfirm_Click" />
+    <Border x:Name="CreatePanel" IsVisible="False" Background="#CC000000" PointerPressed="CreateBackdrop_PointerPressed">
+      <Border x:Name="CreateCard" Background="#17181B" BorderBrush="#303137" BorderThickness="1" CornerRadius="12" Width="500" HorizontalAlignment="Center" VerticalAlignment="Center" KeyDown="CreateCard_KeyDown">
+        <Grid RowDefinitions="Auto,Auto,Auto">
+          <!-- Header: live preview of the pack's art, title, close -->
+          <Grid ColumnDefinitions="Auto,*,Auto" Margin="22,20,16,0">
+            <Border x:Name="CreatePreviewArt" Width="56" Height="56" CornerRadius="10" ClipToBounds="True" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Spacing="3" Margin="14,0,0,0" VerticalAlignment="Center">
+              <TextBlock Text="New modpack" FontSize="18" FontWeight="Bold" Foreground="White" />
+              <TextBlock Text="Its own mods, worlds and settings." Foreground="#9CA0AB" FontSize="12" TextWrapping="Wrap" />
+            </StackPanel>
+            <Button Grid.Column="2" Classes="icon" Width="32" Height="32" VerticalAlignment="Top" c:Ico.Name="cross-small" ToolTip.Tip="Close" AutomationProperties.Name="Close" Click="CreateCancel_Click" />
+          </Grid>
+
+          <!-- Fields -->
+          <StackPanel Grid.Row="1" Spacing="6" Margin="22,20,22,0">
+            <TextBlock Classes="caption" Text="NAME" />
+            <TextBox x:Name="CreateName" Height="36" VerticalContentAlignment="Center" PlaceholderText="e.g. Survival with friends" MaxLength="64" TextChanged="CreateInput_Changed" AutomationProperties.Name="Modpack name" />
+            <TextBlock x:Name="CreateNameError" Foreground="#E06C75" FontSize="11.5" IsVisible="False" Text="Give the modpack a name." />
+
+            <TextBlock Classes="caption" Text="MINECRAFT VERSION" Margin="0,10,0,0" />
+            <ComboBox x:Name="CreateVersion" Height="36" HorizontalAlignment="Stretch" SelectionChanged="CreateInput_Changed" AutomationProperties.Name="Minecraft version" />
+
+            <TextBlock Classes="caption" Text="MOD LOADER" Margin="0,10,0,0" />
+            <UniformGrid x:Name="CreateLoaderChips" Rows="1" />
           </StackPanel>
-        </StackPanel>
+
+          <!-- Summary, status and actions -->
+          <Border Grid.Row="2" Margin="0,22,0,0" Padding="22,14" Background="#131417" BorderBrush="#26272E" BorderThickness="0,1,0,0" CornerRadius="0,0,12,12">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Spacing="3" VerticalAlignment="Center" Margin="0,0,12,0">
+                <TextBlock x:Name="CreateSummary" Foreground="#E6E7EC" FontSize="12.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                <TextBlock x:Name="CreateCoreNote" FontSize="11.5" TextTrimming="CharacterEllipsis" />
+                <TextBlock x:Name="CreateStatus" Foreground="#FFC07D" FontSize="11.5" TextWrapping="Wrap" IsVisible="False" />
+              </StackPanel>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Button Classes="action" Content="Cancel" Height="36" Padding="16,0" Click="CreateCancel_Click" />
+                <Button c:Ico.Name="plus" x:Name="CreateConfirm" Classes="launch" Content="Create" Height="36" Padding="20,0" Foreground="White" FontWeight="Bold" Click="CreateConfirm_Click" />
+              </StackPanel>
+            </Grid>
+          </Border>
+        </Grid>
       </Border>
     </Border>
 
@@ -412,8 +464,11 @@
         <!-- Search Results list -->
         <Grid Grid.Row="3" RowDefinitions="Auto,*">
           <TextBlock x:Name="AddContentStatus" Foreground="#A0A1AA" Margin="0,0,0,8" />
-          <ScrollViewer Grid.Row="1">
-            <StackPanel x:Name="AddContentResults" Spacing="8" />
+          <ScrollViewer x:Name="AddContentScroll" Grid.Row="1" ScrollChanged="AddContentScroll_Changed">
+            <StackPanel>
+              <StackPanel x:Name="AddContentResults" Spacing="8" />
+              <Button c:Ico.Name="arrow-small-down" x:Name="AddContentMoreButton" Classes="action" Content="Load more" HorizontalAlignment="Center" Margin="0,12" IsVisible="False" Click="AddContentMore_Click" />
+            </StackPanel>
           </ScrollViewer>
         </Grid>
       </Grid>

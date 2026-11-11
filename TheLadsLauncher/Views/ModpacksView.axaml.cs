@@ -84,6 +84,10 @@ public partial class ModpacksView : UserControl
     private ModpackInstance? _selected;
     private CancellationTokenSource? _search;
     private int _browseOffset;
+    private string _createLoader = "fabric";
+    private int _addContentOffset;
+    private string _addContentQuery = "";
+    private bool _addContentMore, _addContentLoading;
     private bool _browsed, _importing;
     private int _installing;
     private readonly bool _ready;
@@ -113,9 +117,22 @@ public partial class ModpacksView : UserControl
         BrowseVersion.ItemsSource = new[] { "All versions" }.Concat(GameVersions).ToArray();
         BrowseLoader.ItemsSource = new[] { "All loaders" }.Concat(LoaderNames.Take(4)).ToArray();
         BrowseSort.ItemsSource = BrowseSorts.Select(s => s.Label).ToArray();
-        CreateLoader.ItemsSource = LoaderNames;
         CreateVersion.ItemsSource = GameVersions;
-        MineSort.SelectedIndex = MineLoader.SelectedIndex = ExternalLauncherFilter.SelectedIndex = ExternalSort.SelectedIndex = BrowseVersion.SelectedIndex = BrowseLoader.SelectedIndex = BrowseSort.SelectedIndex = CreateLoader.SelectedIndex = CreateVersion.SelectedIndex = 0;
+        foreach (string loader in Modpacks.Loaders)
+        {
+            var icon = LoaderIcon(loader);
+            icon.Width = icon.Height = 26;
+            var chip = new RadioButton
+            {
+                GroupName = "createLoader", Tag = loader, IsChecked = loader == _createLoader,
+                Content = new StackPanel { Spacing = 5, Children = { icon, new TextBlock { Text = LoaderName(loader), FontSize = 12, FontWeight = FontWeight.SemiBold, HorizontalAlignment = HorizontalAlignment.Center } } }
+            };
+            chip.Classes.Add("loaderChip");
+            AutomationProperties.SetName(chip, LoaderName(loader));
+            chip.IsCheckedChanged += (_, _) => { if (chip.IsChecked == true) { _createLoader = loader; CreateInput_Changed(null, null); } };
+            CreateLoaderChips.Children.Add(chip);
+        }
+        MineSort.SelectedIndex = MineLoader.SelectedIndex = ExternalLauncherFilter.SelectedIndex = ExternalSort.SelectedIndex = BrowseVersion.SelectedIndex = BrowseLoader.SelectedIndex = BrowseSort.SelectedIndex = CreateVersion.SelectedIndex = 0;
         _ready = true;
     }
 
@@ -313,25 +330,57 @@ public partial class ModpacksView : UserControl
     internal void ShowCreate()
     {
         CreateName.Text = "";
-        CreateStatus.Text = "";
+        CreateNameError.IsVisible = false;
+        SetCreateStatus(null);
         CreatePanel.IsVisible = true;
+        CreateInput_Changed(null, null);
         CreateName.Focus();
     }
 
     internal void HideCreate() => CreatePanel.IsVisible = false;
     private void CreateCancel_Click(object? sender, RoutedEventArgs e) => HideCreate();
+    private void CreateBackdrop_PointerPressed(object? sender, PointerPressedEventArgs e) { if (e.Source == CreatePanel && CreateConfirm.IsEnabled) HideCreate(); }
+
+    private void CreateCard_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape) { HideCreate(); e.Handled = true; }
+        else if (e.Key == Key.Enter && CreateConfirm.IsEnabled) { CreateConfirm_Click(null, new RoutedEventArgs()); e.Handled = true; }
+    }
+
+    private string CreateVersionText => (CreateVersion.SelectedItem as string ?? "26.3").Trim();
+
+    /// <summary>Keeps the preview art and the one-line summary (loader, version, Lads Core) in step with the fields.</summary>
+    private void CreateInput_Changed(object? sender, RoutedEventArgs? e)
+    {
+        if (!_ready) return;
+        string name = (CreateName.Text ?? "").Trim();
+        if (name.Length > 0) CreateNameError.IsVisible = false;
+        CreatePreviewArt.Child = Art(new ModpackInstance { Name = name.Length > 0 ? name : "?" }, 56);
+        string version = CreateVersionText;
+        bool core = ModpackCoreSync.IsSupported(version, _createLoader, (IEnumerable<string>?)null, out var reason) || reason == ModpackCoreSync.NoFabricApiReason;
+        CreateSummary.Text = _createLoader == "vanilla" ? $"Vanilla Minecraft {version}" : $"Newest {LoaderName(_createLoader)} for Minecraft {version}";
+        CreateCoreNote.Text = core ? "● The Lads Core is added" : "● No Lads Core for this loader or version";
+        CreateCoreNote.Foreground = new SolidColorBrush(Color.Parse(core ? "#7BC86C" : "#9CA0AB"));
+    }
+
+    private void SetCreateStatus(string? text)
+    {
+        CreateStatus.Text = text ?? "";
+        CreateStatus.IsVisible = !string.IsNullOrEmpty(text);
+    }
 
     private async void CreateConfirm_Click(object? sender, RoutedEventArgs e)
     {
-        string name = (CreateName.Text ?? "").Trim(), version = (CreateVersion.SelectedItem as string ?? CreateVersion.Text ?? "26.3").Trim();
-        string loader = Modpacks.Loaders[Math.Max(0, CreateLoader.SelectedIndex)];
-        if (name.Length == 0) { CreateStatus.Text = "Give the modpack a name."; return; }
+        string name = (CreateName.Text ?? "").Trim(), version = CreateVersionText;
+        string loader = _createLoader;
+        if (name.Length == 0) { CreateNameError.IsVisible = true; CreateName.Focus(); return; }
         try { GameVersionPolicy.ValidateMinecraftVersion(version); }
-        catch (ArgumentException error) { CreateStatus.Text = error.Message; return; }
+        catch (ArgumentException error) { SetCreateStatus(error.Message); return; }
         CreateConfirm.IsEnabled = false;
+        CreateConfirm.Content = "Creating…";
         try
         {
-            CreateStatus.Text = loader == "vanilla" ? "" : $"Finding the newest {LoaderName(loader)} for Minecraft {version}...";
+            SetCreateStatus(loader == "vanilla" ? null : $"Finding the newest {LoaderName(loader)} for Minecraft {version}...");
             var loaderVersion = await ModrinthModpacks.LatestLoaderAsync(Http, loader, version, CancellationToken.None);
             var instance = Modpacks.NewInstance(DataDirectory, name);
             instance.McVersion = version;
@@ -342,8 +391,8 @@ public partial class ModpacksView : UserControl
             await LoadAsync();
             OpenManage(instance);
         }
-        catch (Exception error) { CreateStatus.Text = error.Message; }
-        finally { CreateConfirm.IsEnabled = true; }
+        catch (Exception error) { SetCreateStatus(error.Message); }
+        finally { CreateConfirm.IsEnabled = true; CreateConfirm.Content = "Create"; }
     }
 
     // ── External Instances ──────────────────────────────────────────────────
@@ -665,6 +714,20 @@ public partial class ModpacksView : UserControl
         await PlayAsync(instance, retry: false, modSyncHost: host);
     }
     internal void PressAddContent() => AddMods_Click(null, new RoutedEventArgs());
+    internal int AddContentShown => AddContentResults.Children.Count;
+    internal bool AddContentBusy => _addContentLoading;
+    internal string AddContentCountText => AddContentResultsCount.Text ?? "";
+    internal void ScrollAddContentToEnd() => AddContentScroll.ScrollToEnd();
+
+    /// <summary>Preview hook: the Create dialog filled in (name, loader) so its live summary shows.</summary>
+    internal void FillCreate(string name, string loader)
+    {
+        CreateName.Text = name;
+        foreach (var chip in CreateLoaderChips.Children.OfType<RadioButton>()) chip.IsChecked = (string?)chip.Tag == loader;
+    }
+
+    /// <summary>Preview hook: Create pressed with an empty name, to show the inline error.</summary>
+    internal void PressCreateEmpty() { CreateName.Text = ""; CreateConfirm_Click(null, new RoutedEventArgs()); }
     internal string ManageStatusText => ManageStatus.Text ?? "";
     internal Process? RunningGame(string id) => _running.GetValueOrDefault(id);
     /// <summary>The modpack games started here, and whether a launch, update or import is running: a launcher update must not restart over them.</summary>
@@ -2605,14 +2668,36 @@ public partial class ModpacksView : UserControl
     private void AddContentSearch_Click(object? sender, RoutedEventArgs e) => _ = SearchAddContentAsync(AddContentSearchBox.Text ?? "");
     private void AddContentSearch_KeyDown(object? sender, KeyEventArgs e) { if (e.Key == Key.Enter) _ = SearchAddContentAsync(AddContentSearchBox.Text ?? ""); }
 
-    private async Task SearchAddContentAsync(string query)
+    private void AddContentMore_Click(object? sender, RoutedEventArgs e) => _ = SearchAddContentAsync(_addContentQuery, more: true);
+
+    /// <summary>Loads the next page by itself when the list is scrolled to (near) its end.</summary>
+    private void AddContentScroll_Changed(object? sender, ScrollChangedEventArgs e)
+    {
+        if (_addContentMore && !_addContentLoading && AddContentScroll.Extent.Height > AddContentScroll.Viewport.Height
+            && AddContentScroll.Offset.Y + AddContentScroll.Viewport.Height >= AddContentScroll.Extent.Height - 200)
+            _ = SearchAddContentAsync(_addContentQuery, more: true);
+    }
+
+    private async Task SearchAddContentAsync(string query, bool more = false)
     {
         if (_selected is not { } i) return;
+        if (more && (!_addContentMore || _addContentLoading)) return;
         _addContentSearchCts?.Cancel();
         var cts = _addContentSearchCts = new CancellationTokenSource();
         string provider = (AddContentProvider?.SelectedItem as ComboBoxItem)?.Content as string ?? "Modrinth";
-        AddContentStatus.Text = $"Searching {provider}...";
-        AddContentResults.Children.Clear();
+        if (!more)
+        {
+            _addContentQuery = query;
+            _addContentOffset = 0;
+            _addContentMore = false;
+            AddContentResults.Children.Clear();
+            AddContentScroll.Offset = default;
+        }
+        AddContentMoreButton.IsVisible = more;
+        AddContentMoreButton.IsEnabled = false;
+        AddContentMoreButton.Content = "Loading…";
+        AddContentStatus.Text = more ? "" : $"Searching {provider}...";
+        _addContentLoading = true;
         try
         {
             string? sort = (AddContentSort?.SelectedItem as ComboBoxItem)?.Content as string;
@@ -2622,10 +2707,12 @@ public partial class ModpacksView : UserControl
             string mcVer = AddContentVersionPill.IsVisible ? i.McVersion : "all";
             string loader = AddContentLoaderPill.IsVisible ? i.Loader : "all";
 
-            var hits = await Catalog().SearchAsync(provider, AddContentKind, query, mcVer, loader, cat, sort, cts.Token);
+            var hits = await Catalog().SearchAsync(provider, AddContentKind, query, mcVer, loader, cat, sort, cts.Token, _addContentOffset);
             if (cts.IsCancellationRequested) return;
+            _addContentOffset += hits.Count;
+            _addContentMore = hits.Count >= ContentCatalog.PageSize;
 
-            if (AddContentKind == ContentKind.Mod)
+            if (AddContentKind == ContentKind.Mod && !more)
             {
                 string q = (query ?? "").Trim();
                 bool matchesLadsCore = string.IsNullOrEmpty(q)
@@ -2651,23 +2738,26 @@ public partial class ModpacksView : UserControl
                 }
             }
 
-            if (hits.Count == 0)
-            {
-                AddContentResultsCount.Text = "0 Projects found";
-                AddContentStatus.Text = $"No compatible results found on {provider}.";
-                return;
-            }
-            AddContentResultsCount.Text = $"{hits.Count} Projects found";
-            AddContentStatus.Text = "";
             foreach (var hit in hits)
-            {
                 AddContentResults.Children.Add(CreateAddContentResultRow(hit));
-            }
+            int shown = AddContentResults.Children.Count;
+            AddContentResultsCount.Text = $"{shown}{(_addContentMore ? "+" : "")} projects found";
+            AddContentStatus.Text = shown == 0 ? $"No compatible results found on {provider}." : "";
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
             AddContentStatus.Text = "Search failed: " + ex.Message;
+        }
+        finally
+        {
+            if (_addContentSearchCts == cts)
+            {
+                _addContentLoading = false;
+                AddContentMoreButton.Content = "Load more";
+                AddContentMoreButton.IsEnabled = true;
+                AddContentMoreButton.IsVisible = _addContentMore;
+            }
         }
     }
 
