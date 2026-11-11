@@ -448,7 +448,7 @@ public final class QaProbe26 {
             case "pick" -> dmClick(ui, ui.screenshotPicker().row(Integer.parseInt(arg(s, 3))));
             case "paste" -> {
                 mc.keyboardHandler.setClipboard(rest(s, 3));
-                screen.keyPressed(new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_V, 0, com.mojang.blaze3d.platform.InputConstants.MOD_CONTROL));
+                screen.keyPressed(new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_V, 'v', com.mojang.blaze3d.platform.InputConstants.MOD_CONTROL));
                 LOGGER.info("Lads 26.3 qa dm input after paste: '{}'", ui.dmInput());
             }
             case "enter" -> screen.keyPressed(new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN, 0, 0));
