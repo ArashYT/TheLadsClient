@@ -2,6 +2,7 @@ package com.thelads.core;
 
 import com.thelads.core.client.LadsNetworkStatus;
 import com.thelads.core.client.title.TitleNoir;
+import com.thelads.core.client.title.TitleOverlay;
 import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.config.DropdownOption;
 import com.thelads.core.config.ModuleManager;
@@ -71,6 +72,89 @@ class TitleScreenThemeTest {
         int left = TitleScreenTheme.iconLabelX(100, 200, 60);
         assertEquals(left - icon - 100, 300 - (left + 60), "icon and label centred together: equal margins");
         assertEquals(100 + 4 + icon, TitleScreenTheme.iconLabelX(100, 40, 60), "a label too long starts after the icon at the edge");
+    }
+
+    /** The button that opens the panorama list is just "Panorama": labelled on a wide new layout, an icon below that or in the legacy one. */
+    @Test void panoramaButtonIsLabelledPanorama() {
+        assertEquals("Panorama", TitleScreenTheme.CHANGE_PANORAMA);
+        var g = new LadsGraphicsTest.MockGraphics();
+        int label = g.textWidth(TitleScreenTheme.CHANGE_PANORAMA);
+        assertEquals(label + TitleScreenTheme.COMPACT_PADDING, TitleScreenTheme.panoramaButtonWidth(TitleScreenTheme.PANORAMA_LABEL_MIN, label, false));
+        assertEquals(TitleScreenTheme.HEADER_SIZE, TitleScreenTheme.panoramaButtonWidth(TitleScreenTheme.PANORAMA_LABEL_MIN - 1, label, false));
+        assertEquals(TitleScreenTheme.HEADER_SIZE, TitleScreenTheme.panoramaButtonWidth(900, label, true));
+    }
+
+    /** The two popups through their public entry: they draw at the smallest canvas, take the input while out and give it back when dismissed. */
+    @Test void panoramaDropdownAndChatSidebarTakeAndReleaseInput() {
+        var option = (DropdownOption) ModuleManager.getInstance().getModule("TitleScreen").getOption(TitleScreenModule.PANORAMA_VERSION);
+        var oldSaver = com.thelads.core.client.title.PanoramaPicker.saver;
+        int own = option.getOwnIndex();
+        String[] oldChoices = option.getChoices();
+        var kept = new int[1];
+        com.thelads.core.client.title.PanoramaPicker.saver = () -> kept[0]++;
+        try {
+            var g = new LadsGraphicsTest.MockGraphics();
+            int w = 240, h = 180;
+            TitleOverlay.reset();
+            // Still loading: nothing opens, the title shows its note.
+            option.setChoices(com.thelads.core.client.title.PanoramaPicker.DEFAULT);
+            TitleOverlay.openPanorama(150, 6, 20, 20);
+            assertFalse(TitleOverlay.active());
+            assertEquals("The panorama list is still loading", com.thelads.core.client.title.PanoramaPicker.message());
+            // Loaded: opens, draws every family's name and version, Escape closes.
+            option.setChoices(com.thelads.core.client.title.PanoramaPicker.DEFAULT, "26.3", "1.21.11", "1.20.6");
+            option.select(com.thelads.core.client.title.PanoramaPicker.DEFAULT);
+            TitleOverlay.openPanorama(150, 6, 20, 20);
+            assertTrue(TitleOverlay.active());
+            TitleOverlay.render(g, w, h, 0, 0, 0.016f, false);
+            String drawn = String.join("|", g.drawCalls);
+            assertTrue(drawn.contains("text:Tricky Trials@") && drawn.contains("text:1.21.11@") && drawn.contains("text:Default@"), drawn);
+            assertTrue(TitleOverlay.keyPressed(256));
+            assertFalse(TitleOverlay.active());
+            // A click outside closes without picking; a click on a row picks and keeps it.
+            TitleOverlay.openPanorama(150, 6, 20, 20);
+            assertTrue(TitleOverlay.mouseClicked(5, 170, 0, w, h));
+            assertFalse(TitleOverlay.active());
+            assertEquals(0, kept[0]);
+            TitleOverlay.openPanorama(150, 6, 20, 20);
+            TitleOverlay.render(g, w, h, 0, 0, 0.016f, false);
+            var list = com.thelads.core.client.title.TitleOverlayLayout.dropdown(w, h, new com.thelads.core.client.title.TitleScreenTheme.Rect(150, 6, 20, 20), 4).list();
+            assertTrue(TitleOverlay.keyPressed(264)); // Down: 26.3
+            assertTrue(TitleOverlay.keyPressed(257)); // Enter
+            assertEquals("26.3", option.getValue());
+            assertEquals(1, kept[0], "the pick is saved");
+            assertFalse(TitleOverlay.active());
+            TitleOverlay.openPanorama(150, 6, 20, 20);
+            TitleOverlay.render(g, w, h, 0, 0, 0.016f, false);
+            assertTrue(TitleOverlay.mouseClicked(list.x() + 10, list.y() + 3 * com.thelads.core.client.title.TitleOverlayLayout.ROW + 5, 0, w, h));
+            assertEquals("1.20.6", option.getValue(), "a click on the fourth row");
+            assertEquals(2, kept[0]);
+
+            TitleOverlay.enableChat();
+            // Chat sidebar: the tab at the right edge opens it, typing filters, Escape or an outside click closes it.
+            var tab = com.thelads.core.client.title.TitleOverlayLayout.tab(w, h, 0);
+            assertFalse(TitleOverlay.capturingText());
+            assertTrue(TitleOverlay.mouseClicked(tab.x() + 3, tab.y() + 5, 0, w, h));
+            assertTrue(TitleOverlay.active());
+            for (int i = 0; i < 60; i++) TitleOverlay.render(g, w, h, 0, 0, 0.05f, false);
+            assertTrue(TitleOverlay.capturingText());
+            assertTrue(TitleOverlay.charTyped('a'));
+            assertTrue(TitleOverlay.keyPressed(258), "Tab flips to Friends");
+            TitleOverlay.render(g, w, h, 0, 0, 0.016f, false);
+            assertTrue(String.join("|", g.drawCalls).contains("Search friends..."));
+            assertTrue(TitleOverlay.keyPressed(256));
+            for (int i = 0; i < 60; i++) TitleOverlay.render(g, w, h, 0, 0, 0.05f, false);
+            assertFalse(TitleOverlay.active());
+            assertFalse(TitleOverlay.mouseClicked(40, 90, 0, w, h), "closed: a click reaches the title");
+            TitleOverlay.mouseClicked(tab.x() + 3, tab.y() + 5, 0, w, h);
+            assertTrue(TitleOverlay.mouseClicked(10, 90, 0, w, h), "an outside click closes and is taken");
+            assertFalse(TitleOverlay.active());
+        } finally {
+            TitleOverlay.reset();
+            com.thelads.core.client.title.PanoramaPicker.saver = oldSaver;
+            option.setChoices(oldChoices);
+            option.setIndex(own);
+        }
     }
 
     @Test void optionalNativeControlsAreRetainedInLayout() {

@@ -337,6 +337,16 @@ public partial class ModpacksView : UserControl
         CreateName.Focus();
     }
 
+    /// <summary>The Modpacks button pressed again: closes every sub-screen (Add Content, mod details, Create, Manage) and shows the library.</summary>
+    internal void ShowLibrary()
+    {
+        AddContentPanel.IsVisible = false;
+        ModDetailsPanel.IsVisible = false;
+        _currentDetailProject = null;
+        CreatePanel.IsVisible = false;
+        if (ManagePanel.IsVisible) Back_Click(null, new RoutedEventArgs());
+    }
+
     internal void HideCreate() => CreatePanel.IsVisible = false;
     private void CreateCancel_Click(object? sender, RoutedEventArgs e) => HideCreate();
     private void CreateBackdrop_PointerPressed(object? sender, PointerPressedEventArgs e) { if (e.Source == CreatePanel && CreateConfirm.IsEnabled) HideCreate(); }
@@ -3472,6 +3482,8 @@ public partial class ModpacksView : UserControl
                 }
                 else if (!instance.IsExternal && !GameSession.WasCancelled(process) && GraphicsRenderer.TakeRelaunch(instance.GameDirectory, host.ModpackLog) is { } next)
                     _ = PlayAsync(instance, retry, next); // closed from the in-game shader toggle: start again on the other renderer
+                else if (ModSyncService.Applies(instance) && !GameSession.WasCancelled(process) && ModSyncService.TakeRelaunch(instance.GameDirectory, host.ModpackLog) is { } sync)
+                    _ = RelaunchWithHostModsAsync(instance, sync); // closed itself to load a friend's mods (ModSync)
             });
             Report($"Minecraft {instance.McVersion} started as {session.Username}.");
             host.ModpackLog($"Started {instance.Name} ({instance.Loader} {instance.LoaderVersion}, Minecraft {instance.McVersion}) PID {process.Id}.");
@@ -3482,6 +3494,23 @@ public partial class ModpacksView : UserControl
         {
             _launching.Remove(instance.Id);
             Refresh();
+        }
+    }
+
+    /// <summary>ModSync, guest side: the game of <paramref name="source"/> closed to load a friend's mods. As for a profile, a modpack of its own
+    /// ("&lt;world&gt; - &lt;owner&gt;": this instance's mods and settings plus the host's checked jars) is made and started; the game rejoins the host.</summary>
+    private async Task RelaunchWithHostModsAsync(ModpackInstance source, ModSyncService.Relaunch sync)
+    {
+        try
+        {
+            var made = await Task.Run(() => ModSyncService.BuildInstance(DataDirectory, sync, source.GameDirectory, source.McVersion, source.LoaderVersion,
+                m => Host?.ModpackLog(m)));
+            await PlayModSyncAsync(made, sync.Host);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            Status.Text = "Could not make the modpack for your friend's world: " + error.Message;
+            Host?.ModpackLog($"ModSync: the modpack could not be made ({error.Message}).");
         }
     }
 

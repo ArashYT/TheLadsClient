@@ -33,6 +33,32 @@ public static class ModSyncService
     public sealed record Known(string Sha1, string Sha512, uint Fingerprint, bool Asked, string Source, string Url);
     /// <summary>A checked restart request: the host's UUID, the folder of checked jars, and the host's world and username (may be empty).</summary>
     public sealed record Relaunch(string Host, string Folder, string World = "", string Owner = "");
+    /// <summary>Whether a Modpacks-page instance takes part in ModSync: the launcher's own Fabric instances that run the Lads Core. Another
+    /// launcher's instance is never written to, Forge-family loaders are not synced, and a Lads Experience is a fixed pack the join check
+    /// matches by pack id (the game calls it a "pack" profile), so its mods are never swapped.</summary>
+    public static bool Applies(ModpackInstance instance) =>
+        !instance.IsExternal && string.Equals(instance.Loader, "fabric", StringComparison.OrdinalIgnoreCase) && instance.LadsCore == true
+        && !ExperiencesService.IsExperienceInstance(instance.Id);
+
+    /// <summary>Before a Modpacks-page launch: drops a restart request nobody took and, for an instance that <see cref="Applies"/>, writes
+    /// its mod list as <see cref="WriteListAsync"/> does for a profile. A list that cannot be written only costs the sync (logged).</summary>
+    public static async Task PrepareLaunchAsync(ModpackInstance instance, ModInventoryService inventories, string bundleRoot, ContentCatalog? catalog,
+        Action<string> log, CancellationToken token = default)
+    {
+        if (instance.IsExternal) return;
+        DropRelaunch(instance.GameDirectory);
+        if (!Applies(instance)) return;
+        try
+        {
+            var inventory = await inventories.BuildAsync(bundleRoot, instance.GameDirectory, instance.McVersion, token);
+            await WriteListAsync(inventory, catalog, log, token);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            log($"ModSync: the mod list of '{instance.Name}' was not written ({e.Message}).");
+        }
+    }
+
     /// <summary>The player's settings a ModSync modpack starts with: copied once, when it is made.</summary>
     public static readonly string[] SettingsFiles = { "options.txt", "optionsof.txt", "optionsshaders.txt", "servers.dat" };
     private sealed record Request(string? Host, string? World, string? Owner, List<RequestMod>? Mods);

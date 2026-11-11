@@ -158,4 +158,43 @@ public sealed class ModSyncServiceTests : IDisposable
         Assert.True(File.Exists(Path.Combine(Mods, "mine.jar")));
         Assert.True(File.Exists(Path.Combine(Synced, "a.jar")));
     }
+
+    private ModpackInstance Pack(string loader = "fabric", bool? core = true, string id = "my-pack") =>
+        new() { Id = id, Name = id, McVersion = "1.20.1", Loader = loader, LadsCore = core, Directory = Path.Combine(game, "inst-" + id) };
+
+    [Fact] public void OnlyOwnFabricModpacksWithTheCoreAreSynced()
+    {
+        Assert.True(ModSyncService.Applies(Pack()));
+        Assert.False(ModSyncService.Applies(Pack("forge")));
+        Assert.False(ModSyncService.Applies(Pack("neoforge")));
+        Assert.False(ModSyncService.Applies(Pack(core: false)));
+        Assert.False(ModSyncService.Applies(Pack(core: null)));
+        Assert.False(ModSyncService.Applies(new ModpackInstance { Id = "x", Loader = "fabric", LadsCore = true, ExternalGameDirectory = game }));
+        Assert.False(ModSyncService.Applies(Pack(id: ExperiencesService.AllExperiences.First().Id)));
+    }
+
+    [Fact] public async Task ModpackLaunchWritesTheListAndDropsAStaleRestartRequest()
+    {
+        var pack = Pack();
+        string mods = Path.Combine(pack.GameDirectory, "mods");
+        Directory.CreateDirectory(mods);
+        using (var zip = System.IO.Compression.ZipFile.Open(Path.Combine(mods, "own.jar"), System.IO.Compression.ZipArchiveMode.Create))
+        using (var writer = new StreamWriter(zip.CreateEntry("fabric.mod.json").Open()))
+            writer.Write("{\"schemaVersion\":1,\"id\":\"ownmod\",\"version\":\"1.0\",\"name\":\"Own\"}");
+        File.WriteAllText(Path.Combine(pack.GameDirectory, ModSyncService.RelaunchFile), "{}");
+
+        await ModSyncService.PrepareLaunchAsync(pack, new ModInventoryService(), game, null, log.Add);
+
+        Assert.False(File.Exists(Path.Combine(pack.GameDirectory, ModSyncService.RelaunchFile)));
+        using var json = JsonDocument.Parse(File.ReadAllText(Path.Combine(pack.GameDirectory, ".lads-mod-cache", ModSyncService.ListFile)));
+        Assert.Equal("own.jar", Assert.Single(json.RootElement.GetProperty("mods").EnumerateArray()).GetProperty("file").GetString());
+
+        // Forge is skipped: no list, but a stale request is still dropped.
+        var forge = Pack("forge", id: "forge-pack");
+        Directory.CreateDirectory(forge.GameDirectory);
+        File.WriteAllText(Path.Combine(forge.GameDirectory, ModSyncService.RelaunchFile), "{}");
+        await ModSyncService.PrepareLaunchAsync(forge, new ModInventoryService(), game, null, log.Add);
+        Assert.False(File.Exists(Path.Combine(forge.GameDirectory, ModSyncService.RelaunchFile)));
+        Assert.False(File.Exists(Path.Combine(forge.GameDirectory, ".lads-mod-cache", ModSyncService.ListFile)));
+    }
 }

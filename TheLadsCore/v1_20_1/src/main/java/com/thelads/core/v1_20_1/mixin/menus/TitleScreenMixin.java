@@ -140,7 +140,7 @@ public abstract class TitleScreenMixin extends Screen {
             () -> "layout", button -> TitleScreenModule.toggleLayout()));
         ladsLayoutToggle.setTabOrderGroup(203);
         ladsPanoramaButton = addRenderableWidget(new CompactButton1201(0, 6, 20, 20, Component.literal(TitleScreenTheme.CHANGE_PANORAMA),
-            () -> "mountain", button -> com.thelads.core.client.title.PanoramaPicker.next()));
+            () -> "mountain", button -> com.thelads.core.client.title.TitleOverlay.openPanorama(button.getX(), button.getY(), button.getWidth(), button.getHeight())));
         ladsPanoramaButton.setTabOrderGroup(204);
         ladsUpdateButton = addRenderableWidget(new CompactButton1201(0, 6, 20, 20, Component.literal(TitleScreenTheme.UPDATE),
             () -> "download", button -> com.thelads.core.client.LauncherUpdate.press(() -> minecraft.stop())));
@@ -148,6 +148,8 @@ public abstract class TitleScreenMixin extends Screen {
         ladsUpdateButton.setTooltip(Tooltip.create(Component.literal(TitleScreenTheme.UPDATE_TOOLTIP)));
         ladsUpdateButton.visible = false;
 
+        com.thelads.core.client.title.TitleOverlay.reset(); // the Panorama list and the chat sidebar start closed
+        com.thelads.core.client.title.TitleOverlay.enableChat();
         ladsLastFrameNanos = 0;
         com.thelads.core.config.BuiltInIntegrations.verifyLoadedAdapters();
         com.thelads.core.config.IntegrationRuntimeProbe.run();
@@ -379,6 +381,7 @@ public abstract class TitleScreenMixin extends Screen {
                 TitleNoir.endFrame();
                 TitleWidgetRegistry1201.endFrame();
             }
+            com.thelads.core.client.title.TitleOverlay.render(adapter, ladsLayoutWidth, ladsLayoutHeight, scaledMouseX, scaledMouseY, elapsed, reducedMotion);
             if (ladsTooltip != null) { // inside the canvas pose, at the canvas pointer, kept on the canvas (TitleScreenTheme.flushTooltips)
                 var positioner = ladsTooltipPositioner;
                 graphics.renderTooltip(font, ladsTooltip, (screenWidth, screenHeight, x, y, w, h) -> positioner.positionTooltip(ladsLayoutWidth, ladsLayoutHeight, x, y, w, h), scaledMouseX, scaledMouseY);
@@ -401,12 +404,35 @@ public abstract class TitleScreenMixin extends Screen {
         }
     }
 
+    /** A popup (the Panorama list, the chat sidebar) is out: it takes the keys, typed text and the wheel. */
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (ladsCustomTitle && com.thelads.core.client.title.TitleOverlay.keyPressed(keyCode)) return true;
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean charTyped(char codePoint, int modifiers) {
+        if (ladsCustomTitle && com.thelads.core.client.title.TitleOverlay.charTyped(codePoint)) return true;
+        return super.charTyped(codePoint, modifiers);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+        if (ladsCustomTitle && com.thelads.core.client.title.TitleOverlay.mouseScrolled(amount)) return true;
+        return super.mouseScrolled(mouseX, mouseY, amount);
+    }
+
     @Inject(method = "mouseClicked(DDI)Z", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsClickVisibleTitle(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
         if (ladsCustomTitle) {
             ladsEnsureTitleLayout();
             float matrixScale = ladsMatrixScale();
             double sx = mouseX / matrixScale, sy = mouseY / matrixScale;
+            if (com.thelads.core.client.title.TitleOverlay.mouseClicked(sx, sy, button, ladsLayoutWidth, ladsLayoutHeight)) {
+                cir.setReturnValue(true);
+                return;
+            }
             if (button == 0 && ladsNoirLayout != null && TitleNoir.clickNetworkPill(sx, sy)) {
                 com.thelads.core.client.gui.LadsSettingsScreen.requestOpenNetworkHub();
                 minecraft.setScreen(new LadsSettingsScreen1201(this));
