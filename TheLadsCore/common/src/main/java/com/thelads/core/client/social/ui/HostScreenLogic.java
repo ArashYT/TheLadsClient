@@ -43,6 +43,27 @@ public final class HostScreenLogic {
         Section(String title) { this.title = title; }
     }
 
+    /** Vanilla game rules the host can set for the world (host options carry the whole vanilla list). */
+    static final String[] RULES = {
+            "keepInventory", "doDaylightCycle", "doWeatherCycle", "mobGriefing", "doFireTick", "doMobSpawning",
+            "naturalRegeneration", "playersSleepingPercentage", "doImmediateRespawn", "showDeathMessages",
+            "announceAdvancements", "doInsomnia", "fallDamage", "drowningDamage", "fireDamage", "freezeDamage",
+            "doTileDrops", "doEntityDrops", "doMobLoot", "forgiveDeadPlayers", "universalAnger", "disableElytraMovementCheck"
+    };
+
+    /** "doDaylightCycle" -> "Daylight Cycle": drops the "do" prefix and splits camelCase into words. */
+    public static String ruleLabel(String rule) {
+        String r = rule.length() > 2 && rule.startsWith("do") && Character.isUpperCase(rule.charAt(2)) ? rule.substring(2) : rule;
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < r.length(); i++) {
+            char c = r.charAt(i);
+            if (i == 0) b.append(Character.toUpperCase(c));
+            else if (Character.isUpperCase(c)) b.append(' ').append(c);
+            else b.append(c);
+        }
+        return b.toString();
+    }
+
     private static final Section[] SECTIONS = Section.values();
     /** Never OFF: Start / Stop Hosting is the switch. With OFF picked (and saved), Start Hosting sent "stop" and did nothing. */
     private static final HostOptions.Scope[] SCOPES = {HostOptions.Scope.LAN, HostOptions.Scope.FRIENDS, HostOptions.Scope.INVITE};
@@ -469,16 +490,7 @@ public final class HostScreenLogic {
     }
 
     private void renderGamerulesSection(LadsGraphics g, int x, int y, int w, int h, int mx, int my, int sy, int sh) {
-        String[] rules = {
-                "keepInventory",
-                "doDaylightCycle",
-                "doWeatherCycle",
-                "mobGriefing",
-                "doFireTick",
-                "doMobSpawning",
-                "naturalRegeneration",
-                "playersSleepingPercentage"
-        };
+        String[] rules = RULES;
 
         int totalH = rules.length * 24 + 16;
         maxScroll = Math.max(0, totalH - (h - 12));
@@ -488,7 +500,7 @@ public final class HostScreenLogic {
 
         for (String r : rules) {
             if (itemY + 20 > sy && itemY < sy + sh) {
-                g.drawText(r, x + 14, itemY + 4, LadsPalette.TEXT, false);
+                g.drawText(ruleLabel(r), x + 14, itemY + 4, LadsPalette.TEXT, false);
 
                 String val = gamerules.get(r);
                 boolean isTrue = "true".equalsIgnoreCase(val);
