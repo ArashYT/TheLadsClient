@@ -80,6 +80,17 @@ public sealed class ContentCatalogTests : IDisposable
     }
 
     [Fact]
+    public async Task SearchesAskForTheNextPageAtTheOffset()
+    {
+        _routes["https://api.modrinth.com/v2/search"] = _ => Json(Fixture("modrinth-search-shader.json"));
+        _routes["https://api.curseforge.com/v1/mods/search"] = _ => Json(Fixture("curseforge-search-resourcepacks.json"));
+        await Catalog("key").SearchAsync("Modrinth", ContentKind.Mod, "", "26.3", "fabric", offset: 60);
+        await Catalog("key").SearchAsync("CurseForge", ContentKind.Mod, "", "26.3", "fabric", offset: 30);
+        Assert.Contains($"limit={ContentCatalog.PageSize}&offset=60", _requests[0].RequestUri!.Query);
+        Assert.Contains($"pageSize={ContentCatalog.PageSize}&index=30", _requests[1].RequestUri!.Query);
+    }
+
+    [Fact]
     public async Task AnAnswerWithoutTheExpectedShapeIsAContentSourceError()
     {
         _routes["https://api.modrinth.com/v2/search"] = _ => Json("{\"error\":\"invalid_input\"}");

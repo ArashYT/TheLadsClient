@@ -45,6 +45,9 @@ public sealed class ContentSourceException(string message, Exception? inner = nu
 /// </summary>
 public sealed class ContentCatalog
 {
+    /// <summary>Results per search page; a full page means there may be more (pass the count so far as the offset).</summary>
+    public const int PageSize = 30;
+
     public static string UserAgent => LauncherHttp.UserAgent;
     public const string MissingKeyMessage = "CurseForge needs an API key, and none is set. Enter yours in Mods > Mod Manager Settings (get one at console.curseforge.com), or search Modrinth.";
 
@@ -129,7 +132,7 @@ public sealed class ContentCatalog
     /// <param name="modLoader">fabric, forge, quilt or neoforge: filters mods and picks the shader loader.</param>
     public async Task<List<ModSearchItem>> SearchModrinthAsync(ContentKind kind, string query, string minecraftVersion, string modLoader,
         string? category = null, string? sort = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, int offset = 0)
     {
         var facets = new List<string[]> { new[] { "project_type:" + ModrinthType(kind) } };
         if (kind is ContentKind.Mod or ContentKind.Shader)
@@ -151,7 +154,7 @@ public sealed class ContentCatalog
             "relevance" => "relevance",
             _ => string.IsNullOrWhiteSpace(query) ? "downloads" : "relevance"
         };
-        string url = $"{_modrinth}/search?query={Uri.EscapeDataString(query)}&facets={Uri.EscapeDataString(JsonSerializer.Serialize(facets))}&index={index}&limit=30";
+        string url = $"{_modrinth}/search?query={Uri.EscapeDataString(query)}&facets={Uri.EscapeDataString(JsonSerializer.Serialize(facets))}&index={index}&limit={PageSize}&offset={offset}";
         return await SendAsync("Modrinth", new HttpRequestMessage(HttpMethod.Get, url), root => root.GetProperty("hits").EnumerateArray().Select(hit => new ModSearchItem
         {
             Id = Text(hit, "project_id"),
@@ -169,7 +172,7 @@ public sealed class ContentCatalog
 
     public async Task<List<ModSearchItem>> SearchCurseForgeAsync(ContentKind kind, string query, string minecraftVersion, string modLoader,
         string? category = null, string? sort = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, int offset = 0)
     {
         int sortField = (sort?.ToLowerInvariant()) switch
         {
@@ -183,7 +186,7 @@ public sealed class ContentCatalog
         {
             search = string.IsNullOrWhiteSpace(search) ? category : $"{search} {category}";
         }
-        string url = $"{_curseForge}/mods/search?gameId=432&classId={CurseForgeClass(kind)}&searchFilter={Uri.EscapeDataString(search)}&sortField={sortField}&sortOrder=desc&pageSize=30"
+        string url = $"{_curseForge}/mods/search?gameId=432&classId={CurseForgeClass(kind)}&searchFilter={Uri.EscapeDataString(search)}&sortField={sortField}&sortOrder=desc&pageSize={PageSize}&index={offset}"
             + (!string.IsNullOrEmpty(minecraftVersion) && !minecraftVersion.Equals("all", StringComparison.OrdinalIgnoreCase) && !minecraftVersion.Equals("all versions", StringComparison.OrdinalIgnoreCase) ? "&gameVersion=" + Uri.EscapeDataString(minecraftVersion) : "")
             + (CurseForgeLoader(kind, modLoader) is int loader ? $"&modLoaderType={loader}" : "");
         return await SendAsync("CurseForge", CurseForgeRequest(HttpMethod.Get, url), root => root.GetProperty("data").EnumerateArray().Select(mod => new ModSearchItem
@@ -204,9 +207,9 @@ public sealed class ContentCatalog
 
     public Task<List<ModSearchItem>> SearchAsync(string provider, ContentKind kind, string query, string minecraftVersion, string modLoader,
         string? category = null, string? sort = null,
-        CancellationToken cancellationToken = default) => provider == "CurseForge"
-        ? SearchCurseForgeAsync(kind, query, minecraftVersion, modLoader, category, sort, cancellationToken)
-        : SearchModrinthAsync(kind, query, minecraftVersion, modLoader, category, sort, cancellationToken);
+        CancellationToken cancellationToken = default, int offset = 0) => provider == "CurseForge"
+        ? SearchCurseForgeAsync(kind, query, minecraftVersion, modLoader, category, sort, cancellationToken, offset)
+        : SearchModrinthAsync(kind, query, minecraftVersion, modLoader, category, sort, cancellationToken, offset);
 
     /// <summary>The newest file of a project for the game version, or null when it has none.</summary>
     public async Task<ContentFile?> LatestFileAsync(ModSearchItem project, ContentKind kind, string minecraftVersion, string modLoader,

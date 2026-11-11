@@ -162,6 +162,15 @@ public partial class MainWindow
         ModpacksPage.ShowCreate();
         await Task.Delay(500);
         SaveWindowScreenshot(Path.Combine(output, "modpacks-create.png"));
+        ModpacksPage.PressCreateEmpty();
+        await Task.Delay(300);
+        SaveWindowScreenshot(Path.Combine(output, "modpacks-create-error.png"));
+        ModpacksPage.FillCreate("Survival with friends", "quilt");
+        await Task.Delay(300);
+        SaveWindowScreenshot(Path.Combine(output, "modpacks-create-filled.png"));
+        ModpacksPage.FillCreate("Old school", "forge");
+        await Task.Delay(300);
+        SaveWindowScreenshot(Path.Combine(output, "modpacks-create-forge.png"));
         ModpacksPage.HideCreate();
         ModpacksPage.ShowBrowse();
         for (int i = 0; i < 40 && !ModpacksPage.BrowseLoaded; i++) await Task.Delay(500);
@@ -181,6 +190,17 @@ public partial class MainWindow
             ModpacksPage.PressAddContent();
             await Task.Delay(4000); // Modrinth's search
             SaveWindowScreenshot(Path.Combine(output, "modpacks-addcontent.png"));
+            // Paging: scrolling to the end loads the next page by itself.
+            for (int page = 1; page <= 2; page++)
+            {
+                int before = ModpacksPage.AddContentShown;
+                ModpacksPage.ScrollAddContentToEnd();
+                await Task.Delay(300);
+                for (int i = 0; i < 40 && (ModpacksPage.AddContentBusy || ModpacksPage.AddContentShown == before); i++) await Task.Delay(250);
+                File.AppendAllText(Path.Combine(output, "preview.log"), $"Add Content page {page + 1}: {before} -> {ModpacksPage.AddContentShown} rows ({ModpacksPage.AddContentCountText}){Environment.NewLine}");
+            }
+            await Task.Delay(2500); // icons
+            SaveWindowScreenshot(Path.Combine(output, "modpacks-addcontent-paged.png"));
         }
         // LADS_PREVIEW_MODPACK_PLAY=<instance id>: Play pressed on that instance (the selected account, a real game; QA holds the
         // machine-wide game lock), captured while it runs, then closed as a player closes it.
