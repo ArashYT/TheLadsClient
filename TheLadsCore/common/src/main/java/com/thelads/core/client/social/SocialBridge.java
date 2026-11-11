@@ -47,6 +47,18 @@ public interface SocialBridge {
     /** Game mode, op level, PvP, difficulty, gamerules, view cap: applied on the server thread. */
     default void applyHostOptions(HostOptions options) {}
 
+    /** The open world's live values (Host screen): allowCommands and hostGameMode where options leaves them null. */
+    default void fillLiveOptions(HostOptions options) {}
+
+    /** The open world's game rules by their pre-26 name (HostScreenLogic.RULES): "true"/"false" or a number; missing = unknown. */
+    default java.util.Map<String, String> liveGamerules() { return java.util.Map.of(); }
+
+    /** This version sends the host's resource packs to guests (HostOptions.sharePacks). */
+    default boolean canSharePacks() { return false; }
+
+    /** The host's enabled resource packs that can be shared: pack id to its name. */
+    default java.util.Map<String, String> shareablePacks() { return java.util.Map.of(); }
+
     default List<GuestInfo> guests() { return Collections.emptyList(); }
 
     default void guestAction(UUID id, GuestAction action) {}

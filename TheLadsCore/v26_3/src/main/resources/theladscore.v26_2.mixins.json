@@ -233,6 +233,7 @@
     "WeatherPrecipitationMixin",
     "FogCustomizerMixin",
     "ServerConnectionListenerMixin",
-    "PlayerListMixin"
+    "PlayerListMixin",
+    "ChunkMapGuestViewMixin"
   ]
 }

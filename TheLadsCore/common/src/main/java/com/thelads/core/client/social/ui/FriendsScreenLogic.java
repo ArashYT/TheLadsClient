@@ -36,6 +36,7 @@ public final class FriendsScreenLogic {
 
     public enum Tab {
         FRIENDS("Friends"),
+        INVITES("Invites"),
         REQUESTS("Requests"),
         BLOCKED("Blocked"),
         ADD("Add Friend");
@@ -65,6 +66,12 @@ public final class FriendsScreenLogic {
         default List<DmEntry> dms(UUID id) { return List.of(); }
         default void invite(UUID id) {}
         default void requestJoin(UUID id) {}
+        /** Game and server invites received and not answered yet (Invites tab). */
+        default List<SocialState.Invite> invites() { return List.of(); }
+        default void acceptInvite(String inviteId) {}
+        default void declineInvite(String inviteId) {}
+        /** A friend's display name, or null when unknown. */
+        default String nameOf(UUID id) { return null; }
         /** "Leave X and join Y?" when joining would leave a world or server first; null = join at once. */
         default String joinQuestion(UUID id) { return null; }
         /** The friend whose world is being connected to (P2P link not up yet), else null: shown as progress with Cancel. */
@@ -125,6 +132,8 @@ public final class FriendsScreenLogic {
     private final Map<UUID, Box> acceptBoxes = new HashMap<>();
     private final Map<UUID, Box> declineBoxes = new HashMap<>();
     private final Map<UUID, Box> unblockBoxes = new HashMap<>();
+    private final Map<String, Box> inviteAcceptBoxes = new HashMap<>();
+    private final Map<String, Box> inviteDeclineBoxes = new HashMap<>();
     private final Map<UUID, String> joinReasons = new HashMap<>();
     private final Map<UUID, Boolean> joinEnabledMap = new HashMap<>();
 
@@ -186,6 +195,13 @@ public final class FriendsScreenLogic {
             }
             @Override public void invite(UUID id) { s.invite(id); }
             @Override public void requestJoin(UUID id) { s.requestJoin(id); }
+            @Override public List<SocialState.Invite> invites() { return s.invites(); }
+            @Override public void acceptInvite(String inviteId) { s.acceptInvite(inviteId); }
+            @Override public void declineInvite(String inviteId) { s.declineInvite(inviteId); }
+            @Override public String nameOf(UUID id) {
+                for (FriendEntry f : s.friends()) if (f.id().equals(id)) return f.displayName();
+                return null;
+            }
             @Override public String joinQuestion(UUID id) { return s.joinQuestion(id); }
             @Override public String connectingTo() { return s.connectingTo(); }
             @Override public String connectingStatus() { return s.connectingStatus(); }
@@ -411,6 +427,8 @@ public final class FriendsScreenLogic {
         acceptBoxes.clear();
         declineBoxes.clear();
         unblockBoxes.clear();
+        inviteAcceptBoxes.clear();
+        inviteDeclineBoxes.clear();
         joinReasons.clear();
         joinEnabledMap.clear();
         deferredTooltip = null;
@@ -468,6 +486,10 @@ public final class FriendsScreenLogic {
                 int reqCount = safeIncoming().size();
                 if (reqCount > 0) title += " (" + reqCount + ")";
             }
+            if (t == Tab.INVITES) {
+                int invCount = safeInvites().size();
+                if (invCount > 0) title += " (" + invCount + ")";
+            }
             MenuGraphics.iconLabel(g, title, tabIcon, b.x + b.w / 2, b.y + (b.h - g.fontHeight()) / 2 + 1, b.w,
                     active ? LadsPalette.TEXT : LadsPalette.MUTED, active);
         }
@@ -486,6 +508,7 @@ public final class FriendsScreenLogic {
                 case FRIENDS -> renderFriendsTab(g, panelX, contentY, panelW, contentH, mouseX, mouseY);
                 case REQUESTS -> renderRequestsTab(g, panelX, contentY, panelW, contentH, mouseX, mouseY);
                 case BLOCKED -> renderBlockedTab(g, panelX, contentY, panelW, contentH, mouseX, mouseY);
+                case INVITES -> renderInvitesTab(g, panelX, contentY, panelW, contentH, mouseX, mouseY);
                 case ADD -> renderAddTab(g, panelX, contentY, panelW, contentH, mouseX, mouseY);
             }
         }
@@ -760,6 +783,64 @@ public final class FriendsScreenLogic {
                 }
                 itemY += 28;
             }
+        }
+
+        g.disableScissor();
+    }
+
+    private List<SocialState.Invite> safeInvites() {
+        List<SocialState.Invite> list = callbacks.invites();
+        return list != null ? list : List.of();
+    }
+
+    /** Where an invite's Accept button was last drawn (null: not on screen). */
+    public Box inviteAcceptBox(String inviteId) {
+        return inviteAcceptBoxes.get(inviteId);
+    }
+
+    /** Invites from friends (their world or a server): Accept joins, Decline tells them no. */
+    private void renderInvitesTab(LadsGraphics g, int x, int y, int w, int h, int mx, int my) {
+        List<SocialState.Invite> invites = safeInvites();
+        int viewH = h - 12;
+        int totalH = 30 + Math.max(1, invites.size()) * 34;
+        maxScroll = Math.max(0, totalH - viewH);
+        scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset));
+
+        int scissorY = y + 6;
+        this.scissorY = scissorY;
+        this.scissorH = viewH;
+        g.enableScissor(x, scissorY, w, viewH);
+
+        int itemY = y + 8 - scrollOffset;
+        g.drawText("Invites (" + invites.size() + ")", x + 10, itemY, LadsPalette.ACCENT, true);
+        itemY += 18;
+
+        if (invites.isEmpty()) {
+            g.drawText("No invites right now.", x + 20, itemY, LadsPalette.TEXT, false);
+            g.drawText(MenuGraphics.fit(g, "When a friend invites you to their world or a server, it shows up here.", w - 40), x + 20, itemY + 12, LadsPalette.MUTED, false);
+        }
+        for (SocialState.Invite inv : invites) {
+            if (itemY + 30 > scissorY && itemY < scissorY + viewH) {
+                Box rBox = new Box(x + 10, itemY, w - 20, 30);
+                MenuGraphics.round(g, rBox.x, rBox.y, rBox.w, rBox.h, LadsPalette.CARD);
+                String from = inv.from() == null ? null : callbacks.nameOf(inv.from());
+                if (from == null) from = "A friend";
+                String where = inv.isServer() ? "Server: " + inv.worldName() : "World: " + inv.worldName();
+
+                int btnH = 18, btnY = itemY + 6;
+                Box decline = new Box(rBox.x + rBox.w - 8 - 64, btnY, 64, btnH);
+                Box accept = new Box(decline.x - 6 - 64, btnY, 64, btnH);
+                inviteAcceptBoxes.put(inv.inviteId(), accept);
+                inviteDeclineBoxes.put(inv.inviteId(), decline);
+                int textW = accept.x - rBox.x - 18;
+                g.drawText(MenuGraphics.fit(g, from + " invited you", textW), rBox.x + 10, itemY + 5, LadsPalette.TEXT, false);
+                g.drawText(MenuGraphics.fit(g, where, textW), rBox.x + 10, itemY + 17, LadsPalette.MUTED, false);
+                MenuGraphics.round(g, accept.x, accept.y, accept.w, accept.h, accept.has(mx, my) ? LadsPalette.PRIMARY_HOVER : LadsPalette.PRIMARY);
+                g.drawCenteredText("Accept", accept.x + accept.w / 2, accept.y + 5, LadsPalette.TEXT, false);
+                MenuGraphics.round(g, decline.x, decline.y, decline.w, decline.h, decline.has(mx, my) ? LadsPalette.HOVER : LadsPalette.PANEL);
+                g.drawCenteredText("Decline", decline.x + decline.w / 2, decline.y + 5, LadsPalette.TEXT, false);
+            }
+            itemY += 34;
         }
 
         g.disableScissor();
@@ -1129,6 +1210,23 @@ public final class FriendsScreenLogic {
                     for (Map.Entry<UUID, Box> e : declineBoxes.entrySet()) {
                         if (e.getValue().has(x, y)) {
                             callbacks.declineRequest(e.getKey());
+                            return true;
+                        }
+                    }
+                }
+            }
+            case INVITES -> {
+                boolean inScissor = y >= scissorY && y <= scissorY + scissorH;
+                if (inScissor) {
+                    for (Map.Entry<String, Box> e : inviteAcceptBoxes.entrySet()) {
+                        if (e.getValue().has(x, y)) {
+                            callbacks.acceptInvite(e.getKey());
+                            return true;
+                        }
+                    }
+                    for (Map.Entry<String, Box> e : inviteDeclineBoxes.entrySet()) {
+                        if (e.getValue().has(x, y)) {
+                            callbacks.declineInvite(e.getKey());
                             return true;
                         }
                     }

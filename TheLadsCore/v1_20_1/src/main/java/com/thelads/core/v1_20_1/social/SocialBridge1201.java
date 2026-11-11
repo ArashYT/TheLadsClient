@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -154,7 +155,7 @@ public final class SocialBridge1201 implements SocialBridge {
 
         int port = HttpUtil.getAvailablePort();
         GameType gameType = parseGameType(options != null ? options.guestGameMode : "survival");
-        boolean allowCheats = options != null && options.guestOpLevel > 0;
+        boolean allowCheats = cheats(options);
 
         loopbackPublish = true;
         suppressLanPinger = true;
@@ -189,9 +190,9 @@ public final class SocialBridge1201 implements SocialBridge {
             }
         }
 
-        int port = HttpUtil.getAvailablePort();
+        int port = lanPort(options);
         GameType gameType = parseGameType(options != null ? options.guestGameMode : "survival");
-        boolean allowCheats = options != null && options.guestOpLevel > 0;
+        boolean allowCheats = cheats(options);
 
         server.publishServer(gameType, allowCheats, port);
         if (options != null) {
@@ -265,7 +266,9 @@ public final class SocialBridge1201 implements SocialBridge {
             }
             GameType gameType = parseGameType(options.guestGameMode);
             server.setDefaultGameType(gameType);
-            server.getPlayerList().setAllowCheatsForAllPlayers(options.guestOpLevel > 0);
+            server.getPlayerList().setAllowCheatsForAllPlayers(cheats(options));
+            ServerPlayer host = server.getSingleplayerProfile() == null ? null : server.getPlayerList().getPlayer(server.getSingleplayerProfile().getId());
+            if (host != null && options.hostGameMode != null) host.setGameMode(parseGameType(options.hostGameMode));
 
             if (options.viewDistanceCap > 0) {
                 server.getPlayerList().setViewDistance(options.viewDistanceCap);
@@ -292,6 +295,48 @@ public final class SocialBridge1201 implements SocialBridge {
                 });
             }
         });
+    }
+
+    /** 1.20.1 has one switch for commands, as its LAN screen: "Allow cheats" or guest commands turn it on for everyone. */
+    private static boolean cheats(HostOptions options) {
+        return options != null && (options.guestOpLevel > 0 || Boolean.TRUE.equals(options.allowCommands));
+    }
+
+    /** The host's LAN port when it is free, else any free one. */
+    private static int lanPort(HostOptions options) {
+        int p = options == null ? 0 : options.port;
+        if (p >= 1024 && p <= 65535) {
+            try (java.net.ServerSocket socket = new java.net.ServerSocket(p)) {
+                return p;
+            } catch (Exception e) {
+                LOGGER.warn("LAN port {} is taken, using a free one", p);
+            }
+        }
+        return HttpUtil.getAvailablePort();
+    }
+
+    @Override
+    public Map<String, String> liveGamerules() {
+        IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server == null) return Map.of();
+        Map<String, String> out = new java.util.LinkedHashMap<>();
+        GameRules rules = server.getGameRules();
+        GameRules.visitGameRuleTypes(new GameRules.GameRuleTypeVisitor() {
+            @Override
+            public <T extends GameRules.Value<T>> void visit(GameRules.Key<T> key, GameRules.Type<T> type) {
+                out.put(key.getId(), rules.getRule(key).toString());
+            }
+        });
+        return out;
+    }
+
+    @Override
+    public void fillLiveOptions(HostOptions options) {
+        IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server == null || options == null) return;
+        if (options.allowCommands == null) options.allowCommands = server.getPlayerList().isAllowCheatsForAllPlayers() || server.getWorldData().getAllowCommands();
+        ServerPlayer host = server.getSingleplayerProfile() == null ? null : server.getPlayerList().getPlayer(server.getSingleplayerProfile().getId());
+        if (host != null) options.hostGameMode = host.gameMode.getGameModeForPlayer().getName();
     }
 
     @Override

@@ -17,6 +17,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         LadsGameBridge.set(new VanillaGameBridge26());
         com.thelads.core.client.social.SocialBridge.set(new com.thelads.core.v26_2.social.SocialBridge26());
         com.thelads.core.v26_2.social.SocialBridge26.registerToasts();
+        com.thelads.core.v26_2.social.HostPacks26.init();
         net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             com.thelads.core.v26_2.social.SocialBridge26.onWorldDisconnect();
         });

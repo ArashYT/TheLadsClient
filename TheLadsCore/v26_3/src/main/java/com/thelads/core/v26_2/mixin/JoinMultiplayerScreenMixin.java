@@ -47,6 +47,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
     @Shadow public abstract ServerList getServers();
     @Unique private Button ladsDiscoverButton;
     @Unique private Button ladsColumnsButton;
+    @Unique private Button ladsFriendsButton;
     @Unique private final ListContextMenu ladsMenu = new ListContextMenu();
 
     protected JoinMultiplayerScreenMixin() {
@@ -67,8 +68,23 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
             serverSelectionList.setScrollAmount(serverSelectionList.scrollAmount());
             ladsUpdateColumns();
         }).bounds(8, 8, 36, 20).build());
+        // Friends: the invites friends sent (Invites tab) and the friends list, without going back to the title screen
+        ladsFriendsButton = addRenderableWidget(Button.builder(ladsFriendsLabel(), b -> {
+            if (minecraft == null) return;
+            com.thelads.core.v26_2.social.FriendsScreen26 friends = new com.thelads.core.v26_2.social.FriendsScreen26(this);
+            friends.ui().setTab(com.thelads.core.client.social.ui.FriendsScreenLogic.Tab.INVITES);
+            minecraft.setScreenAndShow(friends);
+        }).bounds(width - 204, 8, 76, 20).build());
+        ladsFriendsButton.setTooltip(Tooltip.create(Component.literal("Invites from friends, and your friends list")));
         ladsUpdateColumns();
         ladsPlaceDiscover();
+    }
+
+    @Unique
+    private static Component ladsFriendsLabel() {
+        var social = com.thelads.core.client.social.SocialState.get();
+        int invites = social == null ? 0 : social.invites().size();
+        return Component.literal(invites > 0 ? "Friends (" + invites + ")" : "Friends");
     }
 
     /** 26.x has no extractRenderState here: every relayout (resize) ends in repositionElements, after ViaFabricPlus' hook (priority). */
@@ -95,9 +111,11 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
         if (ladsDiscoverButton == null) return;
         ladsDiscoverButton.setPosition(width - 124, 8);
         ladsColumnsButton.setPosition(8, 8);
+        if (ladsFriendsButton != null) ladsFriendsButton.setPosition(width - 204, 8);
         if (ladsDiscoverCovered()) {
             ladsDiscoverButton.setPosition(8, 8);
             ladsColumnsButton.setPosition(128, 8);
+            if (ladsFriendsButton != null) ladsFriendsButton.setPosition(168, 8);
         }
     }
 
@@ -105,7 +123,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
     private boolean ladsDiscoverCovered() {
         Button d = ladsDiscoverButton;
         for (var child : children()) {
-            if (child instanceof Button b && b != d && b != ladsColumnsButton && b.visible
+            if (child instanceof Button b && b != d && b != ladsColumnsButton && b != ladsFriendsButton && b.visible
                 && b.getX() < d.getX() + d.getWidth() && d.getX() < b.getX() + b.getWidth()
                 && b.getY() < d.getY() + d.getHeight() && d.getY() < b.getY() + b.getHeight()) {
                 return true;
@@ -117,7 +135,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
     @Unique
     private void ladsPurgeEssential() {
         for (var child : List.copyOf(children())) {
-            if (child instanceof AbstractWidget widget && widget != ladsDiscoverButton) {
+            if (child instanceof AbstractWidget widget && widget != ladsDiscoverButton && widget != ladsFriendsButton) {
                 if (widget.getClass().getName().startsWith("gg.essential.")) {
                     widget.visible = false;
                     widget.active = false;

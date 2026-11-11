@@ -24,6 +24,8 @@ import net.minecraft.server.players.UserBanList;
 import net.minecraft.server.players.UserBanListEntry;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.gamerules.GameRule;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.storage.LevelResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,7 +110,7 @@ public class SocialBridge26 implements SocialBridge {
 
         P2PHostState26.setLoopbackScope(false);
         // A real port, as openToFriends: vanilla binds port 0 to a random one but advertises "0" on the LAN and in getPort()
-        if (!server.publishServer(MinecraftServer.MultiplayerScope.LAN, options.guestOpLevel > 0, findFreePort())) {
+        if (!server.publishServer(MinecraftServer.MultiplayerScope.LAN, options.guestOpLevel > 0, lanPort(options))) {
             LOGGER.warn("Failed to open world to LAN");
             return;
         }
@@ -142,20 +144,22 @@ public class SocialBridge26 implements SocialBridge {
     @Override
     public void applyHostOptions(HostOptions options) {
         IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
-        if (server == null) return;
+        if (server == null || options == null) return;
 
         server.execute(() -> {
-            if (options.guestGameMode != null) {
-                GameType mode = GameType.byName(options.guestGameMode);
-                if (mode != null) {
-                    server.setDefaultGameType(mode);
-                    server.enforceGameTypeForPlayers(mode);
-                }
-            }
-            server.setGuestCommandAccess(options.guestOpLevel > 0);
+            // As vanilla's World Options screen applies them, each only when it changes (some re-send game modes to everyone)
+            GameType guestMode = options.guestGameMode != null ? GameType.byName(options.guestGameMode) : null;
+            if (guestMode != null && guestMode != server.getDefaultGameType()) server.setWorldGameType(guestMode);
+            if (options.forceGameMode != server.forceGameMode()) server.setForceGameMode(options.forceGameMode);
+            if (options.allowCommands != null && options.allowCommands != server.getWorldData().isAllowCommands())
+                server.setWorldAllowCommands(options.allowCommands);
+            GameType hostMode = options.hostGameMode != null ? GameType.byName(options.hostGameMode) : null;
+            if (hostMode != null && hostMode != server.getPersonalGameMode()) server.setPersonalGameType(hostMode);
+            if (server.getGuestCommandAccess() != options.guestOpLevel > 0) server.setGuestCommandAccess(options.guestOpLevel > 0);
 
             if (server.getGameRules() != null) {
                 server.getGameRules().set(net.minecraft.world.level.gamerules.GameRules.PVP, options.pvp, server);
+                if (options.gamerules != null) options.gamerules.forEach((rule, value) -> setRule(server, rule, value));
             }
 
             if (options.difficulty != null) {
@@ -165,10 +169,100 @@ public class SocialBridge26 implements SocialBridge {
                 }
             }
 
-            if (options.viewDistanceCap > 0 && server.getPlayerList() != null) {
-                server.getPlayerList().setViewDistance(options.viewDistanceCap);
-            }
+            // Per guest (ChunkMapGuestViewMixin): the integrated server resets its own view distance to the host's every tick
+            P2PHostState26.setGuestViewCap(options.viewDistanceCap);
         });
+    }
+
+    /** Pre-26 rule names (HostScreenLogic.RULES, kept in lads-host.json) and the 26.x rules they became. */
+    private static final Map<String, GameRule<?>> RULES = rules();
+    /** "disableElytraMovementCheck" became "elytra_movement_check" (the opposite); "doFireTick" a fire spread radius (0 = off). */
+    private static final String INVERTED = "disableElytraMovementCheck", FIRE_TICK = "doFireTick";
+
+    private static Map<String, GameRule<?>> rules() {
+        Map<String, GameRule<?>> m = new LinkedHashMap<>();
+        m.put("keepInventory", GameRules.KEEP_INVENTORY);
+        m.put("doDaylightCycle", GameRules.ADVANCE_TIME);
+        m.put("doWeatherCycle", GameRules.ADVANCE_WEATHER);
+        m.put("mobGriefing", GameRules.MOB_GRIEFING);
+        m.put(FIRE_TICK, GameRules.FIRE_SPREAD_RADIUS_AROUND_PLAYER);
+        m.put("doMobSpawning", GameRules.SPAWN_MOBS);
+        m.put("naturalRegeneration", GameRules.NATURAL_HEALTH_REGENERATION);
+        m.put("playersSleepingPercentage", GameRules.PLAYERS_SLEEPING_PERCENTAGE);
+        m.put("doImmediateRespawn", GameRules.IMMEDIATE_RESPAWN);
+        m.put("showDeathMessages", GameRules.SHOW_DEATH_MESSAGES);
+        m.put("announceAdvancements", GameRules.SHOW_ADVANCEMENT_MESSAGES);
+        m.put("doInsomnia", GameRules.SPAWN_PHANTOMS);
+        m.put("fallDamage", GameRules.FALL_DAMAGE);
+        m.put("drowningDamage", GameRules.DROWNING_DAMAGE);
+        m.put("fireDamage", GameRules.FIRE_DAMAGE);
+        m.put("freezeDamage", GameRules.FREEZE_DAMAGE);
+        m.put("doTileDrops", GameRules.BLOCK_DROPS);
+        m.put("doEntityDrops", GameRules.ENTITY_DROPS);
+        m.put("doMobLoot", GameRules.MOB_DROPS);
+        m.put("forgiveDeadPlayers", GameRules.FORGIVE_DEAD_PLAYERS);
+        m.put("universalAnger", GameRules.UNIVERSAL_ANGER);
+        m.put(INVERTED, GameRules.ELYTRA_MOVEMENT_CHECK);
+        return m;
+    }
+
+    /** The rule as the Host screen shows it: "true"/"false", or a number. Fire Tick is on while fire spreads at all. */
+    private static String ruleValue(MinecraftServer server, String name) {
+        Object v = server.getGameRules().get(RULES.get(name));
+        if (FIRE_TICK.equals(name)) return String.valueOf(v instanceof Integer i && i != 0);
+        if (v instanceof Boolean b) return String.valueOf(INVERTED.equals(name) != b);
+        return String.valueOf(v);
+    }
+
+    @SuppressWarnings("unchecked")
+    static void setRule(MinecraftServer server, String name, String value) {
+        GameRule<?> rule = RULES.get(name);
+        if (rule == null || value == null) return;
+        GameRules rules = server.getGameRules();
+        try {
+            if (value.equals(ruleValue(server, name))) return;
+            if (FIRE_TICK.equals(name)) {
+                rules.set((GameRule<Integer>) rule, Boolean.parseBoolean(value) ? 128 : 0, server);
+            } else if (rules.get(rule) instanceof Integer) {
+                rules.set((GameRule<Integer>) rule, Integer.parseInt(value.trim()), server);
+            } else {
+                rules.set((GameRule<Boolean>) rule, INVERTED.equals(name) != Boolean.parseBoolean(value), server);
+            }
+        } catch (RuntimeException e) {
+            LOGGER.warn("Game rule {} = {} not applied: {}", name, value, e.toString());
+        }
+    }
+
+    @Override
+    public Map<String, String> liveGamerules() {
+        IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server == null || server.getGameRules() == null) return Map.of();
+        Map<String, String> out = new LinkedHashMap<>();
+        for (String name : RULES.keySet()) {
+            try {
+                out.put(name, ruleValue(server, name));
+            } catch (RuntimeException ignored) { // a rule this world's feature flags lack
+            }
+        }
+        return out;
+    }
+
+    @Override
+    public void fillLiveOptions(HostOptions options) {
+        IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server == null || options == null) return;
+        options.allowCommands = server.getWorldData().isAllowCommands();
+        if (server.getPersonalGameMode() != null) options.hostGameMode = server.getPersonalGameMode().getName();
+    }
+
+    @Override
+    public boolean canSharePacks() {
+        return true;
+    }
+
+    @Override
+    public Map<String, String> shareablePacks() {
+        return HostPacks26.shareable();
     }
 
     private void updateGuestSnapshot(IntegratedServer server) {
@@ -416,6 +510,19 @@ public class SocialBridge26 implements SocialBridge {
     public static Component friendsButtonText() {
         int count = SocialState.get().onlineFriendCount();
         return count > 0 ? Component.literal("Friends (" + count + ")") : Component.literal("Friends");
+    }
+
+    /** The host's LAN port when it is free, else any free one (vanilla's empty port box). */
+    private static int lanPort(HostOptions options) {
+        int p = options.port;
+        if (p >= 1024 && p <= 65535) {
+            try (ServerSocket socket = new ServerSocket(p)) {
+                return p;
+            } catch (Throwable t) {
+                LOGGER.warn("LAN port {} is taken, using a free one", p);
+            }
+        }
+        return findFreePort();
     }
 
     private static int findFreePort() {
