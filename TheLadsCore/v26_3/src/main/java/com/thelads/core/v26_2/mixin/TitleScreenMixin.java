@@ -419,7 +419,7 @@ public abstract class TitleScreenMixin extends Screen {
             ladsEnsureTitleLayout();
             float matrixScale = ladsMatrixScale();
             double sx = event.x() / matrixScale, sy = event.y() / matrixScale;
-            if (com.thelads.core.client.title.TitleOverlay.mouseClicked(sx, sy, event.button(), ladsLayoutWidth, ladsLayoutHeight)) {
+            if (com.thelads.core.client.title.TitleOverlay.mouseClicked(sx, sy, event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT ? 0 : 1, ladsLayoutWidth, ladsLayoutHeight)) {
                 ladsSyncTextInput();
                 cir.setReturnValue(true);
                 return;
