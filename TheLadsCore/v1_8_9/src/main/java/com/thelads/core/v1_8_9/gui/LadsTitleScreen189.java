@@ -144,10 +144,12 @@ public final class LadsTitleScreen189 {
         buttons.add(languageButton = new CompactButton189(LADS_ID + 5, screen.width - 50, 6, 20, 20, "Language", () -> "globe",
             () -> Minecraft.getMinecraft().displayGuiScreen(new GuiLanguage(title, Minecraft.getMinecraft().gameSettings, Minecraft.getMinecraft().getLanguageManager()))));
         buttons.add(layoutToggle = new CompactButton189(LADS_ID + 7, 0, 6, 20, 20, TitleScreenTheme.layoutToggleLabel(), () -> "layout", TitleScreenModule::toggleLayout));
-        buttons.add(panoramaButton = new CompactButton189(LADS_ID + 9, 0, 6, 20, 20, TitleScreenTheme.CHANGE_PANORAMA, () -> "mountain", com.thelads.core.client.title.PanoramaPicker::next));
+        buttons.add(panoramaButton = new CompactButton189(LADS_ID + 9, 0, 6, 20, 20, TitleScreenTheme.CHANGE_PANORAMA, () -> "mountain", this::openPanoramaList));
         buttons.add(updateButton = new CompactButton189(LADS_ID + 11, 0, 6, 20, 20, TitleScreenTheme.UPDATE, () -> "download",
             () -> com.thelads.core.client.LauncherUpdate.press(() -> Minecraft.getMinecraft().shutdown())));
         updateButton.visible = false;
+        com.thelads.core.client.title.TitleOverlay.reset(); // the Panorama list and the chat sidebar start closed
+        com.thelads.core.client.title.TitleOverlay.enableChat();
 
         lastFrame = 0;
     }
@@ -363,6 +365,14 @@ public final class LadsTitleScreen189 {
             layoutToggle.drawButton(mc, event.mouseX, event.mouseY, ms);
             if (panoramaButton.visible) panoramaButton.drawButton(mc, event.mouseX, event.mouseY, ms);
             if (updateButton.visible) updateButton.drawButton(mc, event.mouseX, event.mouseY, ms);
+            GlStateManager.pushMatrix();
+            try {
+                GlStateManager.scale(ms, ms, 1.0f);
+                com.thelads.core.client.title.TitleOverlay.render(new CanvasAdapter(mc.fontRendererObj, targetW, targetH, ms), targetW, targetH,
+                    Math.round(event.mouseX / ms), Math.round(event.mouseY / ms), elapsed, false);
+            } finally {
+                GlStateManager.popMatrix();
+            }
         } finally {
             TitleNoir.endFrame();
         }
@@ -413,17 +423,78 @@ public final class LadsTitleScreen189 {
 
     @SubscribeEvent
     public void mouse(GuiScreenEvent.MouseInputEvent.Pre event) {
-        if (screen == null || event.gui != screen || noirLayout == null) return;
-        if (!org.lwjgl.input.Mouse.getEventButtonState() || org.lwjgl.input.Mouse.getEventButton() != 0) return;
+        if (screen == null || event.gui != screen) return;
+        if (org.lwjgl.input.Mouse.getEventDWheel() != 0) { // the wheel scrolls an open popup
+            if (com.thelads.core.client.title.TitleOverlay.mouseScrolled(org.lwjgl.input.Mouse.getEventDWheel() > 0 ? 1 : -1)) event.setCanceled(true);
+            return;
+        }
+        if (!org.lwjgl.input.Mouse.getEventButtonState()) return;
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.displayWidth <= 0 || mc.displayHeight <= 0) return;
         double guiX = (double) org.lwjgl.input.Mouse.getEventX() * screen.width / mc.displayWidth;
         double guiY = screen.height - (double) org.lwjgl.input.Mouse.getEventY() * screen.height / mc.displayHeight - 1.0;
         float ms = matrixScale();
+        if (com.thelads.core.client.title.TitleOverlay.mouseClicked(guiX / ms, guiY / ms, org.lwjgl.input.Mouse.getEventButton(), targetWidth(), targetHeight())) {
+            event.setCanceled(true);
+            return;
+        }
+        if (noirLayout == null || org.lwjgl.input.Mouse.getEventButton() != 0) return;
         if (TitleNoir.clickNetworkPill(guiX / ms, guiY / ms)) {
             com.thelads.core.client.gui.LadsSettingsScreen.requestOpenNetworkHub();
             mc.displayGuiScreen(new LadsSettingsScreen189(screen));
             event.setCanceled(true);
+        }
+    }
+
+    /** A popup (the Panorama list, the chat sidebar) is out: it takes the keys and typed text. */
+    @SubscribeEvent
+    public void key(GuiScreenEvent.KeyboardInputEvent.Pre event) {
+        if (screen == null || event.gui != screen || !org.lwjgl.input.Keyboard.getEventKeyState()) return;
+        if (com.thelads.core.client.title.TitleOverlay.keyPressed(glfwKey(org.lwjgl.input.Keyboard.getEventKey()))) {
+            event.setCanceled(true);
+            return;
+        }
+        char typed = org.lwjgl.input.Keyboard.getEventCharacter();
+        if (typed >= 32 && com.thelads.core.client.title.TitleOverlay.charTyped(typed)) event.setCanceled(true);
+    }
+
+    /** LWJGL 2 key codes to the GLFW codes the shared popups speak: Esc, Enter, Tab, Backspace, the arrows, Home/End and the page keys. */
+    private static int glfwKey(int key) {
+        switch (key) {
+            case org.lwjgl.input.Keyboard.KEY_ESCAPE: return 256;
+            case org.lwjgl.input.Keyboard.KEY_RETURN: return 257;
+            case org.lwjgl.input.Keyboard.KEY_NUMPADENTER: return 335;
+            case org.lwjgl.input.Keyboard.KEY_TAB: return 258;
+            case org.lwjgl.input.Keyboard.KEY_BACK: return 259;
+            case org.lwjgl.input.Keyboard.KEY_UP: return 265;
+            case org.lwjgl.input.Keyboard.KEY_DOWN: return 264;
+            case org.lwjgl.input.Keyboard.KEY_HOME: return 268;
+            case org.lwjgl.input.Keyboard.KEY_END: return 269;
+            case org.lwjgl.input.Keyboard.KEY_PRIOR: return 266;
+            case org.lwjgl.input.Keyboard.KEY_NEXT: return 267;
+            default: return -1;
+        }
+    }
+
+    /** The Panorama button: its list opens under it (the button's place in layout pixels). */
+    private void openPanoramaList() {
+        float ms = matrixScale();
+        com.thelads.core.client.title.TitleOverlay.openPanorama(Math.round(panoramaButton.xPosition / ms), Math.round(panoramaButton.yPosition / ms),
+            Math.round(panoramaButton.width / ms), Math.round(panoramaButton.height / ms));
+    }
+
+    /** The title's adapter under its layout scale: a scissor given in layout pixels is cut in GUI pixels. */
+    private static final class CanvasAdapter extends GuiLadsAdapter {
+        private final float ms;
+
+        CanvasAdapter(net.minecraft.client.gui.FontRenderer font, int width, int height, float ms) {
+            super(font, width, height);
+            this.ms = ms;
+        }
+
+        @Override
+        public void enableScissor(int minX, int minY, int maxX, int maxY) {
+            super.enableScissor(Math.round(minX * ms), Math.round(minY * ms), Math.round(maxX * ms), Math.round(maxY * ms));
         }
     }
 }

@@ -87,7 +87,7 @@ public abstract class TitleScreenMixin extends Screen {
             () -> "layout", button -> TitleScreenModule.toggleLayout()));
         ladsLayoutToggle.setTabOrderGroup(203);
         ladsPanoramaButton = addRenderableWidget(new CompactButton12111(0, 6, 20, 20, Component.literal(TitleScreenTheme.CHANGE_PANORAMA),
-            () -> "mountain", button -> com.thelads.core.client.title.PanoramaPicker.next()));
+            () -> "mountain", button -> com.thelads.core.client.title.TitleOverlay.openPanorama(button.getX(), button.getY(), button.getWidth(), button.getHeight())));
         ladsPanoramaButton.setTabOrderGroup(204);
         ladsUpdateButton = addRenderableWidget(new CompactButton12111(0, 6, 20, 20, Component.literal(TitleScreenTheme.UPDATE),
             () -> "download", button -> com.thelads.core.client.LauncherUpdate.press(() -> minecraft.stop())));
@@ -97,6 +97,7 @@ public abstract class TitleScreenMixin extends Screen {
 
         // Fabric screen events and other init mixins may still add or move widgets after this callback.
         // Leave their native geometry intact until the first draw has the complete widget set.
+        com.thelads.core.client.title.TitleOverlay.reset(); // the Panorama list starts closed
         ladsLastFrameNanos = 0;
         com.thelads.core.config.BuiltInIntegrations.verifyLoadedAdapters();
         com.thelads.core.config.IntegrationRuntimeProbe.run();
@@ -315,11 +316,31 @@ public abstract class TitleScreenMixin extends Screen {
                 TitleNoir.endFrame();
                 TitleWidgetRegistry.endFrame();
             }
+            com.thelads.core.client.title.TitleOverlay.render(adapter, ladsLayoutWidth, ladsLayoutHeight, Math.round(mouseX / matrixScale), Math.round(mouseY / matrixScale), elapsed, reducedMotion);
             TitleScreenTheme.flushTooltips(ladsLayoutWidth, ladsLayoutHeight, graphics::renderDeferredElements);
         } finally {
             if (pushed) graphics.pose().popMatrix();
         }
         ci.cancel();
+    }
+
+    /** The Panorama list is out: it takes the keys (Esc closes, Up/Down/Enter pick) and the wheel. */
+    @Override
+    public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
+        if (ladsCustomTitle && com.thelads.core.client.title.TitleOverlay.keyPressed(event.key())) return true;
+        return super.keyPressed(event);
+    }
+
+    @Override
+    public boolean charTyped(net.minecraft.client.input.CharacterEvent event) {
+        if (ladsCustomTitle && event.codepoint() <= 0xFFFF && com.thelads.core.client.title.TitleOverlay.charTyped((char) event.codepoint())) return true;
+        return super.charTyped(event);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (ladsCustomTitle && com.thelads.core.client.title.TitleOverlay.mouseScrolled(verticalAmount)) return true;
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     @Inject(method = "mouseClicked(Lnet/minecraft/client/input/MouseButtonEvent;Z)Z",
@@ -330,6 +351,10 @@ public abstract class TitleScreenMixin extends Screen {
             // Vanilla also forwards clicks to its separate, now hidden Realms notification overlay.
             float matrixScale = ladsMatrixScale();
             double sx = event.x() / matrixScale, sy = event.y() / matrixScale;
+            if (com.thelads.core.client.title.TitleOverlay.mouseClicked(sx, sy, event.button(), ladsLayoutWidth, ladsLayoutHeight)) {
+                cir.setReturnValue(true);
+                return;
+            }
             if (event.button() == 0 && ladsNoirLayout != null && TitleNoir.clickNetworkPill(sx, sy)) {
                 com.thelads.core.client.gui.LadsSettingsScreen.requestOpenNetworkHub();
                 minecraft.setScreen(new LadsSettingsScreen12111(this));

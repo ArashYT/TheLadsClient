@@ -62,6 +62,7 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique private List<AbstractWidget> ladsExtraWidgets = new ArrayList<>();
     @Unique private long ladsLastFrameNanos;
     @Unique private double ladsAnimationSeconds;
+    @Unique private boolean ladsOverlayTyping;
 
     protected TitleScreenMixin() {
         super(Component.empty());
@@ -116,7 +117,7 @@ public abstract class TitleScreenMixin extends Screen {
         ladsLayoutToggle.setTabOrderGroup(203);
 
         ladsPanoramaButton = addRenderableWidget(new CompactButton26(0, 6, 20, 20, Component.literal(TitleScreenTheme.CHANGE_PANORAMA),
-            () -> "mountain", button -> com.thelads.core.client.title.PanoramaPicker.next()));
+            () -> "mountain", button -> com.thelads.core.client.title.TitleOverlay.openPanorama(button.getX(), button.getY(), button.getWidth(), button.getHeight())));
         ladsPanoramaButton.setTabOrderGroup(204);
         ladsUpdateButton = addRenderableWidget(new CompactButton26(0, 6, 20, 20, Component.literal(TitleScreenTheme.UPDATE),
             () -> "download", button -> com.thelads.core.client.LauncherUpdate.press(() -> minecraft.stop())));
@@ -124,6 +125,9 @@ public abstract class TitleScreenMixin extends Screen {
         ladsUpdateButton.setTooltip(Tooltip.create(Component.literal(TitleScreenTheme.UPDATE_TOOLTIP)));
         ladsUpdateButton.visible = false;
 
+        com.thelads.core.client.title.TitleOverlay.reset(); // the Panorama list and the chat sidebar start closed
+        com.thelads.core.client.title.TitleOverlay.enableChat();
+        ladsOverlayTyping = false;
         ladsLastFrameNanos = 0;
         com.thelads.core.config.BuiltInIntegrations.verifyLoadedAdapters();
         com.thelads.core.config.IntegrationRuntimeProbe.run();
@@ -358,11 +362,54 @@ public abstract class TitleScreenMixin extends Screen {
                 TitleNoir.endFrame();
                 TitleWidgetRegistry.endFrame();
             }
+            com.thelads.core.client.title.TitleOverlay.render(adapter, ladsLayoutWidth, ladsLayoutHeight, scaledMouseX, scaledMouseY, elapsed, reducedMotion);
+            ladsSyncTextInput();
             TitleScreenTheme.flushTooltips(ladsLayoutWidth, ladsLayoutHeight, () -> graphics.extractDeferredElements(scaledMouseX, scaledMouseY, partialTick));
         } finally {
             graphics.pose().popMatrix();
         }
         ci.cancel();
+    }
+
+    /** The chat sidebar's filter box takes typed text: 26.3 delivers characters only while the screen asks for them. */
+    @Unique
+    private void ladsSyncTextInput() {
+        boolean typing = com.thelads.core.client.title.TitleOverlay.capturingText();
+        if (typing == ladsOverlayTyping || minecraft == null) return;
+        ladsOverlayTyping = typing;
+        minecraft.textInputManager().onTextInputFocusChange(this, typing);
+    }
+
+    @Override
+    public boolean isInputCaptured() {
+        return com.thelads.core.client.title.TitleOverlay.capturingText() || super.isInputCaptured();
+    }
+
+    @Inject(method = "removed()V", at = @At("HEAD"), require = 1)
+    private void ladsStopTextInput(CallbackInfo ci) {
+        if (ladsOverlayTyping) minecraft.textInputManager().stopTextInput(this);
+        ladsOverlayTyping = false;
+    }
+
+    @Override
+    public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
+        if (ladsCustomTitle && com.thelads.core.client.title.TitleOverlay.keyPressed(event.key())) {
+            ladsSyncTextInput();
+            return true;
+        }
+        return super.keyPressed(event);
+    }
+
+    @Override
+    public boolean charTyped(net.minecraft.client.input.CharacterEvent event) {
+        if (ladsCustomTitle && event.codepoint() <= 0xFFFF && com.thelads.core.client.title.TitleOverlay.charTyped((char) event.codepoint())) return true;
+        return super.charTyped(event);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (ladsCustomTitle && com.thelads.core.client.title.TitleOverlay.mouseScrolled(verticalAmount)) return true;
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     @Inject(method = "mouseClicked(Lnet/minecraft/client/input/MouseButtonEvent;Z)Z",
@@ -372,6 +419,11 @@ public abstract class TitleScreenMixin extends Screen {
             ladsEnsureTitleLayout();
             float matrixScale = ladsMatrixScale();
             double sx = event.x() / matrixScale, sy = event.y() / matrixScale;
+            if (com.thelads.core.client.title.TitleOverlay.mouseClicked(sx, sy, event.button(), ladsLayoutWidth, ladsLayoutHeight)) {
+                ladsSyncTextInput();
+                cir.setReturnValue(true);
+                return;
+            }
             if (event.button() == 0 && ladsNoirLayout != null && TitleNoir.clickNetworkPill(sx, sy)) {
                 com.thelads.core.client.gui.LadsSettingsScreen.requestOpenNetworkHub();
                 minecraft.setScreenAndShow(new LadsSettingsScreen26(this));

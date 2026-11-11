@@ -47,7 +47,12 @@ public partial class MainWindow
             : $"[Launcher] Next launch will use alt account: {_launchAccountOverride} (main unchanged).");
     }
 
-    private async void NavModpacks_Click(object? sender, RoutedEventArgs e) { NavigateTo("Modpacks"); await ModpacksPage.LoadAsync(); }
+    private async void NavModpacks_Click(object? sender, RoutedEventArgs e)
+    {
+        if (ModpacksPage.IsVisible) ModpacksPage.ShowLibrary(); // pressed again inside a sub-screen (Add Content ...): back to the library
+        NavigateTo("Modpacks");
+        await ModpacksPage.LoadAsync();
+    }
 
     /// <summary>The account Play would use, signed in as LaunchGame does: silently, then Microsoft's sign-in window when asked for.
     /// <paramref name="gameDirectory"/> (the launcher's own instances only, never another launcher's folder) also gets the in-game

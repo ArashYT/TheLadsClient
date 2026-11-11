@@ -183,16 +183,85 @@ public final class PanoramaPicker {
      * Default, then the second family on: the newest family comes last, as on its own release it is what Default shows.
      */
     static String nextChoice(String[] choices, String current) {
-        List<String> firsts = new ArrayList<>();
-        for (int i = 1; i < choices.length; i++) {
-            if (firsts.isEmpty() || !family(firsts.get(firsts.size() - 1)).equals(family(choices[i]))) firsts.add(choices[i]);
-        }
+        List<String> firsts = families(choices);
         if (firsts.isEmpty()) return DEFAULT;
         if (DEFAULT.equals(current)) return firsts.get(firsts.size() > 1 ? 1 : 0);
         int at = 0;
         while (at < firsts.size() && !family(firsts.get(at)).equals(family(current))) at++;
         if (at == 0 || at >= firsts.size()) return DEFAULT;
         return firsts.get(at + 1 < firsts.size() ? at + 1 : 0);
+    }
+
+    /** The first (newest) release of each family in the choices after Default. */
+    private static List<String> families(String[] choices) {
+        List<String> firsts = new ArrayList<>();
+        for (int i = 1; i < choices.length; i++) {
+            if (firsts.isEmpty() || !family(firsts.get(firsts.size() - 1)).equals(family(choices[i]))) firsts.add(choices[i]);
+        }
+        return firsts;
+    }
+
+    /** One row of the title screen's Panorama list: the choice it picks, its name and the version it shows. */
+    public record Entry(String choice, String name, String version) {}
+
+    /** Mojang's names for the 1.x update families; a family without one (the 26.x line) is just "Minecraft <family>". */
+    private static final Map<String, String> NAMES = Map.ofEntries(
+        Map.entry("1.21", "Tricky Trials"), Map.entry("1.20", "Trails & Tales"), Map.entry("1.19", "The Wild Update"),
+        Map.entry("1.18", "Caves & Cliffs: Part II"), Map.entry("1.17", "Caves & Cliffs: Part I"), Map.entry("1.16", "Nether Update"),
+        Map.entry("1.15", "Buzzy Bees"), Map.entry("1.14", "Village & Pillage"), Map.entry("1.13", "Update Aquatic"),
+        Map.entry("1.12", "World of Color"), Map.entry("1.11", "Exploration Update"), Map.entry("1.10", "Frostburn Update"),
+        Map.entry("1.9", "Combat Update"), Map.entry("1.8", "Bountiful Update"), Map.entry("1.7", "The Update that Changed the World"),
+        Map.entry("1.6", "Horse Update"), Map.entry("1.5", "Redstone Update"), Map.entry("1.4", "Pretty Scary Update"));
+
+    /** Every panorama the list offers, Default first, then one row per release family, newest first. */
+    static List<Entry> entries(String[] choices) {
+        List<Entry> rows = new ArrayList<>();
+        rows.add(new Entry(DEFAULT, "Default", "Your game's own"));
+        for (String release : families(choices)) {
+            String family = family(release);
+            rows.add(new Entry(release, NAMES.getOrDefault(family, "Minecraft " + family), release));
+        }
+        return rows;
+    }
+
+    public static List<Entry> entries() {
+        DropdownOption option = option();
+        return entries(option == null ? new String[] {DEFAULT} : option.getChoices());
+    }
+
+    /** Whether the row is the panorama picked now (a hotfix picked in the settings marks its family's row). */
+    public static boolean isCurrent(Entry entry, String value) {
+        return entry.choice().equals(DEFAULT) ? DEFAULT.equals(value) : !DEFAULT.equals(value) && family(entry.choice()).equals(family(value));
+    }
+
+    public static String current() {
+        DropdownOption option = option();
+        return option == null ? DEFAULT : option.getValue();
+    }
+
+    /** Whether the release list has loaded (a Default alone is the list still loading). */
+    public static boolean ready() {
+        DropdownOption option = option();
+        return option != null && option.getChoices().length >= 2;
+    }
+
+    /** The title screen's note while the list has not loaded. */
+    public static void notifyLoading() {
+        message = "The panorama list is still loading";
+        messageUntil = System.currentTimeMillis() + 4000;
+    }
+
+    /** What pick() runs to keep the choice (tests swap it out so they never write the player's config). */
+    public static Runnable saver = com.thelads.core.config.ConfigManager::save;
+
+    /** A row of the Panorama list picked: applied and kept like the setting (the next title frame loads its images). */
+    public static void pick(String choice) {
+        DropdownOption option = option();
+        if (option == null || choice == null) return;
+        option.select(choice);
+        saver.run();
+        message = "Panorama: " + choice;
+        messageUntil = System.currentTimeMillis() + 4000;
     }
 
     private static String family(String release) {

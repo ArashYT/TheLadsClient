@@ -20,6 +20,7 @@ public final class ScreenTextGuard1201 {
         if (focused instanceof EditBox editBox && editBox.canConsumeInput()) return true;
         var path = screen.getCurrentFocusPath();
         if (path != null && path.component() instanceof EditBox pathEdit && pathEdit.canConsumeInput()) return true;
+        if (screen instanceof net.minecraft.client.gui.screens.TitleScreen) return com.thelads.core.client.title.TitleOverlay.capturingText();
         if (screen instanceof FriendsScreen1201 fs) return fs.isEditingText();
         if (screen instanceof HostScreen1201 hs) return hs.isEditingText();
         if (screen instanceof LadsSettingsScreen1201 ls) return ls.ui().isEditingText();

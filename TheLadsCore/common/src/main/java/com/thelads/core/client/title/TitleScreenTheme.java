@@ -369,8 +369,8 @@ public final class TitleScreenTheme {
         return screenWidth >= TOGGLE_LABEL_MIN ? widestLabel + COMPACT_PADDING : HEADER_SIZE;
     }
 
-    /** The Change panorama button, left of the layout toggle: a square icon in the legacy layout (its logo is centred) and below PANORAMA_LABEL_MIN wide. */
-    public static final String CHANGE_PANORAMA = "Change panorama";
+    /** The Panorama button (opens the list of panoramas), left of the layout toggle: a square icon in the legacy layout (its logo is centred) and below PANORAMA_LABEL_MIN wide. */
+    public static final String CHANGE_PANORAMA = "Panorama";
     public static final int PANORAMA_LABEL_MIN = 560;
 
     public static int panoramaButtonWidth(int screenWidth, int labelWidth, boolean legacy) {
@@ -378,7 +378,7 @@ public final class TitleScreenTheme {
     }
 
     /** The Update button, shown only while the launcher has an update ready (LauncherUpdate): as wide as panoramaButtonWidth makes its
-     *  label, left of Change panorama or in its place when that is hidden. */
+     *  label, left of Panorama or in its place when that is hidden. */
     public static final String UPDATE = "Update", UPDATE_TOOLTIP = "Update The Lads Client: the game closes, updates and starts again";
 
     public static int updateButtonX(int panoramaX, int panoramaWidth, boolean panoramaShown, int width) {

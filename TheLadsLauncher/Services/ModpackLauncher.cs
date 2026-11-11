@@ -253,6 +253,9 @@ public static class ModpackLauncher
             await ModpackCoreSync.EnsureFabricApiAsync(instance, http, status, token);
             await ModpackCoreSync.EnsureDependenciesAsync(instance, http, status, token);
             ModpackCoreSync.Sync(instance, status: status); // before every launch: a modpack always runs the newest bundled Lads Core
+            // ModSync: any Fabric modpack with the Lads Core lists its own mods for friends who join its world.
+            await ModSyncService.PrepareLaunchAsync(instance, new ModInventoryService(), AppContext.BaseDirectory,
+                new ContentCatalog(http, settings.ModrinthApiUrl, settings.CurseForgeApiUrl, settings.CurseForgeApiKey), m => status?.Invoke(m), token);
             // As profiles: Vulkan unless the launcher setting or the in-game shader toggle says OpenGL; Iris and its add-ons sit out on Vulkan.
             if (GraphicsRenderer.SupportsVulkan(instance.McVersion))
                 await GraphicsRenderer.PrepareAsync(instance.GameDirectory, instance.McVersion,
