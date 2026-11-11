@@ -344,6 +344,15 @@ public static class ModpackCoreSync
         await FabricApiInstaller.EnsureAsync(http, Path.Combine(instance.GameDirectory, "mods"), instance.McVersion, loader, status, token);
     }
 
+    /// <summary>Installs the libraries the mods of an own Fabric/Quilt instance require and none provides (see <see cref="ModDependencyInstaller"/>).</summary>
+    public static async System.Threading.Tasks.Task EnsureDependenciesAsync(ModpackInstance instance, System.Net.Http.HttpClient http,
+        Action<string>? status, System.Threading.CancellationToken token)
+    {
+        if (instance.IsExternal) return;
+        if (Environment.GetEnvironmentVariable(SkipEnvironmentVariable) == "1") return;
+        await ModDependencyInstaller.EnsureAsync(http, Path.Combine(instance.GameDirectory, "mods"), instance.McVersion, instance.Loader, status, token);
+    }
+
     /// <summary>Brings the Core of an instance up to date according to its <see cref="ModpackInstance.LadsCore"/> setting:
     /// - ON: adds the bundled jar (mods\theladscore.jar) when missing, restores disabled jars, and syncs to bundled build.
     /// - OFF: renames any enabled Core jars to .disabled (never deletes any jar, even pack-shipped jars).

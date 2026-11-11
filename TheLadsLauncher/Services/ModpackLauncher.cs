@@ -51,6 +51,7 @@ public static class ModpackLauncher
             await Task.Run(() => Mrpack.InstallAsync(mrpackFile, instance.Directory, http, status, token), token); // off the UI thread: it hashes and copies every file
             Apply(instance, index, source);
             await ModpackCoreSync.EnsureFabricApiAsync(instance, http, status, token);
+            await ModpackCoreSync.EnsureDependenciesAsync(instance, http, status, token);
             ModpackCoreSync.Sync(instance, status: status); // a Core inside the pack is brought to this launcher's build
             instance.Author = author;
             if (iconUrl != null && Uri.TryCreate(iconUrl, UriKind.Absolute, out var icon) && icon.Scheme == Uri.UriSchemeHttps)
@@ -154,6 +155,7 @@ public static class ModpackLauncher
         var index = await Task.Run(() => Mrpack.InstallAsync(mrpackFile, instance.Directory, http, status, token), token);
         Apply(instance, index, source);
         await ModpackCoreSync.EnsureFabricApiAsync(instance, http, status, token);
+        await ModpackCoreSync.EnsureDependenciesAsync(instance, http, status, token);
         ModpackCoreSync.Sync(instance, status: status);
         Modpacks.Save(instance);
     }
@@ -247,6 +249,7 @@ public static class ModpackLauncher
                 ServerListService.EnsureServer(Path.Combine(instance.GameDirectory, "servers.dat"), exp.Title, exp.ServerAddress);
             }
             await ModpackCoreSync.EnsureFabricApiAsync(instance, http, status, token);
+            await ModpackCoreSync.EnsureDependenciesAsync(instance, http, status, token);
             ModpackCoreSync.Sync(instance, status: status); // before every launch: a modpack always runs the newest bundled Lads Core
             // As profiles: Vulkan unless the launcher setting or the in-game shader toggle says OpenGL; Iris and its add-ons sit out on Vulkan.
             if (GraphicsRenderer.SupportsVulkan(instance.McVersion))
