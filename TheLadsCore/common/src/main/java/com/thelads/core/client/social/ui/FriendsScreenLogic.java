@@ -635,7 +635,7 @@ public final class FriendsScreenLogic {
                 Box moreB = new Box(currX, btnY, 24, btnH);
                 moreBoxes.put(friend.id(), moreB);
                 boolean moreHov = moreB.has(mx, my) && my >= scissorY && my <= scissorY + scissorH;
-                MenuGraphics.round(g, moreB.x, moreB.y, moreB.w, moreB.h, moreHov ? LadsPalette.PRIMARY_HOVER : LadsPalette.PANEL);
+                rowButton(g, moreB, moreHov ? LadsPalette.PRIMARY_HOVER : LadsPalette.HOVER);
                 g.drawCenteredText("...", moreB.x + moreB.w / 2, moreB.y + 4, LadsPalette.TEXT, false);
 
                 // Message button
@@ -643,7 +643,7 @@ public final class FriendsScreenLogic {
                 Box msgB = new Box(currX, btnY, 50, btnH);
                 messageBoxes.put(friend.id(), msgB);
                 boolean msgHov = msgB.has(mx, my) && my >= scissorY && my <= scissorY + scissorH;
-                MenuGraphics.round(g, msgB.x, msgB.y, msgB.w, msgB.h, msgHov ? LadsPalette.PRIMARY_HOVER : LadsPalette.PANEL);
+                rowButton(g, msgB, msgHov ? LadsPalette.PRIMARY_HOVER : LadsPalette.HOVER);
                 MenuGraphics.iconLabel(g, "Chat", null, msgB.x + msgB.w / 2, msgB.y + 5, msgB.w, LadsPalette.TEXT, false);
 
                 // Invite button
@@ -651,8 +651,8 @@ public final class FriendsScreenLogic {
                 Box invB = new Box(currX, btnY, 50, btnH);
                 inviteBoxes.put(friend.id(), invB);
                 boolean invHov = invB.has(mx, my) && my >= scissorY && my <= scissorY + scissorH;
-                MenuGraphics.round(g, invB.x, invB.y, invB.w, invB.h, invHov ? LadsPalette.PRIMARY_HOVER : LadsPalette.PANEL);
-                MenuGraphics.iconLabel(g, "Invite", null, invB.x + invB.w / 2, invB.y + 5, invB.w, LadsPalette.TEXT, false);
+                rowButton(g, invB, invHov ? 0xFF2A7A40 : LadsPalette.CARD_ON); // its own green: Invite is the host's action
+                MenuGraphics.iconLabel(g, "Invite", null, invB.x + invB.w / 2, invB.y + 5, invB.w, LadsPalette.CARD_ON_GLOW, false);
 
                 // Join button
                 JoinCheck check = callbacks.canJoin(friend);
@@ -665,8 +665,8 @@ public final class FriendsScreenLogic {
                 boolean jnHov = jnB.has(mx, my) && my >= scissorY && my <= scissorY + scissorH;
 
                 int joinColor = !check.ok() ? LadsPalette.DISABLED : (jnHov ? LadsPalette.PRIMARY_HOVER : LadsPalette.PRIMARY);
-                MenuGraphics.round(g, jnB.x, jnB.y, jnB.w, jnB.h, joinColor);
-                MenuGraphics.iconLabel(g, "Join", null, jnB.x + jnB.w / 2, jnB.y + 5, jnB.w, check.ok() ? LadsPalette.TEXT : LadsPalette.MUTED, false);
+                rowButton(g, jnB, joinColor);
+                MenuGraphics.iconLabel(g, "Join", null, jnB.x + jnB.w / 2, jnB.y + 5, jnB.w, LadsPalette.TEXT, false);
 
                 // Finding 4: Incompatible reason only as a hover tooltip on the disabled Join button!
                 if (!check.ok() && jnHov && check.reason() != null && !check.reason().isEmpty()) {
@@ -689,6 +689,12 @@ public final class FriendsScreenLogic {
         }
 
         g.disableScissor();
+    }
+
+    /** A row button: fill plus a 1px outline, so it shows on the CARD row whatever its colour. */
+    private static void rowButton(LadsGraphics g, Box b, int fill) {
+        g.fill(b.x - 1, b.y - 1, b.x + b.w + 1, b.y + b.h + 1, LadsPalette.DISABLED);
+        MenuGraphics.round(g, b.x, b.y, b.w, b.h, fill);
     }
 
     private void renderRequestsTab(LadsGraphics g, int x, int y, int w, int h, int mx, int my) {

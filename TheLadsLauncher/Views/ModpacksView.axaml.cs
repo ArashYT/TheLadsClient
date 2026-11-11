@@ -846,7 +846,15 @@ public partial class ModpacksView : UserControl
             }
 
             bool supported = ModpackCoreSync.IsSupported(instance, out var reason);
-            if (!supported)
+            if (!supported && reason == ModpackCoreSync.NoFabricApiReason)
+            {
+                LadsCoreToggle.IsEnabled = true;
+                LadsCoreToggle.IsChecked = instance.LadsCore.Value;
+                LadsCoreUnsupportedReason.Text = "Fabric API will be installed automatically when you save.";
+                LadsCoreUnsupportedReason.Foreground = new SolidColorBrush(Color.Parse("#52A5E0"));
+                LadsCoreUnsupportedReason.IsVisible = true;
+            }
+            else if (!supported)
             {
                 LadsCoreToggle.IsEnabled = false;
                 LadsCoreToggle.IsChecked = false;
@@ -3379,7 +3387,7 @@ public partial class ModpacksView : UserControl
         catch (Exception error) when (error is IOException or OperationCanceledException or InvalidOperationException) { ManageStatus.Text = error.Message; }
     }
 
-    private void Save_Click(object? sender, RoutedEventArgs e)
+    private async void Save_Click(object? sender, RoutedEventArgs e)
     {
         if (_selected is not { } i) return;
         var name = (NameBox.Text ?? "").Trim();
@@ -3394,6 +3402,7 @@ public partial class ModpacksView : UserControl
         try
         {
             Modpacks.Save(i);
+            await ModpackCoreSync.EnsureFabricApiAsync(i, Http, msg => ManageStatus.Text = msg, default);
             ModpackCoreSync.Sync(i, status: msg => ManageStatus.Text = msg);
             OpenManage(i);
             ManageStatus.Text = "Saved.";
