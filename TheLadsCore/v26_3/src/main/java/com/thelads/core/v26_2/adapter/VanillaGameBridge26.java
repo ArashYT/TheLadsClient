@@ -485,10 +485,10 @@ public class VanillaGameBridge26 implements LadsGameBridge {
                     name += " " + romanNumeral(effect.getAmplifier() + 1);
                 }
                 int totalSec = effect.getDuration() / 20;
-                String dur = totalSec >= 60 ? String.format("%d:%02d", totalSec / 60, totalSec % 60) : totalSec + "s";
+                String dur = effect.isInfiniteDuration() ? "∞" : totalSec >= 60 ? String.format("%d:%02d", totalSec / 60, totalSec % 60) : totalSec + "s"; // an endless effect said "0s"
                 String effectId = effect.getEffect().unwrapKey().map(k -> k.identifier().getPath()).orElse("");
                 detailed.add(new PotionEffectInfo(name, dur, 0, effectId, 0xFFFFFFFF));
-                snapshot.add(name + " (" + totalSec + "s)");
+                snapshot.add(name + " (" + dur + ")");
             }
             potions = List.copyOf(snapshot);
             detailedPotions = List.copyOf(detailed);

@@ -469,6 +469,14 @@ class LadsApiClientTest {
             }
         }
 
+        // A backend switch (JoinGame, 26.3 configuration start) clears it too: world changes ask again, the next backend must be answered
+        testTime.addAndGet(500L);
+        LadsApiClient.serverSwitch();
+        assertNotNull(sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"ServerAfterSwitch\"}"));
+        testTime.addAndGet(500L);
+        LadsApiClient.joinGame(42L);
+        assertNotNull(sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"ServerAfterJoin\"}"));
+
         // Full disconnect reset clears per-connection absolute cap
         testTime.addAndGet(500L);
         LadsApiClient.reset();

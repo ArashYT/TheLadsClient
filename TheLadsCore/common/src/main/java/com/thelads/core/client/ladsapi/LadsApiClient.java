@@ -386,10 +386,15 @@ public final class LadsApiClient {
         lastHashedSeed = hashedSeed;
     }
 
-    /** 26.3 configuration start (a backend switch, or the first join): the old backend's rules go. */
+    /**
+     * 26.3 configuration start (a backend switch, or the first join): the old backend's rules go. The new backend has to be
+     * answered: every world change asks again, so a long session used up the connection's replies and the next backend never
+     * saw this client (no rules, no perks, no spectator camera).
+     */
     public static void serverSwitch() {
         handleReset();
         dropProof();
+        connectionHelloReplies = 0;
         lastHashedSeed = null;
         lastDimension = null;
     }
