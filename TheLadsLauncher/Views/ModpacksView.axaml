@@ -67,7 +67,7 @@
     <!-- One instance (CurseForge style) -->
     <Grid x:Name="ManagePanel" IsVisible="False" RowDefinitions="Auto,Auto,*" Margin="24,18,24,12">
       <!-- Top Header Area -->
-      <Grid RowDefinitions="Auto,Auto" Margin="0,0,0,14">
+      <Grid RowDefinitions="Auto,Auto" Margin="0,0,0,4">
         <!-- Top bar: Back button + Title actions -->
         <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,12">
           <Button c:Ico.Name="arrow-small-left" Classes="action" Content="Modpacks" Height="32" Padding="12,0" VerticalAlignment="Center" Click="Back_Click" />
@@ -115,7 +115,7 @@
         </Grid>
       </Grid>
 
-      <TextBlock x:Name="ManageStatus" Grid.Row="1" Foreground="#A0A1AA" TextWrapping="Wrap" Margin="0,0,0,10" />
+      <TextBlock x:Name="ManageStatus" Grid.Row="1" Foreground="#A0A1AA" TextWrapping="Wrap" Margin="0,0,0,6" />
 
       <!-- Primary Tab Strip with + Add Content -->
       <Grid Grid.Row="2" RowDefinitions="Auto,*">
@@ -142,7 +142,7 @@
                       <TextBlock Classes="sectionTitle" Text="MEMORY ALLOCATION" />
                       <TextBlock Classes="muted" Text="Dedicated RAM for this instance (0 = uses global launcher setting)." />
                     </StackPanel>
-                    <Border Grid.Column="1" Classes="chip accent">
+                    <Border Grid.Column="1" Classes="chip accent" VerticalAlignment="Top">
                       <TextBlock x:Name="RamDisplay" FontWeight="Bold" FontSize="13" Text="Default" />
                     </Border>
                   </Grid>
@@ -150,7 +150,7 @@
                   <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
                     <Slider x:Name="RamSlider" Minimum="0" Maximum="32" Value="0" SmallChange="0.5" LargeChange="1.0"
                             ValueChanged="RamSlider_ValueChanged" VerticalAlignment="Center" />
-                    <NumericUpDown x:Name="RamBox" Grid.Column="1" Width="130" Minimum="0" Maximum="65536" Increment="512"
+                    <NumericUpDown x:Name="RamBox" Grid.Column="1" ShowButtonSpinner="False" Width="110" Height="34" Background="#141519" BorderBrush="#2A2B31" CornerRadius="6" Minimum="0" Maximum="65536" Increment="512"
                                    FormatString="0 MB" Margin="14,0,0,0" ValueChanged="RamBox_ValueChanged" />
                   </Grid>
 
@@ -350,7 +350,7 @@
     </Border>
 
     <!-- Add Content Modal (CurseForge style browser - Screenshot 2) -->
-    <Border x:Name="AddContentPanel" IsVisible="False" Background="#E60D0E11">
+    <Border x:Name="AddContentPanel" IsVisible="False" Background="#FF0D0E11">
       <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="32,20,32,18">
         <!-- Top bar: Instance header + close X button -->
         <Grid ColumnDefinitions="Auto,*,Auto">
@@ -396,11 +396,11 @@
 
             <TextBlock x:Name="AddContentResultsCount" Grid.Column="1" Text="Projects found" Foreground="#8F919C" FontSize="12" VerticalAlignment="Center" Margin="14,0,0,0" />
 
-            <ComboBox x:Name="AddContentProvider" Grid.Column="2" Width="110" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed">
+            <ComboBox x:Name="AddContentProvider" SelectedIndex="0" Grid.Column="2" Width="110" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed">
               <ComboBoxItem Content="Modrinth" />
               <ComboBoxItem Content="CurseForge" />
             </ComboBox>
-            <ComboBox x:Name="AddContentSort" Grid.Column="3" Width="140" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed">
+            <ComboBox x:Name="AddContentSort" SelectedIndex="0" Grid.Column="3" Width="160" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed">
               <ComboBoxItem Content="Most downloads" />
               <ComboBoxItem Content="Relevance" />
               <ComboBoxItem Content="Most follows" />
@@ -423,7 +423,7 @@
     </Border>
 
     <!-- Mod Details & Version Picker Modal (CurseForge style - Screenshot 1) -->
-    <Border x:Name="ModDetailsPanel" IsVisible="False" Background="#FA0D0E11">
+    <Border x:Name="ModDetailsPanel" IsVisible="False" Background="#FF0D0E11">
       <Grid RowDefinitions="Auto,Auto,*" Margin="32,20,32,18">
         <!-- Top breadcrumb bar -->
         <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,14">

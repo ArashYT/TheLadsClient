@@ -633,6 +633,7 @@ public partial class ModpacksView : UserControl
     internal void ShowExternal() => Tabs.SelectedItem = ExternalTab;
     internal void ShowManageOverview() => InstanceTabs.SelectedIndex = 0;
     internal void PressPlay() => Play_Click(null, new RoutedEventArgs());
+    internal void PressAddContent() => AddMods_Click(null, new RoutedEventArgs());
     internal string ManageStatusText => ManageStatus.Text ?? "";
     internal Process? RunningGame(string id) => _running.GetValueOrDefault(id);
     /// <summary>The modpack games started here, and whether a launch, update or import is running: a launcher update must not restart over them.</summary>
@@ -3403,6 +3404,7 @@ public partial class ModpacksView : UserControl
         {
             Modpacks.Save(i);
             await ModpackCoreSync.EnsureFabricApiAsync(i, Http, msg => ManageStatus.Text = msg, default);
+            await ModpackCoreSync.EnsureDependenciesAsync(i, Http, msg => ManageStatus.Text = msg, default);
             ModpackCoreSync.Sync(i, status: msg => ManageStatus.Text = msg);
             OpenManage(i);
             ManageStatus.Text = "Saved.";
