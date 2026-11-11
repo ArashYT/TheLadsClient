@@ -93,7 +93,42 @@ public sealed class ModSyncServiceTests : IDisposable
         Assert.False(File.Exists(Path.Combine(game, ModSyncService.RelaunchFile)));
         Assert.Equal(new[] { "a.jar" }, Directory.GetFiles(Synced).Select(Path.GetFileName));
         Assert.True(File.Exists(Path.Combine(Mods, "mine.jar")));
-        Assert.Equal(new[] { "-Dfabric.addMods=" + Synced, "-Dlads.modsync.host=" + Host }, ModSyncService.JvmArguments(relaunch!));
+        Assert.Equal("-Dlads.modsync.host=" + Host, ModSyncService.JvmArgument(relaunch!.Host));
+    }
+
+    [Fact] public void RelaunchBuildsAModpackWithTheProfilesModsSettingsAndTheHostsJars()
+    {
+        byte[] good = { 1, 2, 3 };
+        Directory.CreateDirectory(Synced);
+        File.WriteAllBytes(Path.Combine(Synced, "host.jar"), good);
+        File.WriteAllBytes(Path.Combine(Mods, "mine.jar"), new byte[] { 9 });
+        File.WriteAllBytes(Path.Combine(Mods, "off.jar.disabled"), new byte[] { 8 });
+        File.WriteAllText(Path.Combine(game, "options.txt"), "fov:0.5");
+        Directory.CreateDirectory(Path.Combine(game, "config", "sodium"));
+        File.WriteAllText(Path.Combine(game, "config", "sodium", "options.json"), "{}");
+        File.WriteAllText(Path.Combine(game, ModSyncService.RelaunchFile), JsonSerializer.Serialize(new
+        {
+            host = Host, world = "Survival\n", owner = "HostPlayer",
+            mods = new[] { new { file = "host.jar", size = 3, sha512 = Sha512(good) } }
+        }));
+        var relaunch = ModSyncService.TakeRelaunch(game, log.Add)!;
+        Assert.Equal("Survival - HostPlayer", ModSyncService.PackName(relaunch));
+
+        string data = Path.Combine(game, "data");
+        var pack = ModSyncService.BuildInstance(data, relaunch, game, "26.3", "0.19.5", log.Add);
+        Assert.Equal(("Survival - HostPlayer", "fabric", "0.19.5", true, Host), (pack.Name, pack.Loader, pack.LoaderVersion, pack.LadsCore == true, pack.ModSyncHost));
+        Assert.Equal(new[] { "host.jar", "mine.jar" }, Modpacks.Mods(pack).Select(m => m.FileName));
+        Assert.Equal("fov:0.5", File.ReadAllText(Path.Combine(pack.GameDirectory, "options.txt")));
+        Assert.True(File.Exists(Path.Combine(pack.GameDirectory, "config", "sodium", "options.json")));
+
+        // The same world again: the same modpack, its own settings kept, its mods made again.
+        File.WriteAllText(Path.Combine(pack.GameDirectory, "options.txt"), "fov:1.0");
+        File.Delete(Path.Combine(Mods, "mine.jar"));
+        var again = ModSyncService.BuildInstance(data, relaunch, game, "26.3", "0.19.5", log.Add);
+        Assert.Equal(pack.Id, again.Id);
+        Assert.Single(Modpacks.List(data));
+        Assert.Equal("fov:1.0", File.ReadAllText(Path.Combine(again.GameDirectory, "options.txt")));
+        Assert.Equal(new[] { "host.jar" }, Modpacks.Mods(again).Select(m => m.FileName));
     }
 
     [Fact] public void RelaunchIsRefusedForAnythingUnchecked()

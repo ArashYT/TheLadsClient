@@ -4956,7 +4956,7 @@ public partial class MainWindow : Window
     /// at once, so nothing optional (the update prompt) holds the launch up.</param>
     /// <param name="relaunch">The game closed to switch renderer: it starts in the world or on the server it was in.</param>
     /// <param name="profileId">The profile to start when it is not the active one (a game that closed itself to update).</param>
-    private async Task StartLaunchAsync(bool afterVersionSwitch = false, GraphicsRenderer.Relaunch? relaunch = null, ModSyncService.Relaunch? modSync = null, string? profileId = null)
+    private async Task StartLaunchAsync(bool afterVersionSwitch = false, GraphicsRenderer.Relaunch? relaunch = null, string? profileId = null)
     {
         try {
             LaunchButton.IsEnabled = false;
@@ -4970,7 +4970,7 @@ public partial class MainWindow : Window
                 return;
             }
 
-            await LaunchGame(afterVersionSwitch, relaunch, relaunchProfileId: profileId, modSync: modSync);
+            await LaunchGame(afterVersionSwitch, relaunch, relaunchProfileId: profileId);
         } catch (Exception ex) {
             try {
                 var crashFile = Path.Combine(TheLadsLauncher.Services.PathService.Instance.LogsDirectory, "crash_launchbtn.txt");
@@ -5069,7 +5069,7 @@ public partial class MainWindow : Window
         finally { _showingMicrosoftSetup = false; }
     }
 
-    private async Task LaunchGame(bool afterVersionSwitch = false, GraphicsRenderer.Relaunch? relaunch = null, string? relaunchProfileId = null, bool isCrashRelaunch = false, ModSyncService.Relaunch? modSync = null)
+    private async Task LaunchGame(bool afterVersionSwitch = false, GraphicsRenderer.Relaunch? relaunch = null, string? relaunchProfileId = null, bool isCrashRelaunch = false)
     {
         if (_launching || _addingAccount || _authCts != null || _showingMicrosoftSetup)
         {
@@ -5362,7 +5362,7 @@ public partial class MainWindow : Window
             var launchInventory = await _modInventoryService.BuildAsync(AppContext.BaseDirectory, gameDirectory, activeProfile.MinecraftVersion, token);
             await _modInventoryService.WriteSnapshotAsync(launchInventory, token);
             // ModSync: the player's own jars, listed for friends who join their world. A request nobody took is dropped.
-            if (modSync == null) ModSyncService.DropRelaunch(gameDirectory);
+            ModSyncService.DropRelaunch(gameDirectory);
             if (!forge)
             {
                 try { await ModSyncService.WriteListAsync(launchInventory, Catalog(), message => Log("[Launcher] " + message), token); }
@@ -5373,8 +5373,8 @@ public partial class MainWindow : Window
             // A renderer relaunch goes back where the player was (a world, a server or the title screen) instead.
             if (relaunch?.World is { } world) ModpackLauncher.JoinWorld(launchOpt, world);
             else if (relaunch?.Server is { } server) ModpackLauncher.JoinServer(launchOpt, server);
-            else if (relaunch == null && modSync == null && !isCrashRelaunch && settings.AutoJoinNetwork) ModpackLauncher.JoinServer(launchOpt, ServerListService.PinnedAddress);
-            else if (relaunch == null && modSync == null && !isCrashRelaunch && settings.AutoRejoinServer)
+            else if (relaunch == null && !isCrashRelaunch && settings.AutoJoinNetwork) ModpackLauncher.JoinServer(launchOpt, ServerListService.PinnedAddress);
+            else if (relaunch == null && !isCrashRelaunch && settings.AutoRejoinServer)
             {
                 // Prefer a manually-picked server; fall back to the last log-detected one
                 string rejoinIp = !string.IsNullOrEmpty(settings.QuickLaunchServerIp)
@@ -5436,8 +5436,6 @@ public partial class MainWindow : Window
             if (!LaunchService.IsValidLoadingScreenColor(launchSettings.LoadingScreenGlowColor)) launchSettings.LoadingScreenGlowColor = "";
             LaunchService.EnsureLoadingScreenColors(launchOpt, launchSettings);
             LaunchService.EnsureSecurityJvmArguments(launchOpt, requiredJava, gameDirectory, activeProfile.MinecraftVersion);
-            // A ModSync restart: Fabric Loader also loads the host's checked jars, for this launch only.
-            if (modSync != null && !forge) ModSyncService.AddJvmArguments(launchOpt, modSync);
             if (settings.QuickLaunch && File.Exists(installedMarker))
             {
                 GameLaunchStatusText.Text = "Quick launching (skipping verification)...";
@@ -5736,7 +5734,7 @@ public partial class MainWindow : Window
             else if (relaunchRequested)
             {
                 // The player closed it from the Switch Versions screen or the shader toggle: the new launch reports from here.
-                Log(rendererRelaunch ? "[Launcher] The game closed to switch renderer." : modSyncRelaunch ? "[Launcher] The game closed to start again with a friend's mods."
+                Log(rendererRelaunch ? "[Launcher] The game closed to switch renderer." : modSyncRelaunch ? "[Launcher] The game closed to start a friend's world as its own modpack."
                     : updateRelaunch ? "[Launcher] The game closed through its Update button." : "[Launcher] The game closed to switch versions.");
             }
             else if (exitCode != 0)
@@ -5911,23 +5909,48 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// After a profile's game has exited from <paramref name="gameDirectory"/>: when it closed itself to load a friend's mods
-    /// (ModSync), starts that profile again with that host's checked jars added; the game then rejoins the host. Runs on the UI thread.
+    /// (ModSync), makes (or refreshes) the modpack "&lt;world&gt; - &lt;owner&gt;" with this profile's mods and settings plus the host's
+    /// checked jars, and starts it from the Modpacks page; that game rejoins the host. Runs on the UI thread.
     /// </summary>
     private bool ApplyModSyncRelaunch(string gameDirectory, TheLadsLauncher.Models.LauncherProfile profile)
     {
-        if (ModSyncService.TakeRelaunch(gameDirectory, message => Log("[Launcher] " + message)) is not { } modSync) return false;
-        if (!string.Equals(_profileService.GetActiveProfile().Id, profile.Id, StringComparison.OrdinalIgnoreCase))
+        void ShowAfterGame()
         {
-            _profileService.SetActiveProfile(profile.Id); // another profile was picked while it ran: the same one starts again
-            ApplyProfile(_profileService.GetActiveProfile(), true);
-            PopulateLaunchProfileSelector();
-            LoadProfilesUI();
+            if (settings.KeepClosedOnExit || IsVisible) return;
+            Show();
+            WindowState = WindowState.Normal;
         }
-        StatusText.Text = "Restarting Minecraft with your friend's mods...";
+        if (ModSyncService.TakeRelaunch(gameDirectory, message => Log("[Launcher] " + message)) is not { } modSync) return false;
+        if (string.IsNullOrWhiteSpace(profile.FabricVersion))
+        {
+            Log("[Launcher] ModSync: this profile has no Fabric Loader, so no modpack is made.");
+            return false;
+        }
+        StatusText.Text = $"Making the modpack {ModSyncService.PackName(modSync)}...";
         _ = Dispatcher.UIThread.InvokeAsync(async () =>
         {
-            await Task.Delay(500);
-            await StartLaunchAsync(afterVersionSwitch: true, modSync: modSync);
+            try
+            {
+                var instance = await Task.Run(() => ModSyncService.BuildInstance(_pathService.BaseDirectory, modSync, gameDirectory,
+                    profile.MinecraftVersion, profile.FabricVersion!, message => Log("[Launcher] " + message)));
+                StatusText.Text = $"Starting {instance.Name}...";
+                NavigateTo("Modpacks");
+                await ModpacksPage.PlayModSyncAsync(instance, modSync.Host);
+                // The profile's game hid the launcher and its exit left it hidden for this launch: back when this game closes, as after
+                // a profile's game, and at once when it did not start (the Modpacks page says why).
+                if (ModpacksPage.RunningGame(instance.Id) is not { } game) ShowForDialog();
+                else
+                {
+                    game.Exited += (_, _) => Dispatcher.UIThread.Post(ShowAfterGame);
+                    if (game.HasExited) ShowAfterGame();
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                Log($"[Launcher] ModSync: the modpack could not be made ({ex.Message}).");
+                StatusText.Text = "Could not make the modpack for your friend's world.";
+                ShowForDialog();
+            }
         });
         return true;
     }

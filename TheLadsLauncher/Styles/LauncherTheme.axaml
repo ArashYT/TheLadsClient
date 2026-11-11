@@ -513,13 +513,13 @@
     <Setter Property="Background" Value="{DynamicResource LadsAccentSubtle}"/>
     <Setter Property="Foreground" Value="White"/>
   </Style>
-  <!-- ═══ CurseForge theme styles ═══ -->
+  <!-- Modpacks page buttons and switches: the launcher accent, as every other page. -->
   <Style Selector="Button.cfPlay">
-    <Setter Property="Background" Value="#F16436"/>
+    <Setter Property="Background" Value="{DynamicResource LadsAccent}"/>
     <Setter Property="Foreground" Value="White"/>
     <Setter Property="FontWeight" Value="Bold"/>
     <Setter Property="BorderThickness" Value="1"/>
-    <Setter Property="BorderBrush" Value="#FF7A4D"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}"/>
     <Setter Property="CornerRadius" Value="6"/>
     <Setter Property="Padding" Value="24,8"/>
     <Setter Property="FontSize" Value="14"/>
@@ -530,33 +530,33 @@
     </Setter>
   </Style>
   <Style Selector="Button.cfPlay:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="#FF7547"/>
-    <Setter Property="BorderBrush" Value="#FFA07D"/>
+    <Setter Property="Background" Value="{DynamicResource LadsAccentHover}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource LadsAccentHover}"/>
     <Setter Property="Foreground" Value="White"/>
   </Style>
   <Style Selector="Button.cfPlay:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="#D95328"/>
-    <Setter Property="BorderBrush" Value="#C2441D"/>
+    <Setter Property="Background" Value="{DynamicResource LadsAccentPressed}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource LadsAccentPressed}"/>
     <Setter Property="Foreground" Value="White"/>
   </Style>
   <Style Selector="Button.cfInstall">
-    <Setter Property="Background" Value="#F16436"/>
+    <Setter Property="Background" Value="{DynamicResource LadsAccent}"/>
     <Setter Property="Foreground" Value="White"/>
     <Setter Property="FontWeight" Value="Bold"/>
     <Setter Property="BorderThickness" Value="1"/>
-    <Setter Property="BorderBrush" Value="#FF7A4D"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}"/>
     <Setter Property="CornerRadius" Value="4"/>
     <Setter Property="Padding" Value="16,6"/>
     <Setter Property="FontSize" Value="12.5"/>
   </Style>
   <Style Selector="Button.cfInstall:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="#FF7547"/>
-    <Setter Property="BorderBrush" Value="#FFA07D"/>
+    <Setter Property="Background" Value="{DynamicResource LadsAccentHover}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource LadsAccentHover}"/>
     <Setter Property="Foreground" Value="White"/>
   </Style>
   <Style Selector="Button.cfInstall:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="#D95328"/>
-    <Setter Property="BorderBrush" Value="#C2441D"/>
+    <Setter Property="Background" Value="{DynamicResource LadsAccentPressed}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource LadsAccentPressed}"/>
     <Setter Property="Foreground" Value="White"/>
   </Style>
   <Style Selector="Button.cfUpdate">
@@ -582,11 +582,11 @@
     <Setter Property="Cursor" Value="Hand"/>
   </Style>
   <Style Selector="ToggleSwitch.cfSwitch:checked /template/ Border#SwitchKnobBounds">
-    <Setter Property="Background" Value="#F16436"/>
-    <Setter Property="BorderBrush" Value="#F16436"/>
+    <Setter Property="Background" Value="{DynamicResource LadsAccent}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}"/>
   </Style>
   <Style Selector="ToggleSwitch.cfSwitch:checked:pointerover /template/ Border#SwitchKnobBounds">
-    <Setter Property="Background" Value="#FF7547"/>
-    <Setter Property="BorderBrush" Value="#FF7547"/>
+    <Setter Property="Background" Value="{DynamicResource LadsAccentHover}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource LadsAccentHover}"/>
   </Style>
 </Styles>
