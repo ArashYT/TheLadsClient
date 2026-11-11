@@ -562,7 +562,7 @@ public final class FriendsScreenLogic {
         int scissorH = viewH;
         this.scissorY = scissorY;
         this.scissorH = scissorH;
-        g.enableScissor(x, scissorY, w, scissorH);
+        g.enableScissor(x, scissorY, x + w, scissorY + scissorH);
 
         int itemY = y + 6 - scrollOffset;
 
