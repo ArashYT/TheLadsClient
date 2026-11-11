@@ -8,28 +8,35 @@ namespace TheLadsLauncher.Tests;
 public class JvmArgumentsTests
 {
     [Fact]
-    public void BuildOptimizedJvmArguments_IncludesStringDeduplicationAndOmitsAlwaysPreTouch()
+    public void BuildOptimizedJvmArguments_Java17Plus_FavoursLoadTime()
     {
-        var flags = LaunchService.BuildOptimizedJvmArguments(21, null, "1.20.1");
-
-        Assert.DoesNotContain("-XX:+AlwaysPreTouch", flags);
-        Assert.Contains("-XX:+UseStringDeduplication", flags);
+        foreach (var flags in new[] { LaunchService.BuildOptimizedJvmArguments(21, null, "1.20.1"), LaunchService.BuildOptimizedJvmArguments(25, null, "26.3") })
+        {
+            Assert.DoesNotContain("-XX:+AlwaysPreTouch", flags);
+            Assert.DoesNotContain("-XX:+UseStringDeduplication", flags);
+            Assert.DoesNotContain("-XX:G1HeapRegionSize=32M", flags);
+            Assert.DoesNotContain("-XX:G1ReservePercent=20", flags);
+            Assert.Contains("-XX:G1NewSizePercent=30", flags);
+            Assert.Contains("-XX:ReservedCodeCacheSize=512m", flags);
+        }
     }
 
     [Fact]
-    public void BuildOptimizedJvmArguments_IncludesDeduplicationAndOmitsPreTouchOnAllJavaVersions()
+    public void BuildOptimizedJvmArguments_Java8_KeepsBenchmarkedSet()
     {
-        var flags17 = LaunchService.BuildOptimizedJvmArguments(17, null, "1.20.1");
-        var flags25 = LaunchService.BuildOptimizedJvmArguments(25, null, "26.3");
         var flags8 = LaunchService.BuildOptimizedJvmArguments(8, null, "1.8.9");
 
-        Assert.DoesNotContain("-XX:+AlwaysPreTouch", flags17);
-        Assert.Contains("-XX:+UseStringDeduplication", flags17);
-        Assert.DoesNotContain("-XX:+AlwaysPreTouch", flags25);
-        Assert.Contains("-XX:+UseStringDeduplication", flags25);
         Assert.DoesNotContain("-XX:+AlwaysPreTouch", flags8);
         Assert.Contains("-XX:+UseStringDeduplication", flags8);
+        Assert.Contains("-XX:MaxGCPauseMillis=35", flags8);
     }
+
+    [Theory]
+    [InlineData(512, 4096, 2048)]
+    [InlineData(3000, 4096, 3000)]
+    [InlineData(512, 1024, 1024)]
+    public void StartupHeapMb_FloorsAtTwoGbNeverAboveMax(int min, int max, int expected) =>
+        Assert.Equal(expected, LaunchService.StartupHeapMb(min, max));
 
     [Fact]
     public void EnsureLoadingScreenColors_AppendsCustomColors()

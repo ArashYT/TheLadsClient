@@ -47,6 +47,8 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
     @Unique private static final int LADS_FIRE_BUTTON_ID = 0x4C414453 + 20;
     @Unique private static final int LADS_PROFILES_BUTTON_ID = LADS_FIRE_BUTTON_ID + 1;
 
+    /** Names of the large packs now in the Selected list that are not loaded yet (null when none); drawn under the title. */
+    @Unique private String ladsLargePackWarning;
     @Unique private GuiTextField ladsSearchField;
     @Unique private String ladsCurrentFolder = "";
     @Unique private final List<ResourcePackListEntry> ladsMasterSelected = new ArrayList<>();
@@ -119,7 +121,21 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
         if (selectedResourcePacks != null && !selectedResourcePacks.equals(ladsLastSelectedSnapshot)) {
             ladsSyncMasterSelected();
             ladsApplyFilter();
+            ladsUpdateLargePackWarning();
         }
+    }
+
+    @Unique
+    private void ladsUpdateLargePackWarning() {
+        ladsLargePackWarning = null;
+        if (mc == null || mc.getResourcePackRepository() == null) return;
+        ResourcePackRepository repo = mc.getResourcePackRepository();
+        List<String> loaded = new ArrayList<>();
+        for (ResourcePackRepository.Entry e : repo.getRepositoryEntries()) loaded.add(e.getResourcePackName());
+        List<String> selected = new ArrayList<>();
+        for (ResourcePackListEntry le : ladsMasterSelected)
+            if (le instanceof ResourcePackListEntryFound) selected.add(((ResourcePackListEntryFound) le).func_148318_i().getResourcePackName());
+        ladsLargePackWarning = com.thelads.core.client.pack.LargePackWarning.forAddedPacks189(loaded, selected, repo.getDirResourcepacks());
     }
 
     @Inject(method = "drawScreen", at = @At("HEAD"))
@@ -143,6 +159,9 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
             if (ladsSearchField.getText().isEmpty() && !ladsSearchField.isFocused()) {
                 drawString(fontRendererObj, "§8Search packs...", width / 2 - 84, 12, 0x888888);
             }
+        }
+        if (ladsLargePackWarning != null) {
+            drawCenteredString(fontRendererObj, "§c" + ladsLargePackWarning, width / 2, height - 60, 0xFFFFFF);
         }
         String folderLabel = "§7Folder: §f/" + ladsCurrentFolder;
         drawString(fontRendererObj, folderLabel, width / 2 - 200, 12, 0xFFFFFF);
@@ -192,6 +211,11 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
                     if (le instanceof ResourcePackListEntryFound) {
                         newIds.add(((ResourcePackListEntryFound) le).func_148318_i().getResourcePackName());
                     }
+                }
+                if (oldIds.equals(newIds)) {
+                    // Moved around and put back: the same packs in the same order, so vanilla's Done must not reload.
+                    this.changed = false;
+                    return;
                 }
                 int diffMask = PackAssetMask.computeDiffMask(oldIds, newIds, id -> {
                     if (rootDir == null || id == null || id.isEmpty()) return PackAssetMask.ALL;

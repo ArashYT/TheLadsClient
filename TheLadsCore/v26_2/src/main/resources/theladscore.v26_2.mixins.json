@@ -86,6 +86,7 @@
     "WorldFoldersMixin",
     "SkinScreenMixin",
     "PackFilterMixin",
+    "PackSelectionModelWarnMixin26",
     "BorderlessWindowMixin",
     "SodiumOptionAccessor",
     "SodiumInactivityMixin",

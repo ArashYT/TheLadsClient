@@ -193,7 +193,7 @@ public class LaunchService : ILaunchService
             Session = session,
             JavaPath = javaPath,
             MaximumRamMb = settings.MaxRamMb > 0 ? settings.MaxRamMb : 4096,
-            MinimumRamMb = settings.MinRamMb > 0 ? settings.MinRamMb : 512,
+            MinimumRamMb = StartupHeapMb(settings.MinRamMb > 0 ? settings.MinRamMb : 512, settings.MaxRamMb > 0 ? settings.MaxRamMb : 4096),
             FullScreen = settings.FullscreenOnLaunch
         };
 
@@ -530,18 +530,35 @@ public class LaunchService : ILaunchService
     /// </summary>
     public static IReadOnlyList<string> BuildOptimizedJvmArguments(int javaMajorVersion, string? gameDirectory = null, string? minecraftVersion = null)
     {
-        var flags = new List<string>
-        {
-            "-XX:+IgnoreUnrecognizedVMOptions",
-            "-XX:+UnlockExperimentalVMOptions",
-            "-XX:+UseG1GC",
-            "-XX:+ParallelRefProcEnabled",
-            "-XX:G1NewSizePercent=20",
-            "-XX:G1ReservePercent=20",
-            "-XX:MaxGCPauseMillis=35",
-            "-XX:G1HeapRegionSize=32M",
-            "-XX:+UseStringDeduplication"
-        };
+        // Java 8 (1.8.9) keeps the pause-tuned set benchmarked for it. Java 17+ (Fabric versions) favours load time: a larger young
+        // generation and a looser pause goal mean fewer collections while a resource reload allocates; no string deduplication
+        // (background CPU, no startup gain), no fixed 32M regions or 20% reserve (they waste heap), and a big code cache so the JIT
+        // is not stalled by flushes with many mods.
+        var flags = javaMajorVersion < 17
+            ? new List<string>
+            {
+                "-XX:+IgnoreUnrecognizedVMOptions",
+                "-XX:+UnlockExperimentalVMOptions",
+                "-XX:+UseG1GC",
+                "-XX:+ParallelRefProcEnabled",
+                "-XX:G1NewSizePercent=20",
+                "-XX:G1ReservePercent=20",
+                "-XX:MaxGCPauseMillis=35",
+                "-XX:G1HeapRegionSize=32M",
+                "-XX:+UseStringDeduplication"
+            }
+            : new List<string>
+            {
+                "-XX:+IgnoreUnrecognizedVMOptions",
+                "-XX:+UnlockExperimentalVMOptions",
+                "-XX:+UseG1GC",
+                "-XX:+ParallelRefProcEnabled",
+                "-XX:G1NewSizePercent=30",
+                "-XX:G1MaxNewSizePercent=40",
+                "-XX:MaxGCPauseMillis=50",
+                "-XX:ReservedCodeCacheSize=512m",
+                "-XX:-UsePerfData"
+            };
 
         bool isForge189 = minecraftVersion != null &&
             (minecraftVersion == GameVersionPolicy.ForgeMinecraftVersion
@@ -573,6 +590,10 @@ public class LaunchService : ILaunchService
 
         return flags;
     }
+
+    /// <summary>The initial heap (-Xms): at least 2 GB (never above the maximum), so the heap does not grow in many steps while the
+    /// game loads. The old 512 MB default is treated as unset.</summary>
+    public static int StartupHeapMb(int minMb, int maxMb) => Math.Min(maxMb, Math.Max(minMb, 2048));
 
     /// <summary>
     /// Checks JVM arguments for unexpected agent options (-javaagent, -agentpath, -agentlib).

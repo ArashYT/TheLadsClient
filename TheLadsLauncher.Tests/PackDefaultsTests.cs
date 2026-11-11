@@ -103,6 +103,13 @@ public class PackDefaultsTests
     }
 
     [Fact]
+    public void MergeModernFixAddsMissingOptionsAndKeepsPlayerChoices()
+    {
+        var merged = PackDefaults.MergeModernFix("a=true\nb=true\n", "# mine\na=false");
+        Assert.Equal("# mine\na=false\nb=true\n", merged);
+    }
+
+    [Fact]
     public void PackDefaultsSkipsLadsStateFiles()
     {
         using var dir = new TestDirectory();

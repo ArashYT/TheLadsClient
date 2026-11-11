@@ -54,6 +54,8 @@ public abstract class PackSelectionModelMixin1201 {
             }
         }
         PackAssetMask.beginPackSwitchReload(diffMask, newSelectedMask);
+        String large = com.thelads.core.client.pack.LargePackWarning.forAddedPacks(oldIds, newIds, packDir);
+        if (large != null) com.thelads.core.client.bridge.LadsGameBridge.get().showToast("Large resource pack", large);
     }
 
     @Inject(method = "commit", at = @At("RETURN"))

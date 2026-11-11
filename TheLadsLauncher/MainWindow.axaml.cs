@@ -5301,7 +5301,7 @@ public partial class MainWindow : Window
             var launchOpt = new MLaunchOption
             {
                 MaximumRamMb = Math.Max(1024, settings.MaxRamMb),
-                MinimumRamMb = Math.Clamp(settings.MinRamMb, 256, Math.Max(1024, settings.MaxRamMb)),
+                MinimumRamMb = LaunchService.StartupHeapMb(Math.Clamp(settings.MinRamMb, 256, Math.Max(1024, settings.MaxRamMb)), Math.Max(1024, settings.MaxRamMb)),
                 FullScreen = settings.FullscreenOnLaunch,
                 Session = session,
                 JavaPath = settings.JavaPath

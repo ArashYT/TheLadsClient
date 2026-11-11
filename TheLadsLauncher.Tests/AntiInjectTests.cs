@@ -126,8 +126,8 @@ public class AntiInjectTests
 
     [Theory]
     [InlineData(25, "-XX:+UseG1GC", "-XX:+UseCompactObjectHeaders")]
-    [InlineData(21, "-XX:+UseG1GC", "-XX:MaxGCPauseMillis=35")]
-    [InlineData(17, "-XX:+UseG1GC", "-XX:MaxGCPauseMillis=35")]
+    [InlineData(21, "-XX:+UseG1GC", "-XX:MaxGCPauseMillis=50")]
+    [InlineData(17, "-XX:+UseG1GC", "-XX:MaxGCPauseMillis=50")]
     public void EnsureSecurityJvmArguments_AddsVersionAwareGcAndRespectsMinRam(int javaMajor, string expectedGc, string expectedExtra)
     {
         using var dir = new TestDirectory();
@@ -145,7 +145,8 @@ public class AntiInjectTests
         Assert.Contains("-XX:+IgnoreUnrecognizedVMOptions", values);
         Assert.Contains(expectedGc, values);
         Assert.Contains(expectedExtra, values);
-        Assert.Contains("-XX:MaxGCPauseMillis=35", values);
+        Assert.Contains("-XX:MaxGCPauseMillis=50", values);
+        Assert.DoesNotContain("-XX:+UseStringDeduplication", values);
         Assert.DoesNotContain("-XX:+UseZGC", values);
         Assert.DoesNotContain("-XX:+AutoCreateSharedArchive", values);
         Assert.DoesNotContain("-XX:+AlwaysPreTouch", values);
