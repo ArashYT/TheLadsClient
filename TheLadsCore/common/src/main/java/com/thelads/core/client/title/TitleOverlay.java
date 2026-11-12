@@ -50,6 +50,13 @@ public final class TitleOverlay {
         if (sidebar != null) sidebar.close();
     }
 
+    /** QA scripts: the chat sidebar out on its Messages or Friends tab, as the title's chat button would. */
+    public static void qaSidebar(boolean friends) {
+        ChatSidebar s = sidebar();
+        s.open();
+        s.setTab(friends ? ChatSidebar.Tab.FRIENDS : ChatSidebar.Tab.MESSAGES);
+    }
+
     /** The Panorama button was pressed: toggles the list under it (a note instead while the release list is still loading). */
     public static void openPanorama(int x, int y, int width, int height) {
         if (PANORAMA.isOpen()) PANORAMA.close();

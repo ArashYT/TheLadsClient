@@ -18,6 +18,8 @@ public enum DeepLinkActionType
     JoinServer,
     LaunchProfile,
     InstallPack,
+    /// <summary>The launcher was opened again while it runs (hidden to the tray): the running one comes to the front instead.</summary>
+    Show,
     Unknown
 }
 
@@ -112,6 +114,7 @@ public static class DeepLinkService
                 ? new DeepLinkAction(DeepLinkActionType.LaunchProfile, payload)
                 : new DeepLinkAction(DeepLinkActionType.None, null, Extra: "Invalid profile name"),
             "install" or "modpack" => new DeepLinkAction(DeepLinkActionType.InstallPack, payload),
+            "show" => new DeepLinkAction(DeepLinkActionType.Show, null),
             _ => new DeepLinkAction(DeepLinkActionType.Unknown, action, Extra: uriString)
         };
     }

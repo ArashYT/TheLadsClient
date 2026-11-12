@@ -1130,7 +1130,12 @@ public class SocialState {
         for (PartyMember m : members) partyInvites.remove(m.id());
         PartyWarp w = pendingWarp;
         if (w != null && !w.from().equals(leader)) pendingWarp = null;
-        if (joined) bridge().toast("Party", "You joined the party", null, null);
+        if (joined) { // the leader made the party by inviting: someone joined theirs; a member joined the leader's
+            boolean lead = leader.equals(selfId());
+            String others = members.stream().filter(m -> !m.id().equals(selfId())).map(PartyMember::name).collect(java.util.stream.Collectors.joining(", "));
+            String leaderName = members.stream().filter(m -> m.id().equals(leader)).map(PartyMember::name).findFirst().orElse(null);
+            bridge().toast("Party", lead ? others + " joined your party" : leaderName == null ? "You joined a party" : "You joined " + leaderName + "'s party", null, null);
+        }
         notifyListeners();
     }
 

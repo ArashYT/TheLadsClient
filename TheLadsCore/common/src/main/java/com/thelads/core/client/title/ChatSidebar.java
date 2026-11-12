@@ -190,7 +190,7 @@ final class ChatSidebar {
 
     void close() { open = false; }
 
-    private void setTab(Tab next) {
+    void setTab(Tab next) {
         if (tab == next) return;
         tab = next;
         query = "";

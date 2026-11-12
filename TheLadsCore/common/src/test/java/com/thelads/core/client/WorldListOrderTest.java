@@ -127,8 +127,9 @@ class WorldListOrderTest {
     }
 
     @Test
-    void pinHitIsTheTopRightCorner() {
-        assertTrue(WorldListOrder.pinHit(0, 0, 200, 190, 6));
-        assertFalse(WorldListOrder.pinHit(0, 0, 200, 10, 6));
+    void pinHitIsTheBottomRightCorner() {
+        assertTrue(WorldListOrder.pinHit(0, 0, 200, 190, 26));
+        assertFalse(WorldListOrder.pinHit(0, 0, 200, 190, 6));
+        assertFalse(WorldListOrder.pinHit(0, 0, 200, 10, 26));
     }
 }

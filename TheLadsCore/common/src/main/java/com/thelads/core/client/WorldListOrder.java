@@ -265,8 +265,11 @@ public final class WorldListOrder {
         f.fill(x + 5, y + 7, x + 7, y + 11, c);  // needle
     }
 
+    /** Down from the row's top: the bottom-right corner, under the play time and size the top two lines show on the right. */
+    private static final int PIN_TOP = 21;
+
     public static boolean pinHit(int rowX, int rowY, int rowW, double mx, double my) {
-        int x = rowX + rowW - PIN_SIZE - 3, y = rowY + 3;
+        int x = rowX + rowW - PIN_SIZE - 3, y = rowY + PIN_TOP;
         return mx >= x && mx < x + PIN_SIZE && my >= y && my < y + PIN_SIZE;
     }
 
@@ -274,6 +277,6 @@ public final class WorldListOrder {
     public static void drawPinFor(Fill f, int rowX, int rowY, int rowW, String worldId, boolean rowHover, double mx, double my) {
         boolean pinned = isPinned(worldId);
         if (!pinned && !rowHover) return;
-        drawPin(f, rowX + rowW - PIN_SIZE - 3, rowY + 3, pinned, pinHit(rowX, rowY, rowW, mx, my));
+        drawPin(f, rowX + rowW - PIN_SIZE - 3, rowY + PIN_TOP, pinned, pinHit(rowX, rowY, rowW, mx, my));
     }
 }

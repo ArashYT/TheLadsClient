@@ -1022,7 +1022,7 @@ public final class FriendsScreenLogic {
             partyButton(g, "warphere", "This Server", partyInputBox.x + partyInputBox.w + 92, itemY + 1, 90, mx, my, false);
             if (!partyNotice.isEmpty()) g.drawText(MenuGraphics.fit(g, partyNotice, w - 24), x + 10, itemY + 26, LadsPalette.CARD_ON_GLOW, false);
         } else {
-            g.drawText(MenuGraphics.fit(g, "Only the leader can take the party to a server. You will be asked before you follow.", w - 24), x + 10, itemY, LadsPalette.MUTED, false);
+            g.drawText(MenuGraphics.fit(g, "Only the leader can move the party. You choose whether to follow.", w - 24), x + 10, itemY, LadsPalette.MUTED, false);
         }
         g.disableScissor();
     }

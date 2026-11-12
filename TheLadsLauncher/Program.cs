@@ -93,6 +93,16 @@ class Program
             }
         }
 
+        // Opened again (shortcut, Start menu) while it already runs, often hidden in the tray during a game: bring that one back.
+        // A second launcher would start the same profile or modpack a second time in the same folder. Starts with arguments
+        // (QA, previews, --play-profile) are left alone.
+        if (args.Length == 0 && TheLadsLauncher.Services.DeepLinkService.TryForwardToRunningInstanceAsync(
+                TheLadsLauncher.Services.DeepLinkService.ProtocolScheme + "://show").GetAwaiter().GetResult())
+        {
+            Environment.Exit(0);
+            return;
+        }
+
         if (OperatingSystem.IsWindows() && TheLadsLauncher.Services.DeepLinkService.InstalledStub(Environment.ProcessPath) is { } stub
             && TheLadsLauncher.Services.DeepLinkService.NeedsRegistration(TheLadsLauncher.Services.DeepLinkService.RegisteredCommand(), stub))
         {
