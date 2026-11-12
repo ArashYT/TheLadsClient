@@ -72,6 +72,10 @@ public final class WorldListOrder {
     }
 
     public static String serializeOrder(List<String> worldIds) {
+        return serializeOrder(worldIds, Collections.<String>emptyList());
+    }
+
+    public static String serializeOrder(List<String> worldIds, List<String> pinned) {
         JsonArray arr = new JsonArray();
         if (worldIds != null) {
             Set<String> seen = new LinkedHashSet<String>();
@@ -83,7 +87,66 @@ public final class WorldListOrder {
         }
         JsonObject obj = new JsonObject();
         obj.add("worlds", arr);
+        if (pinned != null && !pinned.isEmpty()) {
+            JsonArray pins = new JsonArray();
+            for (String id : new LinkedHashSet<String>(pinned)) {
+                if (id != null && !id.trim().isEmpty()) pins.add(id);
+            }
+            obj.add("pinned", pins);
+        }
         return new GsonBuilder().setPrettyPrinting().create().toJson(obj);
+    }
+
+    /** World ids pinned to the top of the list ("pinned" next to "worlds" in the same file). */
+    @SuppressWarnings("deprecation")
+    public static List<String> parsePinned(String json) {
+        if (json == null || json.trim().isEmpty()) return Collections.emptyList();
+        try {
+            JsonElement root = new JsonParser().parse(json);
+            if (root == null || !root.isJsonObject() || !root.getAsJsonObject().has("pinned")
+                    || !root.getAsJsonObject().get("pinned").isJsonArray()) {
+                return Collections.emptyList();
+            }
+            Set<String> seen = new LinkedHashSet<String>();
+            for (JsonElement el : root.getAsJsonObject().getAsJsonArray("pinned")) {
+                if (el != null && el.isJsonPrimitive() && !el.getAsString().trim().isEmpty()) seen.add(el.getAsString());
+            }
+            return new ArrayList<String>(seen);
+        } catch (RuntimeException ignored) {
+            return Collections.emptyList();
+        }
+    }
+
+    public static List<String> loadPinned() {
+        File file = ClientPaths.getWorldOrderFile();
+        if (file == null || !file.isFile()) return Collections.emptyList();
+        try {
+            return parsePinned(new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
+        } catch (IOException ignored) {
+            return Collections.emptyList();
+        }
+    }
+
+    public static boolean isPinned(String worldId) {
+        return worldId != null && loadPinned().contains(worldId);
+    }
+
+    /** Pins the world (or unpins it when it is pinned); returns whether it is pinned now. */
+    public static boolean togglePin(String worldId) {
+        List<String> pins = new ArrayList<String>(loadPinned());
+        boolean now = !pins.remove(worldId);
+        if (now) pins.add(worldId);
+        save(loadOrder(), pins);
+        return now;
+    }
+
+    /** Pinned worlds first (in their current order), then the rest. */
+    public static <T> List<T> pinnedFirst(List<T> worlds, List<String> pinned, Function<T, String> idExtractor) {
+        if (pinned == null || pinned.isEmpty()) return worlds;
+        List<T> top = new ArrayList<T>(), rest = new ArrayList<T>();
+        for (T w : worlds) (pinned.contains(idExtractor.apply(w)) ? top : rest).add(w);
+        top.addAll(rest);
+        return top;
     }
 
     public static List<String> loadOrder() {
@@ -100,7 +163,11 @@ public final class WorldListOrder {
     }
 
     public static void saveOrder(List<String> worldIds) {
-        byte[] payload = serializeOrder(worldIds).getBytes(StandardCharsets.UTF_8);
+        save(worldIds, loadPinned());
+    }
+
+    private static void save(List<String> worldIds, List<String> pinned) {
+        byte[] payload = serializeOrder(worldIds, pinned).getBytes(StandardCharsets.UTF_8);
         Set<Path> written = new LinkedHashSet<Path>();
         File primary = ClientPaths.getWorldOrderFile();
         if (primary != null) {
@@ -182,6 +249,31 @@ public final class WorldListOrder {
             List<T> worlds,
             Function<T, String> idExtractor,
             ToLongFunction<T> lastPlayedExtractor) {
-        return sort(worlds, loadOrder(), idExtractor, lastPlayedExtractor);
+        return pinnedFirst(sort(worlds, loadOrder(), idExtractor, lastPlayedExtractor), loadPinned(), idExtractor);
+    }
+
+    /** Draws with the caller's fill, so every version's mixin shares the pin glyph. */
+    public interface Fill { void fill(int x1, int y1, int x2, int y2, int argb); }
+
+    public static final int PIN_SIZE = 12;
+
+    public static void drawPin(Fill f, int x, int y, boolean pinned, boolean hover) {
+        int c = pinned ? 0xFFFFC83D : hover ? 0xFFE0E0E0 : 0x88B0B0B0;
+        f.fill(x + 3, y + 1, x + 9, y + 2, c);   // head
+        f.fill(x + 4, y + 2, x + 8, y + 6, c);   // body
+        f.fill(x + 2, y + 6, x + 10, y + 7, c);  // brim
+        f.fill(x + 5, y + 7, x + 7, y + 11, c);  // needle
+    }
+
+    public static boolean pinHit(int rowX, int rowY, int rowW, double mx, double my) {
+        int x = rowX + rowW - PIN_SIZE - 3, y = rowY + 3;
+        return mx >= x && mx < x + PIN_SIZE && my >= y && my < y + PIN_SIZE;
+    }
+
+    /** A pin on a world row: always for a pinned world, on hover for the rest. */
+    public static void drawPinFor(Fill f, int rowX, int rowY, int rowW, String worldId, boolean rowHover, double mx, double my) {
+        boolean pinned = isPinned(worldId);
+        if (!pinned && !rowHover) return;
+        drawPin(f, rowX + rowW - PIN_SIZE - 3, rowY + 3, pinned, pinHit(rowX, rowY, rowW, mx, my));
     }
 }

@@ -154,6 +154,18 @@ public abstract class WorldListMenuMixin189 extends GuiScreen {
                 return;
             }
         }
+        if (button == 0 && list.isMouseYWithinSlotBounds(y)) {
+            int pinSlot = list.getSlotIndexFromScreenCoords(x, y);
+            ServerListColumns.Rows pinRows = (ServerListColumns.Rows) list;
+            if (pinSlot >= 0 && field_146639_s != null && pinSlot < field_146639_s.size()
+                && WorldListOrder.pinHit(pinRows.lads$rowLeft(pinSlot) - 2, pinRows.lads$rowTop(pinSlot) - 2, list.getListWidth(), x, y)) {
+                WorldListOrder.togglePin(field_146639_s.get(pinSlot).getFileName());
+                field_146639_s = new ArrayList<SaveFormatComparator>(
+                    WorldListOrder.sortedCopy(field_146639_s, SaveFormatComparator::getFileName, SaveFormatComparator::getLastTimePlayed));
+                lads$selectWorld(-1);
+                return;
+            }
+        }
         super.mouseClicked(x, y, button);
         if (button == 0 && list.isMouseYWithinSlotBounds(y)) {
             int slot = list.getSlotIndexFromScreenCoords(x, y);
@@ -269,6 +281,21 @@ public abstract class WorldListMenuMixin189 extends GuiScreen {
         GuiLadsAdapter adapter = new GuiLadsAdapter(fontRendererObj, width, height);
         if (ladsColumnsButton != null && ladsColumnsButton.visible) {
             TitleScreenTheme.icon(adapter, "columns", ladsColumnsButton.xPosition + 6, ladsColumnsButton.yPosition + 5, 10, 0xFFFFFFFF);
+        }
+        if (field_146639_s != null && lads$from < 0) {
+            GuiSlot pinList = lads$list();
+            ServerListColumns.Rows pinRows = (ServerListColumns.Rows) pinList;
+            for (int i = 0; i < field_146639_s.size(); i++) {
+                int left = pinRows.lads$rowLeft(i) - 2, top = pinRows.lads$rowTop(i) - 2;
+                if (top + pinList.slotHeight < pinList.top || top > pinList.bottom) continue;
+                int w = pinList.getListWidth();
+                boolean hover = mouseX >= left && mouseX < left + w && mouseY >= top && mouseY < top + pinList.slotHeight - 4;
+                GlStateManager.disableAlpha();
+                WorldListOrder.drawPinFor((x1, y1, x2, y2, c) -> {
+                    if (y2 > pinList.top && y1 < pinList.bottom) Gui.drawRect(x1, y1, x2, y2, c);
+                }, left, top, w, field_146639_s.get(i).getFileName(), hover, mouseX, mouseY);
+                GlStateManager.enableAlpha();
+            }
         }
         if (lads$pressed) {
             if (!ServerListDrag.heldForQa && !Mouse.isButtonDown(0)) {

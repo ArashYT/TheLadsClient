@@ -22,7 +22,12 @@ public sealed record ContentFile(string ProjectId, string FileId, string Version
 {
     /// <summary>The Minecraft versions the release supports, as the source lists them.</summary>
     public IReadOnlyList<string> GameVersions { get; init; } = Array.Empty<string>();
+    /// <summary>The projects this release lists as required (Modrinth "required", CurseForge relation 3).</summary>
+    public IReadOnlyList<ContentDependency> Dependencies { get; init; } = Array.Empty<ContentDependency>();
 }
+
+/// <summary>A required project of a release: <see cref="Provider"/> is "Modrinth" or "CurseForge"; <see cref="VersionId"/> is the pinned release, if the source names one.</summary>
+public sealed record ContentDependency(string Provider, string ProjectId, string? VersionId);
 
 /// <summary>Detailed release version of a project for the version picker.</summary>
 public sealed record ProjectVersionItem(
@@ -229,6 +234,10 @@ public sealed class ContentCatalog
             root => root.GetArrayLength() > 0 ? ModrinthFile(root[0]) : null, cancellationToken);
     }
 
+    /// <summary>One Modrinth release by id (a dependency that pins a version), or null when it has no file.</summary>
+    public async Task<ContentFile?> ModrinthVersionAsync(string versionId, CancellationToken cancellationToken = default) =>
+        await SendAsync("Modrinth", new HttpRequestMessage(HttpMethod.Get, $"{_modrinth}/version/{Uri.EscapeDataString(versionId)}"), ModrinthFile, cancellationToken);
+
     /// <summary>Modrinth's newest version, per installed file SHA-1, for the game version and loader. Files Modrinth does not
     /// know, or that have no release for the version, are missing from the result.</summary>
     public async Task<Dictionary<string, ContentFile>> ModrinthUpdatesAsync(IReadOnlyCollection<string> sha1s, string minecraftVersion, string loader,
@@ -417,7 +426,7 @@ public sealed class ContentCatalog
         return new ContentFile(Text(version, "project_id"), Text(version, "id"), Text(version, "version_number"), Text(file, "filename"), Text(file, "url"),
             sha1,
             file.TryGetProperty("size", out var size) && size.ValueKind == JsonValueKind.Number ? size.GetInt64() : 0,
-            sha512) { GameVersions = Strings(version, "game_versions") };
+            sha512) { GameVersions = Strings(version, "game_versions"), Dependencies = ModrinthDependencies(version) };
     }
 
     // A null downloadUrl means the author does not allow downloads outside CurseForge's own app; that is respected.
@@ -428,8 +437,18 @@ public sealed class ContentCatalog
                 .Select(h => Text(h, "value")).FirstOrDefault() ?? "" : "";
         return new ContentFile(Number(file, "modId"), Number(file, "id"), Text(file, "displayName"), Text(file, "fileName"), Text(file, "downloadUrl"),
             sha1.Length > 0 ? sha1 : null, file.TryGetProperty("fileLength", out var length) && length.ValueKind == JsonValueKind.Number ? length.GetInt64() : 0)
-        { GameVersions = Strings(file, "gameVersions") };
+        { GameVersions = Strings(file, "gameVersions"), Dependencies = CurseForgeDependencies(file) };
     }
+
+    private static List<ContentDependency> ModrinthDependencies(JsonElement version) =>
+        !version.TryGetProperty("dependencies", out var list) || list.ValueKind != JsonValueKind.Array ? new()
+            : list.EnumerateArray().Where(d => Text(d, "dependency_type") == "required" && (Text(d, "project_id").Length > 0 || Text(d, "version_id").Length > 0))
+                .Select(d => new ContentDependency("Modrinth", Text(d, "project_id"), Text(d, "version_id") is { Length: > 0 } v ? v : null)).ToList();
+
+    private static List<ContentDependency> CurseForgeDependencies(JsonElement file) =>
+        !file.TryGetProperty("dependencies", out var list) || list.ValueKind != JsonValueKind.Array ? new()
+            : list.EnumerateArray().Where(d => d.TryGetProperty("relationType", out var r) && r.ValueKind == JsonValueKind.Number && r.GetInt32() == 3 && Number(d, "modId").Length > 0)
+                .Select(d => new ContentDependency("CurseForge", Number(d, "modId"), null)).ToList();
 
     /// <summary>
     /// Downloads <paramref name="file"/> into a staging folder inside <paramref name="directory"/>, checks its SHA-512/SHA-1, then moves it

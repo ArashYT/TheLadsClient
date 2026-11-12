@@ -131,6 +131,53 @@ public sealed class ModSyncServiceTests : IDisposable
         Assert.Equal(new[] { "host.jar" }, Modpacks.Mods(again).Select(m => m.FileName));
     }
 
+    private ModSyncService.Relaunch HostFolder(string world, string owner, params (string Name, byte[] Bytes)[] jars)
+    {
+        if (Directory.Exists(Synced)) Directory.Delete(Synced, true);
+        Directory.CreateDirectory(Synced);
+        foreach (var (name, bytes) in jars) File.WriteAllBytes(Path.Combine(Synced, name), bytes);
+        return new ModSyncService.Relaunch(Host, Synced, world, owner);
+    }
+
+    [Fact] public void SameWorldReusesTheModpackAndUpdatesItsModsInPlace()
+    {
+        string data = Path.Combine(game, "data");
+        File.WriteAllBytes(Path.Combine(Mods, "mine.jar"), new byte[] { 9 });
+        var first = ModSyncService.BuildInstance(data, HostFolder("Survival", "Alice", ("a.jar", new byte[] { 1 }), ("b.jar", new byte[] { 2 }), ("c.jar", new byte[] { 3 })),
+            game, "26.3", "0.19.5", log.Add);
+        string packMods = Path.Combine(first.GameDirectory, "mods");
+        File.WriteAllBytes(Path.Combine(packMods, "added-by-player.jar"), new byte[] { 42 });       // the player's own addition to the pack
+        File.Move(Path.Combine(packMods, "b.jar"), Path.Combine(packMods, "b.jar.disabled"));      // switched off by the player
+        File.WriteAllText(Path.Combine(first.GameDirectory, "options.txt"), "mine");
+        var stamp = File.GetLastWriteTimeUtc(Path.Combine(packMods, "a.jar"));
+
+        // The host dropped c, changed b, added d, and the owner renamed (same host, same world).
+        var again = ModSyncService.BuildInstance(data, HostFolder("Survival", "Alice2", ("a.jar", new byte[] { 1 }), ("b.jar", new byte[] { 22, 22 }), ("d.jar", new byte[] { 4 })),
+            game, "26.3", "0.19.5", log.Add);
+
+        Assert.Equal(first.Id, again.Id);
+        Assert.Single(Modpacks.List(data));
+        Assert.Equal(new[] { "a.jar", "added-by-player.jar", "b.jar", "d.jar", "mine.jar" }, Modpacks.Mods(again).Select(m => m.FileName));
+        Assert.False(File.Exists(Path.Combine(packMods, "c.jar")));
+        Assert.True(File.Exists(Path.Combine(packMods, "b.jar.disabled")));            // still off, with the host's new build
+        Assert.False(File.Exists(Path.Combine(packMods, "b.jar")));
+        Assert.Equal(new byte[] { 22, 22 }, File.ReadAllBytes(Path.Combine(packMods, "b.jar.disabled")));
+        Assert.Equal(stamp, File.GetLastWriteTimeUtc(Path.Combine(packMods, "a.jar")));  // unchanged files are not rewritten
+        Assert.Equal("mine", File.ReadAllText(Path.Combine(again.GameDirectory, "options.txt")));
+        Assert.Contains(log, l => l.Contains("updated in place: 1 added, 1 updated, 1 removed"));
+    }
+
+    [Fact] public void ADifferentWorldOfTheSameHostMakesANewModpack()
+    {
+        string data = Path.Combine(game, "data");
+        var one = ModSyncService.BuildInstance(data, HostFolder("Survival", "Alice", ("a.jar", new byte[] { 1 })), game, "26.3", "0.19.5", log.Add);
+        var two = ModSyncService.BuildInstance(data, HostFolder("Creative", "Alice", ("a.jar", new byte[] { 1 })), game, "26.3", "0.19.5", log.Add);
+        var oneAgain = ModSyncService.BuildInstance(data, HostFolder("survival", "Alice", ("a.jar", new byte[] { 1 })), game, "26.3", "0.19.5", log.Add);
+        Assert.NotEqual(one.Id, two.Id);
+        Assert.Equal(one.Id, oneAgain.Id);
+        Assert.Equal(2, Modpacks.List(data).Count);
+    }
+
     [Fact] public void RelaunchIsRefusedForAnythingUnchecked()
     {
         byte[] good = { 1, 2, 3 };

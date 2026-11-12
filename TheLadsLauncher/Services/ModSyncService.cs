@@ -192,29 +192,43 @@ public static class ModSyncService
     }
 
     /// <summary>"&lt;world&gt; - &lt;owner&gt;": control characters dropped, each part capped, a placeholder for a missing one.</summary>
-    public static string PackName(Relaunch relaunch)
+    public static string PackName(Relaunch relaunch) => WorldPart(relaunch) + " - " + Clean(relaunch.Owner, 32, "Host");
+
+    /// <summary>The world part of <see cref="PackName"/>: what tells one world of a host from another.</summary>
+    public static string WorldPart(Relaunch relaunch) => Clean(relaunch.World, 48, "Friend's world");
+
+    private static string Clean(string? text, int max, string fallback)
     {
-        static string Clean(string? text, int max, string fallback)
-        {
-            var clean = new string((text ?? "").Where(c => !char.IsControl(c)).ToArray()).Trim();
-            if (clean.Length > max) clean = clean[..max].Trim();
-            return clean.Length == 0 ? fallback : clean;
-        }
-        return Clean(relaunch.World, 48, "Friend's world") + " - " + Clean(relaunch.Owner, 32, "Host");
+        var clean = new string((text ?? "").Where(c => !char.IsControl(c)).ToArray()).Trim();
+        if (clean.Length > max) clean = clean[..max].Trim();
+        return clean.Length == 0 ? fallback : clean;
     }
 
-    /// <summary>The modpack a ModSync restart starts: the one made for this host and name before, else a new one with the player's
-    /// settings (<see cref="SettingsFiles"/> and config/) copied from <paramref name="game"/>. Its mods are made again every time:
-    /// the profile's enabled jars, then the host's checked jars (a jar of the same name is the host's). The Lads Core stays on.</summary>
+    /// <summary>In the instance folder: the jar names ModSync put in the modpack's mods folder, so the next sync knows which ones are its own.</summary>
+    public const string ManagedFile = ".lads-modsync-managed.json";
+
+    /// <summary>The modpack made for this host and world before (an owner who renamed does not make a new one), if any.</summary>
+    public static ModpackInstance? FindInstance(string dataDirectory, Relaunch relaunch)
+    {
+        string name = PackName(relaunch), world = WorldPart(relaunch);
+        return Modpacks.List(dataDirectory).FirstOrDefault(i => !i.IsExternal && i.ModSyncHost == relaunch.Host
+            && (i.ModSyncWorld != null ? string.Equals(i.ModSyncWorld, world, StringComparison.OrdinalIgnoreCase) : i.Name == name));
+    }
+
+    /// <summary>The modpack a ModSync restart starts: the one made for this host and world before, else a new one with the player's
+    /// settings (<see cref="SettingsFiles"/> and config/) copied from <paramref name="game"/>. An existing one keeps its settings and
+    /// its own files and is updated in place: the profile's enabled jars and the host's checked jars (a jar of the same name is the
+    /// host's) are added, replaced when they changed, and the ones ModSync put there earlier that are no longer wanted are removed.
+    /// The Lads Core stays on.</summary>
     public static ModpackInstance BuildInstance(string dataDirectory, Relaunch relaunch, string game, string mcVersion, string loaderVersion, Action<string> log)
     {
         string name = PackName(relaunch);
-        var instance = Modpacks.List(dataDirectory).FirstOrDefault(i => !i.IsExternal && i.ModSyncHost == relaunch.Host && i.Name == name);
+        var instance = FindInstance(dataDirectory, relaunch);
+        bool made = instance == null;
         if (instance == null)
         {
             instance = Modpacks.NewInstance(dataDirectory, name);
             instance.Author = string.IsNullOrWhiteSpace(relaunch.Owner) ? null : relaunch.Owner;
-            instance.ModSyncHost = relaunch.Host;
             foreach (var file in SettingsFiles)
             {
                 string from = Path.Combine(game, file);
@@ -223,30 +237,52 @@ public static class ModSyncService
             CopyFolder(Path.Combine(game, "config"), Path.Combine(instance.GameDirectory, "config"));
             log($"ModSync: made the modpack '{name}' with your settings.");
         }
+        instance.ModSyncHost = relaunch.Host;
+        instance.ModSyncWorld = WorldPart(relaunch);
         instance.McVersion = mcVersion;
         instance.Loader = "fabric";
         instance.LoaderVersion = loaderVersion;
         instance.LadsCore = true;
         string mods = Path.Combine(instance.GameDirectory, "mods");
         Directory.CreateDirectory(mods);
-        foreach (var old in Directory.EnumerateFiles(mods).Where(IsJar).ToList()) File.Delete(old);
-        int own = 0, host = 0;
+
+        // What the pack should hold: the profile's enabled jars, then the host's (same name: the host's).
+        var wanted = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         string profileMods = Path.Combine(game, "mods");
         if (Directory.Exists(profileMods))
-            foreach (var jar in Directory.EnumerateFiles(profileMods, "*.jar").Where(f => !SafeFileOps.IsLink(f)))
-            {
-                File.Copy(jar, Path.Combine(mods, Path.GetFileName(jar)), overwrite: true);
-                own++;
-            }
-        foreach (var jar in Directory.EnumerateFiles(relaunch.Folder, "*.jar"))
+            foreach (var jar in Directory.EnumerateFiles(profileMods, "*.jar").Where(f => !SafeFileOps.IsLink(f) && !IsCore(f)))
+                wanted[Path.GetFileName(jar)] = jar;
+        var hostJars = Directory.EnumerateFiles(relaunch.Folder, "*.jar").Where(f => !IsCore(f)).ToList();
+        foreach (var jar in hostJars) wanted[Path.GetFileName(jar)] = jar;
+        int host = hostJars.Count, own = wanted.Count - host;
+
+        // Ours from before: the recorded names; a modpack made before the record existed counts all its jars as ours.
+        string record = Path.Combine(instance.Directory, ManagedFile);
+        var managed = Read<List<string>>(record) ?? Directory.EnumerateFiles(mods).Where(IsJar).Select(f => Path.GetFileName(f).Replace(".jar.disabled", ".jar", StringComparison.OrdinalIgnoreCase)).ToList();
+        int added = 0, updated = 0, removed = 0;
+        foreach (var (file, source) in wanted)
         {
-            File.Copy(jar, Path.Combine(mods, Path.GetFileName(jar)), overwrite: true);
-            host++;
+            string target = Path.Combine(mods, file), off = target + ".disabled"; // a jar the player switched off stays off
+            string dest = !File.Exists(target) && File.Exists(off) ? off : target;
+            if (!File.Exists(dest)) added++;
+            else if (SameFile(source, dest)) continue;
+            else updated++;
+            File.Copy(source, dest, overwrite: true);
         }
+        foreach (var gone in managed.Where(m => !wanted.ContainsKey(m) && SafeFileOps.IsPlainFileName(m) && !IsCore(m)))
+            foreach (var path in new[] { Path.Combine(mods, gone), Path.Combine(mods, gone) + ".disabled" })
+                if (File.Exists(path)) { File.Delete(path); removed++; }
+        File.WriteAllText(record, JsonSerializer.Serialize(wanted.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase)));
         Modpacks.Save(instance);
-        log($"ModSync: '{name}' has your {own} mod(s) and {host} from the host.");
+        log(made ? $"ModSync: '{name}' has your {own} mod(s) and {host} from the host."
+            : $"ModSync: '{name}' updated in place: {added} added, {updated} updated, {removed} removed ({own} of yours, {host} from the host).");
         return instance;
     }
+
+    private static bool IsCore(string file) => Path.GetFileName(file).Equals("theladscore.jar", StringComparison.OrdinalIgnoreCase);
+
+    private static bool SameFile(string a, string b) =>
+        new FileInfo(a).Length == new FileInfo(b).Length && Sha512(a).Equals(Sha512(b), StringComparison.OrdinalIgnoreCase);
 
     private static bool IsJar(string file) => file.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase);
 

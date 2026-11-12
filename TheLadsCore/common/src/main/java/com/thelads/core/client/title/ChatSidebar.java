@@ -2,6 +2,7 @@ package com.thelads.core.client.title;
 
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.gui.MenuGraphics;
+import com.thelads.core.client.social.BestFriends;
 import com.thelads.core.client.social.FriendEntry;
 import com.thelads.core.client.social.Presence;
 import com.thelads.core.client.social.SocialState;
@@ -69,13 +70,17 @@ final class ChatSidebar {
 
     /** Friends: an Online section then an Offline one (empty sections left out), each person with what they are doing. */
     static List<Row> friends(List<FriendEntry> friends, String query) {
-        List<Row> online = new ArrayList<>(), offline = new ArrayList<>();
+        List<Row> best = new ArrayList<>(), online = new ArrayList<>(), offline = new ArrayList<>();
         for (FriendEntry f : friends) {
             if (!matches(query, f, "")) continue;
             boolean on = f.presence() != null && f.presence().online();
-            (on ? online : offline).add(person(f, status(f.presence()), "", false));
+            (BestFriends.is(f.id()) ? best : on ? online : offline).add(person(f, status(f.presence()), "", false));
         }
         List<Row> rows = new ArrayList<>();
+        if (!best.isEmpty()) {
+            rows.add(section("BEST FRIENDS - " + best.size()));
+            rows.addAll(best);
+        }
         if (!online.isEmpty()) {
             rows.add(section("ONLINE - " + online.size()));
             rows.addAll(online);
@@ -211,7 +216,7 @@ final class ChatSidebar {
 
     void render(LadsGraphics g, int sw, int sh, int mx, int my, float dt, boolean reducedMotion) {
         float goal = open ? 1f : 0f;
-        progress = reducedMotion ? goal : progress + (goal - progress) * (float) (1 - Math.exp(-Math.min(0.1f, dt) * 14));
+        progress = reducedMotion ? goal : progress + (goal - progress) * (float) (1 - Math.exp(-Math.min(0.1f, dt) * 6));
         if (Math.abs(goal - progress) < 0.004f) progress = goal;
         long now = System.currentTimeMillis();
         refresh(now);
@@ -219,7 +224,7 @@ final class ChatSidebar {
         if (progress > 0) {
             Sidebar s = TitleOverlayLayout.sidebar(sw, sh, progress);
             g.overlay(() -> {
-                g.fill(0, 0, sw, sh, ((int) (0x66 * TitleOverlayLayout.ease(progress)) << 24));
+                g.fill(0, 0, sw, sh, ((int) (0x28 * TitleOverlayLayout.ease(progress)) << 24));
                 drawPanel(g, s, mx, my, dt, now);
             });
         }
@@ -335,8 +340,7 @@ final class ChatSidebar {
         if (selectedRow) g.fill(l.x() + 2, y, l.x() + l.width() - 2, y + r.height() - 1, HOVER);
         int av = 22, ay = y + (r.height() - 1 - av) / 2;
         g.fill(left, ay, left + av, ay + av, r.color());
-        g.fill(left, ay, left + av, ay + 1, 0x22FFFFFF);
-        g.drawCenteredText(r.initial(), left + av / 2, ay + (av - g.fontHeight()) / 2 + 1, TEXT, false);
+        g.drawHead(r.name(), r.id().toString(), left, ay, av);
         int dx = left + av - 5, dy = ay + av - 5; // presence dot with a ring in the panel colour
         g.fill(dx - 1, dy - 1, dx + 7, dy + 7, 0xFF160D10);
         MenuGraphics.round(g, dx, dy, 6, 6, r.online() ? GREEN : OFFLINE);

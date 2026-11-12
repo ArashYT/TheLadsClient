@@ -435,7 +435,7 @@
           </StackPanel>
 
           <!-- Controls bar (Kind dropdown, count, sort, categories, search button) -->
-          <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto">
+          <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto">
             <ComboBox x:Name="AddContentKindBox" Width="140" Height="34" SelectionChanged="AddContentKind_Changed">
               <ComboBoxItem Content="Mods" />
               <ComboBoxItem Content="Data Packs" />
@@ -445,19 +445,20 @@
 
             <TextBlock x:Name="AddContentResultsCount" Grid.Column="1" Text="Projects found" Foreground="#8F919C" FontSize="12" VerticalAlignment="Center" Margin="14,0,0,0" />
 
-            <ComboBox x:Name="AddContentProvider" SelectedIndex="0" Grid.Column="2" Width="110" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed">
+            <CheckBox x:Name="AddContentHideInstalled" Grid.Column="2" Content="Hide installed" VerticalAlignment="Center" Margin="12,0,0,0" IsCheckedChanged="AddContentHideInstalled_Changed" />
+            <ComboBox x:Name="AddContentProvider" SelectedIndex="0" Grid.Column="3" Width="110" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed">
               <ComboBoxItem Content="Modrinth" />
               <ComboBoxItem Content="CurseForge" />
             </ComboBox>
-            <ComboBox x:Name="AddContentSort" SelectedIndex="0" Grid.Column="3" Width="160" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed">
+            <ComboBox x:Name="AddContentSort" SelectedIndex="0" Grid.Column="4" Width="160" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed">
               <ComboBoxItem Content="Most downloads" />
               <ComboBoxItem Content="Relevance" />
               <ComboBoxItem Content="Most follows" />
               <ComboBoxItem Content="Newest" />
               <ComboBoxItem Content="Recently updated" />
             </ComboBox>
-            <ComboBox x:Name="AddContentCategory" Grid.Column="4" Width="130" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed" />
-            <Button c:Ico.Name="search" Grid.Column="5" Classes="action" Content="Search" Height="34" Margin="8,0,0,0" Click="AddContentSearch_Click" />
+            <ComboBox x:Name="AddContentCategory" Grid.Column="5" Width="130" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed" />
+            <Button c:Ico.Name="search" Grid.Column="6" Classes="action" Content="Search" Height="34" Margin="8,0,0,0" Click="AddContentSearch_Click" />
           </Grid>
         </Grid>
 

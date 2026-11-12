@@ -46,10 +46,10 @@ public final class TitleOverlayLayout {
         return Math.max(160, Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_WIDTH, sw) - 40));
     }
 
-    /** Ease-out, 0 to 1. */
+    /** Smoothstep, 0 to 1: a soft start and a soft stop. */
     public static float ease(float progress) {
         float t = Math.max(0f, Math.min(1f, progress));
-        return 1f - (1f - t) * (1f - t) * (1f - t);
+        return t * t * (3f - 2f * t);
     }
 
     /** The sidebar's left edge while it is progress (0 closed, 1 open) of the way out: sw when closed. */

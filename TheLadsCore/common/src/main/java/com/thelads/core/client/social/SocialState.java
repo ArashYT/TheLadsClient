@@ -86,6 +86,17 @@ public class SocialState {
     private final GuestSession guestSession = new GuestSession(this);
 
     private final List<Runnable> listeners = new CopyOnWriteArrayList<>();
+    /** Party (the backend keeps it in memory and ends it when we disconnect). */
+    public record PartyMember(UUID id, String name) {}
+    public record Party(UUID leader, List<PartyMember> members) {}
+    public record PartyInvite(UUID from, String name, long at) {}
+    /** The leader is going to a server: the UI offers Join / Ignore; nothing connects until the player chooses Join. */
+    public record PartyWarp(String token, UUID from, String leaderName, String server, String serverName, long at) {}
+    static final long PARTY_INVITE_MS = 120_000, PARTY_WARP_MS = 60_000;
+    private volatile Party party;
+    private final Map<UUID, PartyInvite> partyInvites = new ConcurrentHashMap<>();
+    private volatile PartyWarp pendingWarp;
+    private volatile Consumer<PartyWarp> partyWarpListener;
     private final Supplier<SocialBridge> bridges;
     private final Supplier<LadsGameBridge.Session> sessions;
     private final SocialClient client;
@@ -160,6 +171,7 @@ public class SocialState {
         dmsMap.clear();
         activeInvites.clear();
         activeJoinRequests.clear();
+        resetParty();
         client.reconnect();
     }
 
@@ -926,6 +938,14 @@ public class SocialState {
                     send(SocialProtocol.P2P_END, "sid", arg, "reason", "Declined"); // the host stops waiting
                 }
             }
+            case "party_accept", "party_decline" -> {
+                UUID id = parseUuid(arg);
+                if (id == null || !partyInvites.containsKey(id)) return;
+                if (prefix.equals("party_accept")) acceptPartyInvite(id);
+                else declinePartyInvite(id);
+            }
+            case "party_warp_join" -> joinPartyWarp(arg);
+            case "party_warp_ignore" -> ignorePartyWarp(arg);
             case "open_friends" -> bridge().openFriendsScreen();
             case "dm" -> {
                 dmTarget = parseUuid(arg);
@@ -951,13 +971,209 @@ public class SocialState {
                 UUID id = parseUuid(arg);
                 yield id != null && incomingMap.containsKey(id);
             }
+            case "party_accept", "party_decline" -> {
+                UUID id = parseUuid(arg);
+                yield id != null && partyInvite(id) != null;
+            }
+            case "party_warp_join", "party_warp_ignore" -> {
+                PartyWarp w = pendingPartyWarp();
+                yield w != null && w.token().equals(arg);
+            }
             default -> true;
         };
+    }
+
+    // --- Party ---
+
+    /** Our party, or null when we are in none. */
+    public Party party() {
+        return party;
+    }
+
+    public boolean isPartyLeader() {
+        Party p = party;
+        return p != null && p.leader().equals(selfId());
+    }
+
+    /** Party invites received and not yet answered or expired (the backend drops them after 2 minutes). */
+    public List<PartyInvite> partyInvites() {
+        long now = System.currentTimeMillis();
+        partyInvites.values().removeIf(i -> now - i.at() > PARTY_INVITE_MS);
+        return new ArrayList<>(partyInvites.values());
+    }
+
+    private PartyInvite partyInvite(UUID from) {
+        PartyInvite i = partyInvites.get(from);
+        return i != null && System.currentTimeMillis() - i.at() <= PARTY_INVITE_MS ? i : null;
+    }
+
+    /** The leader's server the UI offers ("Leader is going to X": Join / Ignore), or null. */
+    public PartyWarp pendingPartyWarp() {
+        PartyWarp w = pendingWarp;
+        if (w != null && System.currentTimeMillis() - w.at() > PARTY_WARP_MS) pendingWarp = w = null;
+        return w;
+    }
+
+    /** UI hook: called (on the socket thread) when a warp request arrives; the argument is also pendingPartyWarp(). Null removes it. */
+    public void setPartyWarpListener(Consumer<PartyWarp> listener) {
+        partyWarpListener = listener;
+    }
+
+    /** Only a friend, and only when we are in no party or lead it; the backend checks again. */
+    public void inviteToParty(UUID friend) {
+        if (friend == null || !isFriend(friend) || party != null && !isPartyLeader()) return;
+        if (party != null && party.members().size() >= SocialProtocol.PARTY_MAX_MEMBERS) return;
+        send(SocialProtocol.PARTY_INVITE, "to", friend.toString());
+    }
+
+    public void acceptPartyInvite(UUID from) {
+        if (from == null || partyInvite(from) == null) return;
+        partyInvites.remove(from);
+        send(SocialProtocol.PARTY_ACCEPT, "from", from.toString());
+        notifyListeners();
+    }
+
+    public void declinePartyInvite(UUID from) {
+        if (from == null || partyInvites.remove(from) == null) return;
+        send(SocialProtocol.PARTY_DECLINE, "from", from.toString());
+        notifyListeners();
+    }
+
+    public void leaveParty() {
+        if (party == null) return;
+        send(SocialProtocol.PARTY_LEAVE);
+    }
+
+    public void kickFromParty(UUID member) {
+        if (member != null && isPartyLeader() && !member.equals(selfId())) send(SocialProtocol.PARTY_KICK, "to", member.toString());
+    }
+
+    public void promoteInParty(UUID member) {
+        if (member != null && isPartyLeader() && !member.equals(selfId())) send(SocialProtocol.PARTY_PROMOTE, "to", member.toString());
+    }
+
+    /** Leader: asks every other member to join this server. They only get a Join / Ignore question; no one connects by itself. */
+    public void warp(String server) {
+        warp(server, null);
+    }
+
+    public void warp(String server, String displayName) {
+        if (!isPartyLeader() || server == null || server.length() > SocialProtocol.PARTY_SERVER_MAX
+                || !SocialProtocol.PARTY_SERVER.matcher(server).matches()) return;
+        send(SocialProtocol.PARTY_WARP, "server", server, "name", displayName != null && !displayName.isBlank() && displayName.length() <= 48 ? displayName : null);
+    }
+
+    /** Leader: warp to the server we are on now (not singleplayer, not a friend's world, and only when we share our server). False if not possible. */
+    public boolean warpHere() {
+        if (!isPartyLeader() || !showServer || !bridge().inWorldOrServer() || guestSession.isActive()) return false;
+        String addr = LadsGameBridge.get().getServerAddress();
+        if (addr == null || addr.isEmpty() || "Singleplayer".equalsIgnoreCase(addr)) return false;
+        warp(addr);
+        return true;
+    }
+
+    /** The player chose Join: the normal connect (HypixelSafetyManager and the leave-this-world question apply as for a server invite). */
+    public void joinPartyWarp() {
+        PartyWarp w = pendingPartyWarp();
+        if (w != null) joinPartyWarp(w.token());
+    }
+
+    private void joinPartyWarp(String token) {
+        PartyWarp w = pendingPartyWarp();
+        if (w == null || token == null || !w.token().equals(token)) return;
+        pendingWarp = null;
+        Party p = party;
+        String address = w.server();
+        if (p != null && p.leader().equals(w.from()) && !refusesJoin(address)) {
+            String question = switchQuestion(address);
+            if (question == null) {
+                switchToServer(address);
+            } else if (!address.equalsIgnoreCase(here())) {
+                pendingSwitch = new SwitchConfirm(question, () -> switchToServer(address));
+                bridge().openFriendsScreen();
+            }
+        }
+        notifyListeners();
+    }
+
+    public void ignorePartyWarp() {
+        PartyWarp w = pendingPartyWarp();
+        if (w != null) ignorePartyWarp(w.token());
+    }
+
+    private void ignorePartyWarp(String token) {
+        PartyWarp w = pendingWarp;
+        if (w == null || token == null || !w.token().equals(token)) return;
+        pendingWarp = null;
+        notifyListeners();
+    }
+
+    private void resetParty() {
+        party = null;
+        partyInvites.clear();
+        pendingWarp = null;
+    }
+
+    private void onPartyState(JsonObject msg) {
+        UUID leader = parseUuid(str(msg, "leader"));
+        if (leader == null || !(msg.get("members") instanceof JsonArray arr)) return;
+        List<PartyMember> members = new ArrayList<>();
+        for (JsonElement e : arr) {
+            if (members.size() >= SocialProtocol.PARTY_MAX_MEMBERS || !e.isJsonObject()) continue;
+            UUID id = parseUuid(str(e.getAsJsonObject(), "id"));
+            String name = str(e.getAsJsonObject(), "name");
+            if (id != null) members.add(new PartyMember(id, name != null && name.length() <= 32 ? name : nameOf(id)));
+        }
+        if (members.isEmpty()) return;
+        boolean joined = party == null;
+        party = new Party(leader, List.copyOf(members));
+        for (PartyMember m : members) partyInvites.remove(m.id());
+        PartyWarp w = pendingWarp;
+        if (w != null && !w.from().equals(leader)) pendingWarp = null;
+        if (joined) bridge().toast("Party", "You joined the party", null, null);
+        notifyListeners();
+    }
+
+    private void onPartyInvite(JsonObject msg) {
+        UUID from = parseUuid(str(msg, "from"));
+        if (from == null || !friendsMap.containsKey(from) || blockedUuids.contains(from) || party != null) return;
+        String name = nameOf(from);
+        partyInvites.put(from, new PartyInvite(from, name, System.currentTimeMillis()));
+        while (partyInvites.size() > 20) partyInvites.remove(partyInvites.keySet().iterator().next());
+        bridge().toast("Party Invite", name + " invited you to a party", "party_accept:" + from, "party_decline:" + from);
+        chatAction(name + " invited you to a party [Accept]", "party_accept:" + from);
+        notifyListeners();
+    }
+
+    private void onPartyWarp(JsonObject msg) {
+        UUID from = parseUuid(str(msg, "from"));
+        String server = str(msg, "server");
+        Party p = party;
+        if (p == null || from == null || !p.leader().equals(from) || from.equals(selfId()) || server == null
+                || server.length() > SocialProtocol.PARTY_SERVER_MAX || !SocialProtocol.PARTY_SERVER.matcher(server).matches()) return;
+        String serverName = str(msg, "name");
+        if (serverName != null && (serverName.isBlank() || serverName.length() > 48)) serverName = null;
+        String leaderName = p.members().stream().filter(m -> m.id().equals(from)).map(PartyMember::name).findFirst().orElse(nameOf(from));
+        byte[] raw = new byte[8];
+        RANDOM.nextBytes(raw);
+        StringBuilder token = new StringBuilder(16);
+        for (byte b : raw) token.append(Character.forDigit((b >> 4) & 15, 16)).append(Character.forDigit(b & 15, 16));
+        PartyWarp w = new PartyWarp(token.toString(), from, leaderName, server, serverName, System.currentTimeMillis());
+        pendingWarp = w;
+        String target = serverName != null ? serverName : server;
+        bridge().toast("Party", leaderName + " is going to " + target, "party_warp_join:" + w.token(), "party_warp_ignore:" + w.token());
+        chatAction(leaderName + " is going to " + target + " [Join]", "party_warp_join:" + w.token());
+        Consumer<PartyWarp> l = partyWarpListener;
+        if (l != null) {
+            try { l.accept(w); } catch (RuntimeException e) { LOGGER.warn("SocialState: party warp listener failed", e); }
+        }
+        notifyListeners();
     }
 
     // --- Inbound message dispatching ---
 
     public void onHello(JsonObject hello) {
+        resetParty(); // a new link: the backend dropped our party and invites with the old one
         friendsMap.clear();
         incomingMap.clear();
         outgoingMap.clear();
@@ -1198,6 +1414,16 @@ public class SocialState {
                 readSettings(msg);
                 notifyListeners();
             }
+            case SocialProtocol.PARTY_STATE -> onPartyState(msg);
+            case SocialProtocol.PARTY_INVITE_IN -> onPartyInvite(msg);
+            case SocialProtocol.PARTY_WARP -> onPartyWarp(msg);
+            case SocialProtocol.PARTY_ENDED -> {
+                boolean had = party != null;
+                party = null;
+                pendingWarp = null;
+                if (had) bridge().toast("Party", "The party has ended", null, null);
+                notifyListeners();
+            }
             case SocialProtocol.ERROR -> {
                 String code = str(msg, "code");
                 LOGGER.warn("SocialState: received error from server: {}", code);
@@ -1236,7 +1462,8 @@ public class SocialState {
             case SocialProtocol.E_FULL -> them + "'s world is full";
             case SocialProtocol.E_INCOMPATIBLE -> them + "'s world needs another Minecraft version or modpack";
             case SocialProtocol.E_OFFLINE -> "Can't reach " + them + ": offline or not hosting";
-            case "bad" -> "img".equals(ref) ? "Couldn't send that screenshot" : "gif".equals(ref) ? "Only Tenor or Giphy GIF links can be sent" : null;
+            case SocialProtocol.E_NOT_LEADER -> "Only the party leader can do that";
+            case "bad" -> "server".equals(ref) ? "That server address can't be shared with the party" : "img".equals(ref) ? "Couldn't send that screenshot" : "gif".equals(ref) ? "Only Tenor or Giphy GIF links can be sent" : null;
             default -> null;
         };
     }
