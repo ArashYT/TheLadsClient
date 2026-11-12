@@ -240,6 +240,10 @@ public final class QaProbe189 {
             case "friendso":
                 friendso(mc);
                 break;
+            case "textui": // sidebar friends|messages, best <uuid>, pin <world folder>, party ...
+                if ("tab".equals(arg(s, 1))) ((com.thelads.core.v1_8_9.social.FriendsScreen189) mc.currentScreen).ui().setTab(com.thelads.core.client.social.ui.FriendsScreenLogic.Tab.valueOf(arg(s, 2).toUpperCase(Locale.ROOT)));
+                else if (!com.thelads.core.client.qa.SocialQa.step(s, 1)) throw new IllegalArgumentException("textui: " + arg(s, 1));
+                break;
             case "seedshots":
                 com.thelads.core.client.qa.QaScreenshotFixtures.seed(gameDir);
                 com.thelads.core.v1_8_9.gui.ScreenshotsScreen189.setQaFolder(gameDir.resolve("screenshots").toFile());
@@ -290,6 +294,8 @@ public final class QaProbe189 {
                     mc.displayGuiScreen(new net.minecraft.client.gui.GuiCustomizeSkin(mc.currentScreen));
                 } else if ("packs".equals(target)) {
                     mc.displayGuiScreen(new net.minecraft.client.gui.GuiScreenResourcePacks(mc.currentScreen));
+                } else if ("worlds".equals(target)) {
+                    mc.displayGuiScreen(new net.minecraft.client.gui.GuiSelectWorld(mc.currentScreen));
                 } else if ("friends".equals(target)) {
                     mc.displayGuiScreen(new com.thelads.core.v1_8_9.social.FriendsScreen189(mc.currentScreen));
                 } else if ("screenshots".equals(target)) {

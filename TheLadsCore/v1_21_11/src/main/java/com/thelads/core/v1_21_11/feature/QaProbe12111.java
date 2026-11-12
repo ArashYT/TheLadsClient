@@ -88,6 +88,7 @@ public final class QaProbe12111 {
                     case "video" -> new net.minecraft.client.gui.screens.options.VideoSettingsScreen(mc.screen, mc, mc.options);
                     case "controls" -> new net.minecraft.client.gui.screens.options.controls.ControlsScreen(mc.screen, mc.options);
                     case "multiplayer" -> new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(mc.screen);
+                    case "worlds" -> new net.minecraft.client.gui.screens.worldselection.SelectWorldScreen(mc.screen);
                     case "screenshots" -> (net.minecraft.client.gui.screens.Screen) Class.forName(
                         "io.github.lgatodu47.screenshot_viewer.screen.manage_screenshots.ManageScreenshotsScreen")
                         .getConstructor(net.minecraft.client.gui.screens.Screen.class)
@@ -100,6 +101,10 @@ public final class QaProbe12111 {
                 .map(c -> (Button) c).findFirst().orElseThrow(() -> new IllegalArgumentException("press: no button " + arg))
                 .onPress(new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN, 0, 0));
             case "world" -> {} // tick() held the script until the QA world was up
+            case "textui" -> { // sidebar friends|messages, best <uuid>, pin <world folder>, party ...
+                String[] words = step.split("\\s+");
+                if (!com.thelads.core.client.qa.SocialQa.step(words, 1)) throw new IllegalArgumentException("textui: " + arg);
+            }
             case "notice" -> com.thelads.core.client.bridge.LadsGameBridge.get().displayChatMessage(arg);
             case "titlelayout" -> com.thelads.core.modules.TitleScreenModule.toggleLayout();
             case "titlepanorama" -> com.thelads.core.modules.TitleScreenModule.setPanorama(!"off".equals(arg)); // the title Panorama setting: titlepanorama on | off
