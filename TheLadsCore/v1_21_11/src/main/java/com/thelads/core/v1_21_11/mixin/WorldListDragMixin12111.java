@@ -113,6 +113,11 @@ abstract class WorldListDragMixin12111 extends ObjectSelectionList<WorldSelectio
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         WorldSelectionList.Entry at = getEntryAtPosition(event.x(), event.y());
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && at instanceof WorldSelectionList.WorldListEntry pinRow
+            && WorldListOrder.pinHit(pinRow.getX(), pinRow.getY(), pinRow.getWidth(), event.x(), event.y())) {
+            lads$togglePin(pinRow);
+            return true;
+        }
         lads$pressed = event.button() == InputConstants.MOUSE_BUTTON_LEFT
             && at instanceof WorldSelectionList.WorldListEntry && WorldListOrder.canDrag(filter);
         lads$pressX = event.x();
@@ -186,6 +191,7 @@ abstract class WorldListDragMixin12111 extends ObjectSelectionList<WorldSelectio
 
     @Inject(method = "renderWidget", at = @At("RETURN"))
     private void lads$afterRender(GuiGraphics graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
+        lads$drawPins(graphics, mouseX, mouseY);
         if (lads$from < 0 || lads$from >= children().size()) return;
         WorldSelectionList.Entry row = children().get(lads$from);
         enableScissor(graphics);
@@ -202,6 +208,29 @@ abstract class WorldListDragMixin12111 extends ObjectSelectionList<WorldSelectio
             ServerListDrag.ghost(false);
             graphics.pose().popMatrix();
         }
+    }
+
+    @Unique
+    private void lads$drawPins(GuiGraphics graphics, int mouseX, int mouseY) {
+        enableScissor(graphics);
+        for (WorldSelectionList.Entry e : children()) {
+            if (!(e instanceof WorldSelectionList.WorldListEntry w) || e.getY() + e.getHeight() < getY() || e.getY() > getBottom()) continue;
+            boolean hover = mouseX >= e.getX() && mouseX < e.getX() + e.getWidth() && mouseY >= e.getY() && mouseY < e.getY() + e.getHeight();
+            WorldListOrder.drawPinFor(graphics::fill, e.getX(), e.getY(), e.getWidth(), w.getLevelSummary().getLevelId(), hover, mouseX, mouseY);
+        }
+        graphics.disableScissor();
+    }
+
+    @Unique
+    private void lads$togglePin(WorldSelectionList.WorldListEntry entry) {
+        WorldListOrder.togglePin(entry.getLevelSummary().getLevelId());
+        List<LevelSummary> summaries = new ArrayList<>();
+        for (WorldSelectionList.Entry e : children()) {
+            if (e instanceof WorldSelectionList.WorldListEntry w) summaries.add(w.getLevelSummary());
+        }
+        currentlyDisplayedLevels = summaries;
+        pendingLevels = CompletableFuture.completedFuture(summaries);
+        fillLevels(filter, summaries);
     }
 
     @Unique

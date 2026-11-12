@@ -2207,3 +2207,194 @@ async def test_dm_screenshot_needs_friendship(social_app):
     err = await recv_type(alice_ws, "error")
     assert err["code"] == "not_friend"
     await alice_ws.close()
+
+
+# ===========================================================================
+# Party
+# ===========================================================================
+
+async def _party_trio(social_app):
+    """Alice, Bob and Cara, all friends of each other; returns the three sockets."""
+    ws = {}
+    for n, u in (("Alice", A), ("Bob", B), ("Cara", C)):
+        ws[n], _ = await auth_ws(social_app, n, u)
+    for src, dst, su in (("Alice", "Bob", A), ("Alice", "Cara", A), ("Bob", "Cara", B)):
+        await ws[src].send_json({"t": "friend_add", "name": dst})
+        await recv_type(ws[src], "request_sent")
+        await recv_type(ws[dst], "request_in")
+        await ws[dst].send_json({"t": "friend_accept", "uuid": su})
+        await recv_type(ws[dst], "friend_added")
+        await recv_type(ws[src], "friend_added")
+    return ws["Alice"], ws["Bob"], ws["Cara"]
+
+
+async def _state_led_by(ws, leader):
+    """The next party_state whose leader is `leader` (older states from earlier joins may still be queued)."""
+    for _ in range(6):
+        st = await recv_type(ws, "party_state")
+        if st["leader"] == leader:
+            return st
+    raise AssertionError("no party_state led by " + leader)
+
+
+async def _join_party(leader_ws, member_ws, leader_uuid, member_uuid):
+    await leader_ws.send_json({"t": "party_invite", "to": member_uuid})
+    inv = await recv_type(member_ws, "party_invite_in")
+    assert inv["from"] == leader_uuid
+    await member_ws.send_json({"t": "party_accept", "from": leader_uuid})
+    return await recv_type(member_ws, "party_state")
+
+
+async def test_party_invite_accept_state_and_warp(social_app):
+    a, b, c = await _party_trio(social_app)
+    await a.send_json({"t": "party_invite", "to": B})
+    inv = await recv_type(b, "party_invite_in")
+    assert inv == {"t": "party_invite_in", "from": A, "name": "Alice"}
+    await b.send_json({"t": "party_accept", "from": A})
+    for ws in (a, b):
+        st = await recv_type(ws, "party_state")
+        assert st["leader"] == A
+        assert [m["id"] for m in st["members"]] == [A, B]
+        assert st["members"][1]["name"] == "Bob"
+    await _join_party(a, c, A, C)
+    await a.send_json({"t": "party_warp", "server": "play.example.com:25565", "name": "Example"})
+    for ws in (b, c):
+        w = await recv_type(ws, "party_warp")
+        assert w == {"t": "party_warp", "server": "play.example.com:25565", "from": A, "name": "Example"}
+    for ws in (a, b, c):
+        await ws.close()
+
+
+async def test_party_only_friends_and_not_self(social_app):
+    a, b, _ = await _party_trio(social_app)
+    stranger = "0" * 31 + "1"
+    d, _ = await auth_ws(social_app, "User1", stranger)
+    await a.send_json({"t": "party_invite", "to": stranger})
+    assert (await recv_type(a, "error"))["code"] == "not_friend"
+    await a.send_json({"t": "party_invite", "to": A})
+    assert (await recv_type(a, "error"))["code"] == "self"
+    await a.send_json({"t": "party_invite", "to": "zz"})
+    assert (await recv_type(a, "error"))["code"] == "bad"
+    for ws in (a, b, d):
+        await ws.close()
+
+
+async def test_party_leader_only_actions_and_promote_kick(social_app):
+    a, b, c = await _party_trio(social_app)
+    await _join_party(a, b, A, B)
+    await _join_party(a, c, A, C)
+    await b.send_json({"t": "party_kick", "to": C})
+    assert (await recv_type(b, "error"))["code"] == "not_leader"
+    await b.send_json({"t": "party_promote", "to": C})
+    assert (await recv_type(b, "error"))["code"] == "not_leader"
+    await b.send_json({"t": "party_warp", "server": "a.b:1"})
+    assert (await recv_type(b, "error"))["code"] == "not_leader"
+    await b.send_json({"t": "party_invite", "to": C})
+    assert (await recv_type(b, "error"))["code"] == "not_leader"
+    await a.send_json({"t": "party_promote", "to": B})
+    st = await recv_type(c, "party_state")
+    assert st["leader"] == B
+    await b.send_json({"t": "party_kick", "to": C})
+    await recv_type(c, "party_ended")
+    st = await recv_type(a, "party_state")
+    assert [m["id"] for m in st["members"]] == [A, B]
+    for ws in (a, b, c):
+        await ws.close()
+
+
+async def test_party_leader_leaves_promotes_next_then_disbands_when_alone(social_app):
+    a, b, c = await _party_trio(social_app)
+    await _join_party(a, b, A, B)
+    await _join_party(a, c, A, C)
+    await a.send_json({"t": "party_leave"})
+    await recv_type(a, "party_ended")
+    st = await _state_led_by(b, B)
+    assert st["leader"] == B and [m["id"] for m in st["members"]] == [B, C]
+    await c.send_json({"t": "party_leave"})
+    await recv_type(c, "party_ended")
+    await recv_type(b, "party_ended")
+    await b.send_json({"t": "party_leave"})
+    assert (await recv_type(b, "error"))["code"] == "not_found"
+    for ws in (a, b, c):
+        await ws.close()
+
+
+async def test_party_disconnect_leaves_party(social_app):
+    a, b, c = await _party_trio(social_app)
+    await _join_party(a, b, A, B)
+    await _join_party(a, c, A, C)
+    await a.close()
+    st = await _state_led_by(b, B)
+    assert st["leader"] == B and [m["id"] for m in st["members"]] == [B, C]
+    await b.close()
+    await recv_type(c, "party_ended")
+    await c.close()
+
+
+async def test_party_full_refused(social_app, monkeypatch):
+    monkeypatch.setattr(social, "PARTY_MAX_MEMBERS", 2)
+    a, b, c = await _party_trio(social_app)
+    await _join_party(a, b, A, B)
+    await a.send_json({"t": "party_invite", "to": C})
+    assert (await recv_type(a, "error"))["code"] == "full"
+    for ws in (a, b, c):
+        await ws.close()
+
+
+def test_party_max_members_is_8():
+    assert social.PARTY_MAX_MEMBERS == 8
+
+
+async def test_party_invite_expires(social_app):
+    a, b, _ = await _party_trio(social_app)
+    hub = social_app.app["social_hub"]
+    await a.send_json({"t": "party_invite", "to": B})
+    await recv_type(b, "party_invite_in")
+    hub.party_invites[(A, B)] = time.time() - 1
+    await b.send_json({"t": "party_accept", "from": A})
+    assert (await recv_type(b, "error"))["code"] == "expired"
+    assert (A, B) not in hub.party_invites
+    for ws in (a, b):
+        await ws.close()
+
+
+async def test_party_warp_validation_and_rate_limit(social_app):
+    a, b, _ = await _party_trio(social_app)
+    await _join_party(a, b, A, B)
+    for bad in ("", "x" * 300, "a b", "host:99999999", "evil\n.com", 5, "a/b"):
+        await a.send_json({"t": "party_warp", "server": bad})
+        err = await recv_type(a, "error")
+        assert err["code"] == "bad" and err["ref"] == "server", bad
+    await a.send_json({"t": "party_warp", "server": "ok.host", "name": "n" * 60})
+    assert (await recv_type(a, "error"))["ref"] == "name"
+    await a.send_json({"t": "party_warp", "server": "ok.host"})
+    assert (await recv_type(b, "party_warp"))["server"] == "ok.host"
+    await a.send_json({"t": "party_warp", "server": "ok.host"})
+    assert (await recv_type(a, "error"))["code"] == "rate"
+    for ws in (a, b):
+        await ws.close()
+
+
+async def test_party_decline_and_no_party_errors(social_app):
+    a, b, _ = await _party_trio(social_app)
+    await a.send_json({"t": "party_invite", "to": B})
+    await recv_type(b, "party_invite_in")
+    await b.send_json({"t": "party_decline", "from": A})
+    await b.send_json({"t": "party_accept", "from": A})
+    assert (await recv_type(b, "error"))["code"] == "not_found"
+    await a.send_json({"t": "party_warp", "server": "a.b"})
+    assert (await recv_type(a, "error"))["code"] == "not_found"
+    for ws in (a, b):
+        await ws.close()
+
+
+async def test_party_invite_dropped_on_unfriend(social_app):
+    a, b, _ = await _party_trio(social_app)
+    await a.send_json({"t": "party_invite", "to": B})
+    await recv_type(b, "party_invite_in")
+    await a.send_json({"t": "friend_remove", "uuid": B})
+    await recv_type(b, "friend_removed")
+    await b.send_json({"t": "party_accept", "from": A})
+    assert (await recv_type(b, "error"))["code"] == "not_found"
+    for ws in (a, b):
+        await ws.close()

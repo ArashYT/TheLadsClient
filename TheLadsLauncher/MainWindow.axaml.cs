@@ -5935,19 +5935,19 @@ public partial class MainWindow : Window
                     profile.MinecraftVersion, profile.FabricVersion!, message => Log("[Launcher] " + message)));
                 StatusText.Text = $"Starting {instance.Name}...";
                 NavigateTo("Modpacks");
-                await ModpacksPage.PlayModSyncAsync(instance, modSync.Host);
+                bool started = await ModpacksPage.PlayModSyncAsync(instance, modSync.Host);
                 // The profile's game hid the launcher and its exit left it hidden for this launch: back when this game closes, as after
                 // a profile's game, and at once when it did not start (the Modpacks page says why).
-                if (ModpacksPage.RunningGame(instance.Id) is not { } game) ShowForDialog();
+                if (!started || ModpacksPage.RunningGame(instance.Id) is not { } game) ShowForDialog();
                 else
                 {
                     game.Exited += (_, _) => Dispatcher.UIThread.Post(ShowAfterGame);
                     if (game.HasExited) ShowAfterGame();
                 }
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+            catch (Exception ex) // any failure: this runs unobserved, so an unlisted exception type would end it without a word and nothing would start
             {
-                Log($"[Launcher] ModSync: the modpack could not be made ({ex.Message}).");
+                Log($"[Launcher] ModSync: the modpack could not be made or started ({ex}).");
                 StatusText.Text = "Could not make the modpack for your friend's world.";
                 ShowForDialog();
             }

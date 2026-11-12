@@ -113,4 +113,22 @@ class WorldListOrderTest {
         m.setEnabled(false);
         assertFalse(WorldListOrder.canDrag(""));
     }
+
+    @Test
+    void pinnedWorldsComeFirstAndSurviveSerialize() {
+        List<String> worlds = Arrays.asList("a", "b", "c", "d");
+        assertEquals(Arrays.asList("c", "a", "b", "d"),
+            WorldListOrder.pinnedFirst(Arrays.asList("a", "b", "c", "d"), Arrays.asList("c"), w -> w));
+        assertEquals(worlds, WorldListOrder.pinnedFirst(worlds, Collections.<String>emptyList(), w -> w));
+        String json = WorldListOrder.serializeOrder(worlds, Arrays.asList("b", "b", "d"));
+        assertEquals(Arrays.asList("b", "d"), WorldListOrder.parsePinned(json));
+        assertEquals(worlds, WorldListOrder.parseOrder(json));
+        assertEquals(Collections.<String>emptyList(), WorldListOrder.parsePinned("[\"a\"]"));
+    }
+
+    @Test
+    void pinHitIsTheTopRightCorner() {
+        assertTrue(WorldListOrder.pinHit(0, 0, 200, 190, 6));
+        assertFalse(WorldListOrder.pinHit(0, 0, 200, 10, 6));
+    }
 }

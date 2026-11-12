@@ -49,6 +49,13 @@ INVITE_TTL_SECONDS = 300        # 5 minutes
 JOIN_REQUEST_TTL_SECONDS = 300  # 5 minutes
 MAX_PENDING_INVITES_PER_HOST = 20
 MAX_PENDING_JOIN_REQUESTS_PER_HOST = 20
+PARTY_MAX_MEMBERS = 8
+PARTY_INVITE_TTL_SECONDS = 120
+PARTY_WARP_INTERVAL = 5.0       # seconds between two warps by one leader
+PARTY_INVITE_RATE_LIMIT = 30    # per minute
+MAX_PENDING_PARTY_INVITES = 20  # per inviter
+PARTY_SERVER_RE = re.compile(r"[A-Za-z0-9.\-]{1,253}(?::[0-9]{1,5})?")
+PARTY_NAME_MAX = 48
 MAX_SIGNALS_PER_SEC = 40
 MAX_SIGNAL_DATA_BYTES = 8192
 MAX_CONCURRENT_SOCKETS_PER_IP = 8
@@ -905,6 +912,11 @@ class SocialHub:
         self.ended_sessions: dict[str, dict] = {}
         self.invites: dict[str, dict] = {}
         self.join_requests: dict[str, dict] = {}
+        # Parties live in memory only. party_of: member uuid -> its party dict {"leader": uuid, "members": [uuid, ...]} (shared object).
+        self.party_of: dict[str, dict] = {}
+        self.party_invites: dict[tuple[str, str], float] = {}  # (from, to) -> expires_at (time.time())
+        self.party_invite_limits: dict[str, tuple[float, int]] = {}
+        self.party_warp_limits: dict[str, tuple[float, int]] = {}
         self.ip_counts: dict[str, int] = {}
         self.auth_failures: dict[str, list[float]] = {}
         self.auth_blocked_until: dict[str, float] = {}
@@ -984,6 +996,9 @@ class SocialHub:
         for req_id, req in list(self.join_requests.items()):
             if now > req["expires_at"]:
                 del self.join_requests[req_id]
+        for key, exp in list(self.party_invites.items()):
+            if now > exp:
+                del self.party_invites[key]
         for s_id, s_data in list(self.ended_sessions.items()):
             if now - s_data.get("ended_at", 0) > 60.0:
                 del self.ended_sessions[s_id]
@@ -1028,6 +1043,49 @@ class SocialHub:
                 return p
         return None
 
+    # --- Parties (in memory only) ---
+
+    def party_state_msg(self, party: dict) -> dict:
+        members = []
+        for u in party["members"]:
+            p = self.peers.get(u)
+            members.append({"id": u, "name": p.name if p else u[:8]})
+        return {"t": "party_state", "leader": party["leader"], "members": members}
+
+    def party_broadcast(self, party: dict) -> None:
+        msg = self.party_state_msg(party)
+        for u in party["members"]:
+            p = self.peers.get(u)
+            if p and not p.gone:
+                p.send_json(msg)
+
+    def party_remove(self, uuid: str) -> None:
+        """Takes one member out (leave, kick, disconnect). The next member leads; a party left with one member ends."""
+        party = self.party_of.pop(uuid, None)
+        if party is None:
+            return
+        party["members"].remove(uuid)
+        p = self.peers.get(uuid)
+        if p and not p.gone:
+            p.send_json({"t": "party_ended"})
+        if len(party["members"]) <= 1:
+            for u in party["members"]:
+                self.party_of.pop(u, None)
+                q = self.peers.get(u)
+                if q and not q.gone:
+                    q.send_json({"t": "party_ended"})
+            party["members"].clear()
+            return
+        if party["leader"] == uuid:
+            party["leader"] = party["members"][0]
+        self.party_broadcast(party)
+
+    def drop_party_invites(self, a: str, b: str | None = None) -> None:
+        """All pending party invites of a (to or from b when given; every one when b is None)."""
+        for key in list(self.party_invites):
+            if b is None and a in key or b is not None and set(key) == {a, b}:
+                del self.party_invites[key]
+
     async def register(self, peer: SocialPeer) -> None:
         old = self.peers.get(peer.uuid)
         self.peers[peer.uuid] = peer
@@ -1040,6 +1098,8 @@ class SocialHub:
 
         del self.peers[peer.uuid]
         peer.gone = True
+        self.party_remove(peer.uuid)
+        self.drop_party_invites(peer.uuid)
 
         # End active sessions
         for sid, sess in list(self.sessions.items()):
@@ -1502,6 +1562,7 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
                         if (s_data["host"] == peer.uuid and s_data["guest"] == t_uuid) or (s_data["host"] == t_uuid and s_data["guest"] == peer.uuid):
                             hub.drop_session(s_id, "unfriended", (s_data["host"], s_data["guest"]))
 
+                    hub.drop_party_invites(peer.uuid, t_uuid)
                     # Invalidate in-flight invites and join requests
                     for inv_id, inv in list(hub.invites.items()):
                         if (inv["host"] == peer.uuid and inv["guest"] == t_uuid) or (inv["host"] == t_uuid and inv["guest"] == peer.uuid):
@@ -1533,6 +1594,7 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
                     if (s_data["host"] == peer.uuid and s_data["guest"] == t_uuid) or (s_data["host"] == t_uuid and s_data["guest"] == peer.uuid):
                         hub.drop_session(s_id, "blocked", (s_data["host"], s_data["guest"]))
 
+                hub.drop_party_invites(peer.uuid, t_uuid)
                 # Invalidate in-flight invites and join requests
                 for inv_id, inv in list(hub.invites.items()):
                     if (inv["host"] == peer.uuid and inv["guest"] == t_uuid) or (inv["host"] == t_uuid and inv["guest"] == peer.uuid):
@@ -1992,6 +2054,144 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
 
                 other_uuid = session["guest"] if session["host"] == peer.uuid else session["host"]
                 hub.drop_session(sid, reason, (other_uuid,))
+
+            elif kind == "party_invite":
+                to_uuid = plain_uuid(msg.get("to"))
+                if not to_uuid:
+                    peer.send_json({"t": "error", "code": "bad", "ref": ""})
+                    continue
+                if to_uuid == peer.uuid:
+                    peer.send_json({"t": "error", "code": "self", "ref": to_uuid})
+                    continue
+                if not await store.are_friends(peer.uuid, to_uuid):
+                    peer.send_json({"t": "error", "code": "not_friend", "ref": to_uuid})
+                    continue
+                if await store.is_any_blocked(peer.uuid, to_uuid):
+                    peer.send_json({"t": "error", "code": "blocked", "ref": to_uuid})
+                    continue
+                mine = hub.party_of.get(peer.uuid)
+                if mine and mine["leader"] != peer.uuid:
+                    peer.send_json({"t": "error", "code": "not_leader", "ref": to_uuid})
+                    continue
+                if mine and len(mine["members"]) >= PARTY_MAX_MEMBERS:
+                    peer.send_json({"t": "error", "code": "full", "ref": to_uuid})
+                    continue
+                if to_uuid in hub.party_of:
+                    peer.send_json({"t": "error", "code": "already", "ref": to_uuid})
+                    continue
+                if not hub.check_rate_limit(hub.party_invite_limits, peer.uuid, PARTY_INVITE_RATE_LIMIT, 60.0):
+                    peer.send_json({"t": "error", "code": "rate", "ref": to_uuid})
+                    continue
+                target = hub.peers.get(to_uuid)
+                if not target or target.gone or target.settings.get("appearOffline", False):
+                    peer.send_json({"t": "error", "code": "offline", "ref": to_uuid})
+                    continue
+                hub.sweep_expired()
+                if (peer.uuid, to_uuid) not in hub.party_invites and sum(1 for k in hub.party_invites if k[0] == peer.uuid) >= MAX_PENDING_PARTY_INVITES:
+                    peer.send_json({"t": "error", "code": "limit", "ref": "party_invites"})
+                    continue
+                hub.party_invites[(peer.uuid, to_uuid)] = time.time() + PARTY_INVITE_TTL_SECONDS
+                target.send_json({"t": "party_invite_in", "from": peer.uuid, "name": peer.name})
+
+            elif kind == "party_accept":
+                from_uuid = plain_uuid(msg.get("from"))
+                if not from_uuid:
+                    peer.send_json({"t": "error", "code": "bad", "ref": ""})
+                    continue
+                exp = hub.party_invites.get((from_uuid, peer.uuid))
+                if exp is None:
+                    peer.send_json({"t": "error", "code": "not_found", "ref": from_uuid})
+                    continue
+                if time.time() > exp:
+                    del hub.party_invites[(from_uuid, peer.uuid)]
+                    peer.send_json({"t": "error", "code": "expired", "ref": from_uuid})
+                    continue
+                if peer.uuid in hub.party_of:
+                    peer.send_json({"t": "error", "code": "already", "ref": from_uuid})
+                    continue
+                leader = hub.peers.get(from_uuid)
+                party = hub.party_of.get(from_uuid)
+                if (not leader or leader.gone or (party and party["leader"] != from_uuid)
+                        or not await store.are_friends(peer.uuid, from_uuid)
+                        or await store.is_any_blocked(peer.uuid, from_uuid)):
+                    del hub.party_invites[(from_uuid, peer.uuid)]
+                    peer.send_json({"t": "error", "code": "expired", "ref": from_uuid})
+                    continue
+                if party and len(party["members"]) >= PARTY_MAX_MEMBERS:
+                    peer.send_json({"t": "error", "code": "full", "ref": from_uuid})
+                    continue
+                del hub.party_invites[(from_uuid, peer.uuid)]
+                if party is None:
+                    party = {"leader": from_uuid, "members": [from_uuid]}
+                    hub.party_of[from_uuid] = party
+                party["members"].append(peer.uuid)
+                hub.party_of[peer.uuid] = party
+                hub.party_broadcast(party)
+
+            elif kind == "party_decline":
+                from_uuid = plain_uuid(msg.get("from"))
+                if not from_uuid:
+                    peer.send_json({"t": "error", "code": "bad", "ref": ""})
+                    continue
+                if hub.party_invites.pop((from_uuid, peer.uuid), None) is None:
+                    peer.send_json({"t": "error", "code": "not_found", "ref": from_uuid})
+
+            elif kind == "party_leave":
+                if peer.uuid in hub.party_of:
+                    hub.party_remove(peer.uuid)
+                else:
+                    peer.send_json({"t": "error", "code": "not_found", "ref": "party"})
+
+            elif kind in ("party_kick", "party_promote"):
+                to_uuid = plain_uuid(msg.get("to"))
+                if not to_uuid:
+                    peer.send_json({"t": "error", "code": "bad", "ref": ""})
+                    continue
+                party = hub.party_of.get(peer.uuid)
+                if party is None:
+                    peer.send_json({"t": "error", "code": "not_found", "ref": "party"})
+                    continue
+                if party["leader"] != peer.uuid:
+                    peer.send_json({"t": "error", "code": "not_leader", "ref": to_uuid})
+                    continue
+                if to_uuid == peer.uuid:
+                    peer.send_json({"t": "error", "code": "self", "ref": to_uuid})
+                    continue
+                if to_uuid not in party["members"]:
+                    peer.send_json({"t": "error", "code": "not_found", "ref": to_uuid})
+                    continue
+                if kind == "party_kick":
+                    hub.party_remove(to_uuid)
+                else:
+                    party["leader"] = to_uuid
+                    hub.party_broadcast(party)
+
+            elif kind == "party_warp":
+                server = msg.get("server")
+                pname = msg.get("name")
+                if not isinstance(server, str) or len(server) > 255 or not PARTY_SERVER_RE.fullmatch(server):
+                    peer.send_json({"t": "error", "code": "bad", "ref": "server"})
+                    continue
+                if pname is not None and (not isinstance(pname, str) or len(pname) > PARTY_NAME_MAX or not pname.isprintable()):
+                    peer.send_json({"t": "error", "code": "bad", "ref": "name"})
+                    continue
+                party = hub.party_of.get(peer.uuid)
+                if party is None:
+                    peer.send_json({"t": "error", "code": "not_found", "ref": "party"})
+                    continue
+                if party["leader"] != peer.uuid:
+                    peer.send_json({"t": "error", "code": "not_leader", "ref": "party"})
+                    continue
+                if not hub.check_rate_limit(hub.party_warp_limits, peer.uuid, 1, PARTY_WARP_INTERVAL):
+                    peer.send_json({"t": "error", "code": "rate", "ref": "party"})
+                    continue
+                out = {"t": "party_warp", "server": server, "from": peer.uuid}
+                if pname:
+                    out["name"] = pname
+                for u in party["members"]:
+                    m = hub.peers.get(u)
+                    if u != peer.uuid and m and not m.gone:
+                        m.send_json(out)
 
             elif kind == "settings":
                 raw_show = msg.get("showServer")

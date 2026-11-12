@@ -5,6 +5,7 @@ import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.gui.ConfirmDialog;
 import com.thelads.core.client.gui.LadsPalette;
 import com.thelads.core.client.gui.MenuGraphics;
+import com.thelads.core.client.social.BestFriends;
 import com.thelads.core.client.social.DmMedia;
 import com.thelads.core.client.social.FriendEntry;
 import com.thelads.core.client.social.Presence;
@@ -42,6 +43,7 @@ public final class FriendsScreenLogic {
 
     public enum Tab {
         FRIENDS("Friends"),
+        PARTY("Party"),
         INVITES("Invites"),
         REQUESTS("Requests"),
         BLOCKED("Blocked"),
@@ -97,6 +99,20 @@ public final class FriendsScreenLogic {
         default boolean appearOffline() { return false; }
         default void setAppearOffline(boolean appearOffline) {}
         default void onClose() {}
+        /** The party this player is in, or null. */
+        default SocialState.Party party() { return null; }
+        default boolean isPartyLeader() { return false; }
+        default List<SocialState.PartyInvite> partyInvites() { return List.of(); }
+        default void inviteToParty(UUID friend) {}
+        default void acceptPartyInvite(UUID from) {}
+        default void declinePartyInvite(UUID from) {}
+        default void leaveParty() {}
+        default void kickFromParty(UUID member) {}
+        default void promoteInParty(UUID member) {}
+        /** The leader takes the party to this server address; members are asked, nothing connects by itself. */
+        default void warp(String server) {}
+        /** The leader takes the party to the server this game is on; false when there is none or it is hidden. */
+        default boolean warpHere() { return false; }
     }
 
     private final Callbacks callbacks;
@@ -130,6 +146,7 @@ public final class FriendsScreenLogic {
     private int scissorH = Integer.MAX_VALUE;
 
     // Cached sorted friends
+    private int lastBestVersion = -1;
     private List<FriendEntry> lastRawFriends = null;
     private List<FriendEntry> cachedSortedFriends = Collections.emptyList();
 
@@ -164,9 +181,16 @@ public final class FriendsScreenLogic {
     private boolean typingAddInput = false;
     private boolean typingDmInput = false;
     private boolean typingNickInput = false;
+    private boolean typingPartyInput = false;
+    private String partyInput = "";
+    private String partyNotice = "";
+    private final Map<String, Box> partyBoxes = new HashMap<>();
 
     // More popup for a friend
     private UUID popupFriendId = null;
+    private Box partyInputBox;
+    private Box popupPartyBtn;
+    private Box popupBestBtn;
     private Box popupNickBtn;
     private Box popupRemoveBtn;
     private Box popupBlockBtn;
@@ -229,6 +253,17 @@ public final class FriendsScreenLogic {
             @Override public boolean appearOffline() { return s.appearOffline(); }
             @Override public void setAppearOffline(boolean appearOffline) { s.setAppearOffline(appearOffline); }
             @Override public void onClose() { onClose.run(); }
+            @Override public SocialState.Party party() { return s.party(); }
+            @Override public boolean isPartyLeader() { return s.isPartyLeader(); }
+            @Override public List<SocialState.PartyInvite> partyInvites() { return s.partyInvites(); }
+            @Override public void inviteToParty(UUID friend) { s.inviteToParty(friend); }
+            @Override public void acceptPartyInvite(UUID from) { s.acceptPartyInvite(from); }
+            @Override public void declinePartyInvite(UUID from) { s.declinePartyInvite(from); }
+            @Override public void leaveParty() { s.leaveParty(); }
+            @Override public void kickFromParty(UUID member) { s.kickFromParty(member); }
+            @Override public void promoteInParty(UUID member) { s.promoteInParty(member); }
+            @Override public void warp(String server) { s.warp(server); }
+            @Override public boolean warpHere() { return s.warpHere(); }
         });
         FriendEntry dm = s.takeDmTarget();
         if (dm != null) logic.openDm(dm);
@@ -249,11 +284,12 @@ public final class FriendsScreenLogic {
         this.editingNickId = null;
         this.typingNickInput = false;
         this.typingAddInput = currentTab == Tab.ADD; // its box takes typing straight away
+        this.typingPartyInput = false;
         this.scrollOffset = 0;
     }
 
     /** A box has the keyboard: 26.3 delivers typed characters only while the screen asks for them. */
-    public boolean isEditingText() { return typingNickInput || typingDmInput || typingAddInput; }
+    public boolean isEditingText() { return typingNickInput || typingDmInput || typingAddInput || typingPartyInput; }
 
     public FriendEntry activeDmFriend() { return activeDmFriend; }
     public void openDm(FriendEntry friend) {
@@ -364,11 +400,15 @@ public final class FriendsScreenLogic {
 
     public List<FriendEntry> sortedFriends() {
         List<FriendEntry> raw = safeFriends();
-        if (lastRawFriends != null && isSameFriends(raw, lastRawFriends)) {
+        if (lastRawFriends != null && lastBestVersion == BestFriends.version() && isSameFriends(raw, lastRawFriends)) {
             return cachedSortedFriends;
         }
         List<FriendEntry> list = new ArrayList<>(raw);
         list.sort((a, b) -> {
+            boolean aBest = BestFriends.is(a.id()), bBest = BestFriends.is(b.id());
+            if (aBest != bBest) {
+                return aBest ? -1 : 1; // best friends on top
+            }
             boolean aOnline = a.presence() != null && a.presence().online();
             boolean bOnline = b.presence() != null && b.presence().online();
             if (aOnline != bOnline) {
@@ -379,6 +419,7 @@ public final class FriendsScreenLogic {
             return nameA.compareToIgnoreCase(nameB);
         });
         lastRawFriends = new ArrayList<>(raw);
+        lastBestVersion = BestFriends.version();
         cachedSortedFriends = Collections.unmodifiableList(list);
         return cachedSortedFriends;
     }
@@ -447,12 +488,10 @@ public final class FriendsScreenLogic {
         unblockBoxes.clear();
         inviteAcceptBoxes.clear();
         inviteDeclineBoxes.clear();
+        partyBoxes.clear();
         joinReasons.clear();
         joinEnabledMap.clear();
         deferredTooltip = null;
-
-        // Background
-        g.fill(0, 0, width, height, 0xD0070709);
 
         // Header panel
         int panelW = Math.min(width - 32, 540);
@@ -504,6 +543,11 @@ public final class FriendsScreenLogic {
                 int reqCount = safeIncoming().size();
                 if (reqCount > 0) title += " (" + reqCount + ")";
             }
+            if (t == Tab.PARTY) {
+                int partyCount = callbacks.partyInvites().size();
+                if (partyCount > 0) title += " (" + partyCount + ")";
+                else if (callbacks.party() != null) title += " (" + callbacks.party().members().size() + ")";
+            }
             if (t == Tab.INVITES) {
                 int invCount = safeInvites().size();
                 if (invCount > 0) title += " (" + invCount + ")";
@@ -526,6 +570,7 @@ public final class FriendsScreenLogic {
                 case FRIENDS -> renderFriendsTab(g, panelX, contentY, panelW, contentH, mouseX, mouseY);
                 case REQUESTS -> renderRequestsTab(g, panelX, contentY, panelW, contentH, mouseX, mouseY);
                 case BLOCKED -> renderBlockedTab(g, panelX, contentY, panelW, contentH, mouseX, mouseY);
+                case PARTY -> renderPartyTab(g, panelX, contentY, panelW, contentH, mouseX, mouseY);
                 case INVITES -> renderInvitesTab(g, panelX, contentY, panelW, contentH, mouseX, mouseY);
                 case ADD -> renderAddTab(g, panelX, contentY, panelW, contentH, mouseX, mouseY);
             }
@@ -652,7 +697,11 @@ public final class FriendsScreenLogic {
                     if (friend.nick() != null && !friend.nick().isEmpty() && !friend.nick().equals(friend.name())) {
                         nameStr = friend.nick() + " (" + friend.name() + ")";
                     }
-                    g.drawText(MenuGraphics.fit(g, nameStr, 160), rowBox.x + 36, rowTop + 6, LadsPalette.TEXT, false);
+                    String shownName = MenuGraphics.fit(g, nameStr, 160);
+                    g.drawText(shownName, rowBox.x + 36, rowTop + 6, LadsPalette.TEXT, false);
+                    if (BestFriends.is(friend.id())) {
+                        com.thelads.core.client.title.TitleScreenTheme.icon(g, "star", rowBox.x + 36 + g.textWidth(shownName) + 4, rowTop + 6, 9, 0xFFFFC83D);
+                    }
                 }
 
                 // Status string including loader and pack if present (Finding 2)
@@ -905,6 +954,104 @@ public final class FriendsScreenLogic {
         g.disableScissor();
     }
 
+    private void partyButton(LadsGraphics g, String id, String label, int x, int y, int w, int mx, int my, boolean primary) {
+        Box b = new Box(x, y, w, 18);
+        partyBoxes.put(id, b);
+        MenuGraphics.round(g, b.x, b.y, b.w, b.h, primary ? (b.has(mx, my) ? LadsPalette.PRIMARY_HOVER : LadsPalette.PRIMARY) : (b.has(mx, my) ? LadsPalette.HOVER : LadsPalette.PANEL));
+        g.drawCenteredText(MenuGraphics.fit(g, label, w - 6), b.x + b.w / 2, b.y + 5, LadsPalette.TEXT, false);
+    }
+
+    /** The Party tab: invites to a party, who is in it (the leader promotes or kicks), and the leader's way to take everyone to a server. */
+    private void renderPartyTab(LadsGraphics g, int x, int y, int w, int h, int mx, int my) {
+        SocialState.Party party = callbacks.party();
+        List<SocialState.PartyInvite> invites = callbacks.partyInvites();
+        boolean leader = callbacks.isPartyLeader();
+        int members = party == null ? 0 : party.members().size();
+        int totalH = 30 + invites.size() * 34 + (party == null ? 60 : members * 34 + 110);
+        int viewH = h - 12;
+        maxScroll = Math.max(0, totalH - viewH);
+        scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset));
+        int sy = y + 6;
+        this.scissorY = sy;
+        this.scissorH = viewH;
+        g.enableScissor(x, sy, x + w, sy + viewH);
+        int itemY = y + 8 - scrollOffset;
+        for (SocialState.PartyInvite inv : invites) {
+            Box rBox = new Box(x + 10, itemY, w - 20, 30);
+            MenuGraphics.round(g, rBox.x, rBox.y, rBox.w, rBox.h, LadsPalette.CARD);
+            String from = inv.name() == null || inv.name().isEmpty() ? "A friend" : inv.name();
+            partyButton(g, "decline:" + inv.from(), "Decline", rBox.x + rBox.w - 8 - 64, itemY + 6, 64, mx, my, false);
+            partyButton(g, "accept:" + inv.from(), "Join", rBox.x + rBox.w - 8 - 134, itemY + 6, 64, mx, my, true);
+            g.drawText(MenuGraphics.fit(g, from + " invited you to their party", rBox.w - 160), rBox.x + 10, itemY + 11, LadsPalette.TEXT, false);
+            itemY += 34;
+        }
+        if (party == null) {
+            g.drawText("Not in a party", x + 10, itemY, LadsPalette.ACCENT, true);
+            g.drawText(MenuGraphics.fit(g, "Open a friend's ... menu on the Friends tab and pick Invite to Party.", w - 40), x + 20, itemY + 18, LadsPalette.MUTED, false);
+            g.drawText(MenuGraphics.fit(g, "The party leader can take everyone to a server; you choose whether to follow.", w - 40), x + 20, itemY + 30, LadsPalette.MUTED, false);
+            g.disableScissor();
+            return;
+        }
+        g.drawText("Party (" + members + "/" + SocialProtocol.PARTY_MAX_MEMBERS + ")", x + 10, itemY, LadsPalette.ACCENT, true);
+        partyButton(g, "leave", "Leave Party", x + w - 10 - 90, itemY - 4, 90, mx, my, false);
+        itemY += 18;
+        for (SocialState.PartyMember m : party.members()) {
+            boolean isLeader = m.id().equals(party.leader());
+            Box rBox = new Box(x + 10, itemY, w - 20, 30);
+            MenuGraphics.round(g, rBox.x, rBox.y, rBox.w, rBox.h, LadsPalette.CARD);
+            g.drawHead(m.name(), m.id().toString(), rBox.x + 6, itemY + 5, 20);
+            String label = (m.name() == null || m.name().isEmpty() ? "?" : m.name()) + (isLeader ? "  (Leader)" : "");
+            int btnsW = leader && !isLeader ? 140 : 0;
+            g.drawText(MenuGraphics.fit(g, label, rBox.w - 40 - btnsW), rBox.x + 34, itemY + 11, isLeader ? 0xFFFFC83D : LadsPalette.TEXT, false);
+            if (btnsW > 0) {
+                partyButton(g, "kick:" + m.id(), "Kick", rBox.x + rBox.w - 8 - 64, itemY + 6, 64, mx, my, false);
+                partyButton(g, "promote:" + m.id(), "Promote", rBox.x + rBox.w - 8 - 134, itemY + 6, 64, mx, my, false);
+            }
+            itemY += 34;
+        }
+        itemY += 8;
+        if (leader) {
+            g.drawText("Take the party to a server", x + 10, itemY, LadsPalette.ACCENT, true);
+            itemY += 16;
+            int inW = w - 20 - 80 - 90 - 12;
+            partyInputBox = new Box(x + 10, itemY, Math.max(80, inW), 20);
+            MenuGraphics.round(g, partyInputBox.x, partyInputBox.y, partyInputBox.w, partyInputBox.h, typingPartyInput ? LadsPalette.HOVER : LadsPalette.CARD);
+            String disp = partyInput.isEmpty() ? (typingPartyInput ? "_" : "server address, e.g. mc.example.com") : partyInput + (typingPartyInput ? "_" : "");
+            g.drawText(MenuGraphics.fit(g, disp, partyInputBox.w - 8), partyInputBox.x + 4, partyInputBox.y + 6, partyInput.isEmpty() && !typingPartyInput ? LadsPalette.MUTED : LadsPalette.TEXT, false);
+            partyButton(g, "warp", "Take Party", partyInputBox.x + partyInputBox.w + 6, itemY + 1, 80, mx, my, true);
+            partyButton(g, "warphere", "This Server", partyInputBox.x + partyInputBox.w + 92, itemY + 1, 90, mx, my, false);
+            if (!partyNotice.isEmpty()) g.drawText(MenuGraphics.fit(g, partyNotice, w - 24), x + 10, itemY + 26, LadsPalette.CARD_ON_GLOW, false);
+        } else {
+            g.drawText(MenuGraphics.fit(g, "Only the leader can take the party to a server. You will be asked before you follow.", w - 24), x + 10, itemY, LadsPalette.MUTED, false);
+        }
+        g.disableScissor();
+    }
+
+    private void partyAction(String action) {
+        int colon = action.indexOf(':');
+        String kind = colon < 0 ? action : action.substring(0, colon);
+        UUID id = null;
+        if (colon >= 0) {
+            try { id = UUID.fromString(action.substring(colon + 1)); } catch (IllegalArgumentException ignored) { return; }
+        }
+        switch (kind) {
+            case "accept" -> callbacks.acceptPartyInvite(id);
+            case "decline" -> callbacks.declinePartyInvite(id);
+            case "kick" -> callbacks.kickFromParty(id);
+            case "promote" -> callbacks.promoteInParty(id);
+            case "leave" -> callbacks.leaveParty();
+            case "warp" -> {
+                if (!partyInput.trim().isEmpty()) {
+                    callbacks.warp(partyInput.trim());
+                    partyNotice = "Asked the party to join " + partyInput.trim();
+                    partyInput = "";
+                }
+            }
+            case "warphere" -> partyNotice = callbacks.warpHere() ? "Asked the party to join this server" : "You are not on a server, or your server is hidden.";
+            default -> { }
+        }
+    }
+
     private void renderAddTab(LadsGraphics g, int x, int y, int w, int h, int mx, int my) {
         maxScroll = 0;
         int centerX = x + w / 2;
@@ -1061,7 +1208,7 @@ public final class FriendsScreenLogic {
         Box moreB = moreBoxes.get(popupFriendId);
         if (moreB == null) return;
 
-        int popW = 95, popH = 65;
+        int popW = 105, popH = 105;
         int popX = Math.max(10, moreB.x - popW + moreB.w);
         int popY = moreB.y + moreB.h + 2;
 
@@ -1069,9 +1216,18 @@ public final class FriendsScreenLogic {
         g.fill(popX, popY, popX + popW, popY + 1, LadsPalette.ACCENT);
 
         int itemH = 18;
-        popupNickBtn = new Box(popX + 2, popY + 4, popW - 4, itemH);
-        popupRemoveBtn = new Box(popX + 2, popY + 24, popW - 4, itemH);
-        popupBlockBtn = new Box(popX + 2, popY + 44, popW - 4, itemH);
+        popupPartyBtn = new Box(popX + 2, popY + 4, popW - 4, itemH);
+        popupBestBtn = new Box(popX + 2, popY + 24, popW - 4, itemH);
+        popupNickBtn = new Box(popX + 2, popY + 44, popW - 4, itemH);
+        popupRemoveBtn = new Box(popX + 2, popY + 64, popW - 4, itemH);
+        popupBlockBtn = new Box(popX + 2, popY + 84, popW - 4, itemH);
+
+        MenuGraphics.round(g, popupPartyBtn.x, popupPartyBtn.y, popupPartyBtn.w, popupPartyBtn.h, popupPartyBtn.has(mx, my) ? LadsPalette.HOVER : LadsPalette.CARD);
+        MenuGraphics.iconLabel(g, "Invite to Party", "users", popupPartyBtn.x + popupPartyBtn.w / 2, popupPartyBtn.y + 5, popupPartyBtn.w, LadsPalette.TEXT, false);
+
+        boolean bestHov = popupBestBtn.has(mx, my);
+        MenuGraphics.round(g, popupBestBtn.x, popupBestBtn.y, popupBestBtn.w, popupBestBtn.h, bestHov ? LadsPalette.HOVER : LadsPalette.CARD);
+        MenuGraphics.iconLabel(g, BestFriends.is(popupFriendId) ? "Remove Best Friend" : "Best Friend", "star", popupBestBtn.x + popupBestBtn.w / 2, popupBestBtn.y + 5, popupBestBtn.w, 0xFFFFC83D, false);
 
         boolean nHov = popupNickBtn.has(mx, my);
         boolean rHov = popupRemoveBtn.has(mx, my);
@@ -1164,7 +1320,13 @@ public final class FriendsScreenLogic {
         if (popupFriendId != null) {
             UUID target = popupFriendId;
             popupFriendId = null; // dismiss popup
-            if (popupNickBtn != null && popupNickBtn.has(x, y)) {
+            if (popupPartyBtn != null && popupPartyBtn.has(x, y)) {
+                callbacks.inviteToParty(target);
+                return true;
+            } else if (popupBestBtn != null && popupBestBtn.has(x, y)) {
+                BestFriends.toggle(target);
+                return true;
+            } else if (popupNickBtn != null && popupNickBtn.has(x, y)) {
                 startEditingNick(target);
                 return true;
             } else if (popupRemoveBtn != null && popupRemoveBtn.has(x, y)) {
@@ -1318,6 +1480,19 @@ public final class FriendsScreenLogic {
                     }
                 }
             }
+            case PARTY -> {
+                boolean inScissor = y >= scissorY && y <= scissorY + scissorH;
+                typingPartyInput = inScissor && partyInputBox != null && partyInputBox.has(x, y);
+                if (typingPartyInput) return true;
+                if (inScissor) {
+                    for (Map.Entry<String, Box> e : partyBoxes.entrySet()) {
+                        if (e.getValue().has(x, y)) {
+                            partyAction(e.getKey());
+                            return true;
+                        }
+                    }
+                }
+            }
             case BLOCKED -> {
                 boolean inScissor = y >= scissorY && y <= scissorY + scissorH;
                 if (inScissor) {
@@ -1352,6 +1527,10 @@ public final class FriendsScreenLogic {
 
     public boolean charTyped(char c) {
         if (confirm.isOpen()) return true;
+        if (typingPartyInput) {
+            if (c >= 32 && c != 127 && partyInput.length() < SocialProtocol.PARTY_SERVER_MAX) partyInput += c;
+            return true;
+        }
         if (typingNickInput) {
             if (c >= 32 && c != 127 && nickInput.length() < 32) {
                 nickInput += c;
@@ -1393,6 +1572,13 @@ public final class FriendsScreenLogic {
                 }
                 return true;
             }
+            return true;
+        }
+
+        if (typingPartyInput) {
+            if (keyCode == 256 || keyCode == 1) typingPartyInput = false;
+            else if (keyCode == 257 || keyCode == 28) partyAction("warp");
+            else if ((keyCode == 259 || keyCode == 14) && !partyInput.isEmpty()) partyInput = partyInput.substring(0, partyInput.length() - 1);
             return true;
         }
 

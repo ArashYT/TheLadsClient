@@ -37,6 +37,8 @@ public sealed class ModpackInstance
     public bool? LadsCore { get; set; }
     /// <summary>ModSync: the host (UUID) whose world this modpack was made for (ModSyncService.BuildInstance).</summary>
     public string? ModSyncHost { get; set; }
+    /// <summary>ModSync: the world (as <see cref="ModSyncService.PackName"/> cleans it) this modpack was made for; the same host and world reuse it.</summary>
+    public string? ModSyncWorld { get; set; }
 
     [JsonIgnore] public string Directory { get; set; } = "";
     /// <summary>Set for another launcher's instance (<see cref="ExternalInstances.ToModpack"/>): its own game folder, to which nothing but

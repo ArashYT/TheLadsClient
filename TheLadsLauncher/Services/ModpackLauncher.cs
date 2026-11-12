@@ -90,6 +90,7 @@ public static class ModpackLauncher
             instance.LoaderVersion = manifest.ModLoaderVersion;
             instance.PackVersion = manifest.Version;
             instance.Author = author ?? manifest.Author;
+            if (catalog != null) await ModpackCoreSync.EnsureSiteDependenciesAsync(instance, catalog, status, token);
             ModpackCoreSync.Sync(instance, status: status);
             Modpacks.Save(instance);
             return instance;

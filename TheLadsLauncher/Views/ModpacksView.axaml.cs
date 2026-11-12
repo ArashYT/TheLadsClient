@@ -88,6 +88,7 @@ public partial class ModpacksView : UserControl
     private int _addContentOffset;
     private string _addContentQuery = "";
     private bool _addContentMore, _addContentLoading;
+    private readonly List<ModSearchItem> _addContentHits = new(); // every hit loaded so far; "Hide installed" only filters what is shown
     private bool _browsed, _importing;
     private int _installing;
     private readonly bool _ready;
@@ -716,12 +717,19 @@ public partial class ModpacksView : UserControl
     internal void PressPlay() => Play_Click(null, new RoutedEventArgs());
 
     /// <summary>ModSync: the modpack just made for a friend's world, shown and started; the game rejoins <paramref name="host"/>.</summary>
-    internal async Task PlayModSyncAsync(ModpackInstance instance, string host)
+    internal async Task<bool> PlayModSyncAsync(ModpackInstance instance, string host)
     {
-        await LoadAsync();
-        instance = Modpacks.List(DataDirectory).FirstOrDefault(i => i.Id == instance.Id) ?? instance;
-        OpenManage(instance);
-        await PlayAsync(instance, retry: false, modSyncHost: host);
+        try
+        {
+            await LoadAsync();
+            instance = Modpacks.List(DataDirectory).FirstOrDefault(i => i.Id == instance.Id) ?? instance;
+            OpenManage(instance);
+        }
+        catch (Exception error) // the page only shows the pack: a failure here must never stop it from starting
+        {
+            Host?.ModpackLog($"ModSync: could not show '{instance.Name}' ({error.Message}); starting it anyway.");
+        }
+        return await PlayAsync(instance, retry: false, modSyncHost: host);
     }
     internal void PressAddContent() => AddMods_Click(null, new RoutedEventArgs());
     internal int AddContentShown => AddContentResults.Children.Count;
@@ -1603,7 +1611,8 @@ public partial class ModpacksView : UserControl
             {
                 SafeFileOps.DeleteToRecycleBin(item.FilePath);
             }
-            ManageStatus.Text = $"Updated {item.DisplayName} to {item.UpdateFile.VersionName}!";
+            var deps = await ContentDependencyInstaller.EnsureAsync(Catalog(), modsDir, instance.McVersion, instance.Loader, m => ManageStatus.Text = m, default);
+            ManageStatus.Text = $"Updated {item.DisplayName} to {item.UpdateFile.VersionName}!" + (deps.Count > 0 ? $" Also installed {deps.Count} required mod(s)." : "");
             await ScanModsAsync(instance);
         }
         catch (Exception ex)
@@ -1654,7 +1663,8 @@ public partial class ModpacksView : UserControl
                     Host?.ModpackLog($"Failed to update {mod.DisplayName}: {ex}");
                 }
             }
-            ManageStatus.Text = $"Successfully updated {updated} of {toUpdate.Count} mods.";
+            var deps = await ContentDependencyInstaller.EnsureAsync(Catalog(), modsDir, instance.McVersion, instance.Loader, m => ContentUpdateStatus.Text = m, default);
+            ManageStatus.Text = $"Successfully updated {updated} of {toUpdate.Count} mods." + (deps.Count > 0 ? $" Also installed {deps.Count} required mod(s)." : "");
             await ScanModsAsync(instance);
         }
         finally
@@ -2700,6 +2710,7 @@ public partial class ModpacksView : UserControl
             _addContentQuery = query;
             _addContentOffset = 0;
             _addContentMore = false;
+            _addContentHits.Clear();
             AddContentResults.Children.Clear();
             AddContentScroll.Offset = default;
         }
@@ -2748,11 +2759,8 @@ public partial class ModpacksView : UserControl
                 }
             }
 
-            foreach (var hit in hits)
-                AddContentResults.Children.Add(CreateAddContentResultRow(hit));
-            int shown = AddContentResults.Children.Count;
-            AddContentResultsCount.Text = $"{shown}{(_addContentMore ? "+" : "")} projects found";
-            AddContentStatus.Text = shown == 0 ? $"No compatible results found on {provider}." : "";
+            _addContentHits.AddRange(hits);
+            RenderAddContentRows(provider);
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
@@ -2769,6 +2777,34 @@ public partial class ModpacksView : UserControl
                 AddContentMoreButton.IsVisible = _addContentMore;
             }
         }
+        // Everything on this page was installed already and hidden: load on, or the list would end without a way to scroll for more.
+        if (_addContentSearchCts == cts && !cts.IsCancellationRequested && _addContentMore && HideInstalledEmpty()) await SearchAddContentAsync(_addContentQuery, more: true);
+    }
+
+    private bool HideInstalledEmpty() => AddContentHideInstalled?.IsChecked == true && AddContentResults.Children.Count < 8;
+
+    /// <summary>Shows <see cref="_addContentHits"/>, without the ones already installed in the target when "Hide installed" is on.</summary>
+    private void RenderAddContentRows(string? provider = null)
+    {
+        provider ??= (AddContentProvider?.SelectedItem as ComboBoxItem)?.Content as string ?? "Modrinth";
+        bool hide = AddContentHideInstalled?.IsChecked == true;
+        AddContentResults.Children.Clear();
+        int hidden = 0;
+        foreach (var hit in _addContentHits)
+        {
+            if (hide && FindInstalledMatch(hit) != null) { hidden++; continue; }
+            AddContentResults.Children.Add(CreateAddContentResultRow(hit));
+        }
+        int shown = AddContentResults.Children.Count;
+        AddContentResultsCount.Text = $"{shown}{(_addContentMore ? "+" : "")} projects found" + (hidden > 0 ? $" ({hidden} installed hidden)" : "");
+        AddContentStatus.Text = shown == 0 && !(hide && _addContentMore) ? (hidden > 0 ? "Everything found is already installed." : $"No compatible results found on {provider}.") : "";
+    }
+
+    private async void AddContentHideInstalled_Changed(object? sender, RoutedEventArgs e)
+    {
+        if (!_ready || AddContentPanel == null || !AddContentPanel.IsVisible || _selected == null) return;
+        RenderAddContentRows();
+        if (!_addContentLoading && _addContentMore && HideInstalledEmpty()) await SearchAddContentAsync(_addContentQuery, more: true);
     }
 
     private Control CreateAddContentResultRow(ModSearchItem hit)
@@ -2895,6 +2931,13 @@ public partial class ModpacksView : UserControl
                     if (file == null) throw new InvalidOperationException($"No file found for Minecraft {instance.McVersion} ({LoaderName(instance.Loader)}).");
                     Directory.CreateDirectory(_addContentTargetDir);
                     string savedFile = await Catalog().InstallAsync(file, _addContentTargetDir, SharedContentService.Instance);
+                    if (AddContentKind == ContentKind.Mod)
+                    {
+                        actionBtn.Content = "Dependencies...";
+                        var deps = await ContentDependencyInstaller.EnsureAsync(Catalog(), _addContentTargetDir, instance.McVersion, instance.Loader,
+                            m => ManageStatus.Text = m, default, hit.Provider, new[] { file });
+                        if (deps.Count > 0) AddContentStatus.Text = $"Also installed {deps.Count} required mod(s): {string.Join(", ", deps)}.";
+                    }
                     if (!string.IsNullOrEmpty(hit.IconUrl))
                     {
                         _ = Task.Run(async () =>
@@ -3422,12 +3465,25 @@ public partial class ModpacksView : UserControl
     /// <param name="retry">The launcher's own one retry after a known mod-loading race (ModLoadingRace).</param>
     /// <param name="relaunch">The game closed itself to switch renderer (shader toggle): back to the world or server it was in.</param>
     /// <param name="modSyncHost">ModSync: the friend whose world the game rejoins (first launch of that world's modpack only).</param>
-    private async Task PlayAsync(ModpackInstance instance, bool retry, GraphicsRenderer.Relaunch? relaunch = null, string? modSyncHost = null)
+    private async Task<bool> PlayAsync(ModpackInstance instance, bool retry, GraphicsRenderer.Relaunch? relaunch = null, string? modSyncHost = null)
     {
-        if (Host is not { } host) return;
-        if (_launching.TryGetValue(instance.Id, out var pending)) { pending.Cancel(); return; }
-        if (_busy.Contains(instance.Id)) return;
-        if (_running.ContainsKey(instance.Id) && !host.ModpackSettings.AllowMultiInstance) return;
+        if (Host is not { } host) return false;
+        // A ModSync start comes from the game's own request, not from a Play press: it never cancels a launch and says why it did not start.
+        if (modSyncHost != null)
+        {
+            string? why = _launching.ContainsKey(instance.Id) ? "it is already starting"
+                : _busy.Contains(instance.Id) ? "it is being updated"
+                : _running.ContainsKey(instance.Id) && !host.ModpackSettings.AllowMultiInstance ? "it is already running" : null;
+            if (why != null)
+            {
+                Status.Text = $"{instance.Name} was not started: {why}.";
+                host.ModpackLog($"ModSync: {instance.Name} was not started: {why}.");
+                return false;
+            }
+        }
+        if (_launching.TryGetValue(instance.Id, out var pending)) { pending.Cancel(); return false; }
+        if (_busy.Contains(instance.Id)) return false;
+        if (_running.ContainsKey(instance.Id) && !host.ModpackSettings.AllowMultiInstance) return false;
         using var launch = new CancellationTokenSource();
         _launching[instance.Id] = launch;
         Refresh();
@@ -3487,9 +3543,10 @@ public partial class ModpacksView : UserControl
             });
             Report($"Minecraft {instance.McVersion} started as {session.Username}.");
             host.ModpackLog($"Started {instance.Name} ({instance.Loader} {instance.LoaderVersion}, Minecraft {instance.McVersion}) PID {process.Id}.");
+            return true;
         }
-        catch (OperationCanceledException) when (launch.IsCancellationRequested) { Report("Launch cancelled."); }
-        catch (Exception error) { Report("Launch failed: " + error.Message); host.ModpackLog($"Launch of {instance.Name} failed: {error}"); }
+        catch (OperationCanceledException) when (launch.IsCancellationRequested) { Report("Launch cancelled."); return false; }
+        catch (Exception error) { Report("Launch failed: " + error.Message); host.ModpackLog($"Launch of {instance.Name} failed: {error}"); return false; }
         finally
         {
             _launching.Remove(instance.Id);
@@ -3507,7 +3564,7 @@ public partial class ModpacksView : UserControl
                 m => Host?.ModpackLog(m)));
             await PlayModSyncAsync(made, sync.Host);
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
+        catch (Exception error)
         {
             Status.Text = "Could not make the modpack for your friend's world: " + error.Message;
             Host?.ModpackLog($"ModSync: the modpack could not be made ({error.Message}).");

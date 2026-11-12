@@ -72,9 +72,9 @@ public final class SocialToasts {
         // A toast without buttons replaces the last one with the same title (progress: "Backing up the world: 40%")
         if (acceptAction == null && denyAction == null) toasts.removeIf(t -> t.title().equals(title) && t.acceptAction() == null && t.denyAction() == null);
         String acceptLabel = acceptAction == null ? null
-                : acceptAction.startsWith("invite_accept:") || acceptAction.startsWith("p2p_join:") ? "Join"
+                : acceptAction.startsWith("invite_accept:") || acceptAction.startsWith("p2p_join:") || acceptAction.startsWith("party_warp_join:") ? "Join"
                 : acceptAction.startsWith("dm:") ? "Reply" : "Accept";
-        show(acceptAction != null ? acceptAction : denyAction, title, body, acceptLabel, denyAction == null ? null : "Decline",
+        show(acceptAction != null ? acceptAction : denyAction, title, body, acceptLabel, denyAction == null ? null : denyAction.startsWith("party_warp_ignore:") ? "Ignore" : "Decline",
                 action(acceptAction), action(denyAction));
     }
 

@@ -131,6 +131,14 @@ abstract class WorldListDragMixin1201 extends ObjectSelectionList<WorldSelection
     @Override
     public boolean mouseClicked(double x, double y, int button) {
         WorldSelectionList.Entry at = getEntryAtPosition(x, y);
+        if (button == 0 && at instanceof WorldSelectionList.WorldListEntry pinRow) {
+            int pinIndex = children().indexOf(pinRow);
+            int pinCols = lads$columns();
+            if (WorldListOrder.pinHit(lads$boxLeft(pinIndex), getRowTop(pinIndex), pinCols == 1 ? getRowWidth() : ServerListColumns.width(pinCols, width), x, y)) {
+                lads$togglePin(pinRow);
+                return true;
+            }
+        }
         lads$pressed = button == 0 && at instanceof WorldSelectionList.WorldListEntry && WorldListOrder.canDrag(filter);
         lads$pressX = x;
         lads$pressY = y;
@@ -204,6 +212,7 @@ abstract class WorldListDragMixin1201 extends ObjectSelectionList<WorldSelection
 
     @Inject(method = "render", at = @At("RETURN"))
     private void lads$afterRender(GuiGraphics graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
+        lads$drawPins(graphics, mouseX, mouseY);
         if (lads$from < 0 || lads$from >= children().size()) return;
         int columns = lads$columns(), rowWidth = columns == 1 ? getRowWidth() : ServerListColumns.width(columns, width);
         int gapX = lads$boxLeft(lads$from), gapY = getRowTop(lads$from);
@@ -226,6 +235,32 @@ abstract class WorldListDragMixin1201 extends ObjectSelectionList<WorldSelection
         graphics.flush();
         graphics.setColor(1, 1, 1, 1);
         graphics.pose().popPose();
+    }
+
+    @Unique
+    private void lads$drawPins(GuiGraphics graphics, int mouseX, int mouseY) {
+        int columns = lads$columns(), rowWidth = columns == 1 ? getRowWidth() : ServerListColumns.width(columns, width);
+        enableScissor(graphics);
+        for (int i = 0; i < children().size(); i++) {
+            if (!(children().get(i) instanceof WorldSelectionList.WorldListEntry w)) continue;
+            int left = lads$boxLeft(i), top = getRowTop(i);
+            if (top + itemHeight < y0 || top > y1) continue;
+            boolean hover = mouseX >= left && mouseX < left + rowWidth && mouseY >= top && mouseY < top + itemHeight - 4;
+            WorldListOrder.drawPinFor(graphics::fill, left, top, rowWidth, ((WorldListEntryAccessor) (Object) w).ladsSummary().getLevelId(), hover, mouseX, mouseY);
+        }
+        graphics.disableScissor();
+    }
+
+    @Unique
+    private void lads$togglePin(WorldSelectionList.WorldListEntry entry) {
+        WorldListOrder.togglePin(((WorldListEntryAccessor) (Object) entry).ladsSummary().getLevelId());
+        List<LevelSummary> summaries = new ArrayList<>();
+        for (WorldSelectionList.Entry e : children()) {
+            if (e instanceof WorldSelectionList.WorldListEntry w) summaries.add(((WorldListEntryAccessor) (Object) w).ladsSummary());
+        }
+        currentlyDisplayedLevels = summaries;
+        pendingLevels = CompletableFuture.completedFuture(summaries);
+        fillLevels(filter, summaries);
     }
 
     @Unique
