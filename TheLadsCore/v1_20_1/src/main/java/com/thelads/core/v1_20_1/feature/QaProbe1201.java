@@ -414,6 +414,7 @@ public final class QaProbe1201 {
             }
             case "srv" -> ServerListQa1201.step(mc, s);
             case "friendso" -> friendso(mc);
+            case "textui" -> { if ("tab".equals(arg(s, 1))) ((com.thelads.core.v1_20_1.social.FriendsScreen1201) mc.screen).ui().setTab(com.thelads.core.client.social.ui.FriendsScreenLogic.Tab.valueOf(arg(s, 2).toUpperCase(Locale.ROOT))); else if (!com.thelads.core.client.qa.SocialQa.step(s, 1)) throw new IllegalArgumentException("textui: " + arg(s, 1)); } // sidebar, best, pin, party
             case "titlelayout" -> com.thelads.core.modules.TitleScreenModule.toggleLayout();
             case "titlepanorama" -> com.thelads.core.modules.TitleScreenModule.setPanorama(!"off".equals(arg(s, 1)));
             case "panoramaversion" -> {
@@ -588,7 +589,7 @@ public final class QaProbe1201 {
             case "inventory" -> { needWorld(mc); mc.setScreen(new InventoryScreen(mc.player)); }
             case "chat" -> mc.setScreen(new ChatScreen(""));
             case "multiplayer" -> { localServersOnly(mc); mc.setScreen(new JoinMultiplayerScreen(current)); }
-            case "singleplayer" -> mc.setScreen(new SelectWorldScreen(current));
+            case "singleplayer", "worlds" -> mc.setScreen(new SelectWorldScreen(current));
             case "createworld" -> CreateWorldScreen.openFresh(mc, current);
             case "language" -> mc.setScreen(new LanguageSelectScreen(current, mc.options, mc.getLanguageManager()));
             case "packs" -> mc.setScreen(new PackSelectionScreen(mc.getResourcePackRepository(), mc.options::updateResourcePacks,

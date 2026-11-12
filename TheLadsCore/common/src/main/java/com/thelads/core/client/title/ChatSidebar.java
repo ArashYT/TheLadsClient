@@ -155,7 +155,8 @@ final class ChatSidebar {
 
     /** When each chat was last opened from here, this game only. */
     private static final Map<UUID, Long> OPENED = new HashMap<>();
-    private static final long SINCE = ProcessHandle.current().info().startInstant().map(java.time.Instant::toEpochMilli).orElse(System.currentTimeMillis());
+    /** The JVM's start time; not ProcessHandle: the 1.8.9 jar's downgrader swaps it for a JNA stub whose WMI date parse throws on Windows (crashed the title screen). */
+    private static final long SINCE = java.lang.management.ManagementFactory.getRuntimeMXBean().getStartTime();
 
     private final Source source;
     private boolean open;
