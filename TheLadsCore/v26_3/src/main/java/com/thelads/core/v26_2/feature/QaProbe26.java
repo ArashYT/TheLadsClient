@@ -236,6 +236,7 @@ public final class QaProbe26 {
                 else if ("controls".equals(target)) mc.setScreenAndShow(new net.minecraft.client.gui.screens.options.controls.ControlsScreen(mc.gui.screen(), mc.options));
                 else if ("multiplayer".equals(target)) mc.setScreenAndShow(new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(mc.gui.screen()));
                 else if ("friends".equals(target)) mc.setScreenAndShow(new com.thelads.core.v26_2.social.FriendsScreen26(mc.gui.screen()));
+                else if ("worlds".equals(target)) mc.setScreenAndShow(new net.minecraft.client.gui.screens.worldselection.SelectWorldScreen(mc.gui.screen()));
                 else if ("screenshots".equals(target)) {
                     var sv = com.thelads.core.v26_2.feature.screenshots.ScreenshotViewer.getInstance();
                     if (sv == null) throw new IllegalStateException("ScreenshotViewer unavailable");
@@ -421,6 +422,21 @@ public final class QaProbe26 {
             }
             case "type" -> rest(s, 2).codePoints().forEach(c -> mc.keyboardHandler.charTyped(mc.getWindow().handle(), new net.minecraft.client.input.CharacterEvent(c)));
             case "dm" -> dmStep(mc, s);
+            case "sidebar" -> com.thelads.core.client.title.TitleOverlay.qaSidebar("friends".equals(arg(s, 2))); // the title chat sidebar: textui sidebar friends|messages
+            case "best" -> com.thelads.core.client.social.BestFriends.toggle(qaUuid(arg(s, 2))); // textui best <uuid>
+            case "pin" -> com.thelads.core.client.WorldListOrder.togglePin(rest(s, 2)); // textui pin <world folder>
+            case "party" -> { // textui party invite|promote|kick|leave|warp <uuid or address>
+                var st = com.thelads.core.client.social.SocialState.get();
+                switch (arg(s, 2)) {
+                    case "invite" -> st.inviteToParty(qaUuid(arg(s, 3)));
+                    case "promote" -> st.promoteInParty(qaUuid(arg(s, 3)));
+                    case "kick" -> st.kickFromParty(qaUuid(arg(s, 3)));
+                    case "leave" -> st.leaveParty();
+                    case "warp" -> st.warp(arg(s, 3));
+                    default -> throw new IllegalArgumentException("textui party: " + s[2]);
+                }
+                LOGGER.info("Lads 26.3 qa party: {} leader={} invites={} warp={}", st.party(), st.isPartyLeader(), st.partyInvites(), st.pendingPartyWarp());
+            }
             case "expect" -> {
                 var enabled = com.mojang.blaze3d.platform.TextInputManager.class.getDeclaredField("textInputEnabled");
                 enabled.setAccessible(true);
@@ -504,6 +520,11 @@ public final class QaProbe26 {
     private static String arg(String[] s, int i) {
         if (i >= s.length) throw new IllegalArgumentException("'" + s[0] + "' needs argument " + i);
         return s[i];
+    }
+
+    /** A UUID with or without dashes (the social relay sends them without). */
+    private static java.util.UUID qaUuid(String id) {
+        return java.util.UUID.fromString(id.contains("-") ? id : id.replaceFirst("(.{8})(.{4})(.{4})(.{4})(.{12})", "$1-$2-$3-$4-$5"));
     }
 
     private static String rest(String[] s, int from) {

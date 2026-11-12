@@ -37,6 +37,12 @@ public partial class MainWindow : Window
         if (action == null || action.Type == DeepLinkActionType.None)
             return;
 
+        if (action.Type == DeepLinkActionType.Show)
+        {
+            ShowForDialog();
+            return;
+        }
+
         if (action.Type == DeepLinkActionType.Unknown)
         {
             Log($"[DeepLink] Unknown deep link action '{action.Target}' ignored: {action.Extra}");

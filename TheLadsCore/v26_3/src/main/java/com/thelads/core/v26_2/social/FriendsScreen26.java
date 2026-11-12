@@ -123,7 +123,8 @@ public final class FriendsScreen26 extends Screen {
 
     @Override
     public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
-        if (mojangView) g.fill(0, 0, width, height, 0xCC100B10); // the Lads view: FriendsScreenLogic paints its own background
+        if (mojangView) g.fill(0, 0, width, height, 0xCC100B10);
+        else if (minecraft.level == null) extractPanorama(g, delta); // the Lads view has no background: the panorama (no blur, no dim) or the world shows
     }
 
     @Override

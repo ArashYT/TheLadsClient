@@ -5927,6 +5927,15 @@ public partial class MainWindow : Window
             return false;
         }
         StatusText.Text = $"Making the modpack {ModSyncService.PackName(modSync)}...";
+        // The launcher is hidden and the new game takes a while: without this splash nothing is on screen for up to a minute,
+        // so it looked as if no restart happened (and a second launch from the launcher started the pack twice).
+        var splash = new Views.GameStartupSplash();
+        splash.SetGameVersion(profile.MinecraftVersion);
+        splash.SetStatus("Loading your friend's mods");
+        splash.SetDetail($"Making {ModSyncService.PackName(modSync)}...");
+        System.Diagnostics.Process? started = null;
+        splash.CancelRequested += () => { if (started is { HasExited: false }) GameSession.Cancel(started); };
+        splash.Show();
         _ = Dispatcher.UIThread.InvokeAsync(async () =>
         {
             try
@@ -5934,13 +5943,20 @@ public partial class MainWindow : Window
                 var instance = await Task.Run(() => ModSyncService.BuildInstance(_pathService.BaseDirectory, modSync, gameDirectory,
                     profile.MinecraftVersion, profile.FabricVersion!, message => Log("[Launcher] " + message)));
                 StatusText.Text = $"Starting {instance.Name}...";
+                splash.SetDetail($"Starting {instance.Name}...");
                 NavigateTo("Modpacks");
-                bool started = await ModpacksPage.PlayModSyncAsync(instance, modSync.Host);
+                bool ok = await ModpacksPage.PlayModSyncAsync(instance, modSync.Host);
                 // The profile's game hid the launcher and its exit left it hidden for this launch: back when this game closes, as after
                 // a profile's game, and at once when it did not start (the Modpacks page says why).
-                if (!started || ModpacksPage.RunningGame(instance.Id) is not { } game) ShowForDialog();
+                if (!ok || ModpacksPage.RunningGame(instance.Id) is not { } game)
+                {
+                    splash.Close();
+                    ShowForDialog();
+                }
                 else
                 {
+                    started = game;
+                    _ = WatchForGameWindowAsync(game, splash, instance.GameDirectory);
                     game.Exited += (_, _) => Dispatcher.UIThread.Post(ShowAfterGame);
                     if (game.HasExited) ShowAfterGame();
                 }
@@ -5949,6 +5965,7 @@ public partial class MainWindow : Window
             {
                 Log($"[Launcher] ModSync: the modpack could not be made or started ({ex}).");
                 StatusText.Text = "Could not make the modpack for your friend's world.";
+                try { splash.Close(); } catch { }
                 ShowForDialog();
             }
         });
