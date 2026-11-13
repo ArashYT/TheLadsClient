@@ -9,6 +9,7 @@ import com.thelads.core.client.cosmetics.wearables.CosmeticSlot;
 import com.thelads.core.client.cosmetics.wearables.CosmeticsManager;
 import com.thelads.core.client.ladsapi.LadsApiClient;
 import com.thelads.core.client.ladsapi.LadsPresence;
+import com.thelads.core.client.social.SocialState;
 import com.thelads.core.config.ShareCodeClient;
 import com.thelads.core.modules.CosmeticsModule;
 import java.io.IOException;
@@ -154,7 +155,8 @@ public final class CosmeticsLink {
         CosmeticsModule cosmetics = CosmeticsModule.get();
         boolean show = cosmeticsHere && cosmetics.showOthers.get(), share = cosmeticsHere && cosmetics.shareMine.get();
         LadsGameBridge game = LadsGameBridge.get();
-        String address = qaServer != null ? qaServer : game.getServerAddress();
+        String address = qaServer != null ? qaServer : friendWorld(game);
+        if (address == null) address = game.getServerAddress();
         if (!Objects.equals(address, lastAddress)) {
             lastAddress = address;
             lastRoom = room(address);
@@ -174,6 +176,18 @@ public final class CosmeticsLink {
         LadsPresence.relayClear();
         if (next != null) start();
         wake();
+    }
+
+    /**
+     * A friend's world (P2P invite): the host reports "Singleplayer" and a guest a random 127.0.0.1 proxy port, so neither address
+     * is shared. Both sides use the host's account instead, so they land in one room and see each other's badge.
+     */
+    private static String friendWorld(LadsGameBridge game) {
+        SocialState social = SocialState.get();
+        UUID host = null;
+        if (social.isGuestSessionActive()) host = social.activeGuestHostUuid();
+        else if (social.hostSession().isHosting() && game.session() != null) host = game.session().uuid();
+        return host == null ? null : "p2p-" + plain(host) + ".lads";
     }
 
     private synchronized void start() {
