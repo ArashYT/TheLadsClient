@@ -20,6 +20,9 @@ public abstract class MixinExplorationMapFunction {
 
     @WrapMethod(method = "run")
     private ItemStack ladssmp$budgetSearch(ItemStack stack, LootContext context, Operation<ItemStack> original) {
+        // Worldgen threads must never search the live world: Smart Backpacks' Backpacker Camp builds its trader's trades (an explorer
+        // map among them) while its chunk generates, and that search waited on the main thread, which could be waiting on the chunk.
+        if (!context.getLevel().getServer().isSameThread()) return stack;
         MapSearchBudget.start();
         try {
             return original.call(stack, context);
