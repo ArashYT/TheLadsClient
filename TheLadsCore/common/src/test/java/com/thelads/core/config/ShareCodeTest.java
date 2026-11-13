@@ -448,6 +448,13 @@ class ShareCodeTest {
     }
 
     @Test
+    void translateChatNeverTravelsInAShareCode() {
+        assertTrue(ShareCode.isExcludedOption("Chat", "Translate Chat"));
+        assertTrue(ShareCode.isExcludedOption("Chat", "Translate To"));
+        assertFalse(ShareCode.isExcludedOption("Chat", "Profanity Filter"));
+    }
+
+    @Test
     void defaultConfigCodeIsTiny() {
         ModuleManager.getInstance().resetToDefaults();
         JsonObject payload = ShareCode.createSharePayload(ConfigManager.toJson());
