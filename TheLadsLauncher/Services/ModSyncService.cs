@@ -243,6 +243,12 @@ public static class ModSyncService
         instance.Loader = "fabric";
         instance.LoaderVersion = loaderVersion;
         instance.LadsCore = true;
+        string needed = RequiredLoader(relaunch.Folder);
+        if (needed != null && Version.TryParse(needed, out var need) && (!Version.TryParse(loaderVersion, out var have) || have < need))
+        {
+            log($"ModSync: the host's mods need Fabric Loader {needed} (yours is {loaderVersion}); the modpack uses {needed}.");
+            instance.LoaderVersion = needed;
+        }
         string mods = Path.Combine(instance.GameDirectory, "mods");
         Directory.CreateDirectory(mods);
 
@@ -277,6 +283,34 @@ public static class ModSyncService
         log(made ? $"ModSync: '{name}' has your {own} mod(s) and {host} from the host."
             : $"ModSync: '{name}' updated in place: {added} added, {updated} updated, {removed} removed ({own} of yours, {host} from the host).");
         return instance;
+    }
+
+    /// <summary>The highest Fabric Loader version (">=x.y.z") the jars in <paramref name="folder"/> ask for, or null. A host on a newer loader
+    /// than the guest's profile sends jars the guest's loader refuses to start with.</summary>
+    internal static string? RequiredLoader(string folder)
+    {
+        Version? best = null;
+        foreach (var jar in Directory.EnumerateFiles(folder, "*.jar"))
+        {
+            try
+            {
+                using var zip = System.IO.Compression.ZipFile.OpenRead(jar);
+                var entry = zip.GetEntry("fabric.mod.json");
+                if (entry == null) continue;
+                using var doc = JsonDocument.Parse(entry.Open(), new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip });
+                if (!doc.RootElement.TryGetProperty("depends", out var deps) || deps.ValueKind != JsonValueKind.Object
+                    || !deps.TryGetProperty("fabricloader", out var req)) continue;
+                var ranges = req.ValueKind == JsonValueKind.Array ? req.EnumerateArray().Select(e => e.GetString()) : new[] { req.GetString() };
+                foreach (var r in ranges)
+                {
+                    if (r == null || !r.StartsWith(">=")) continue;
+                    var v = new string(r.Substring(2).Trim().TakeWhile(c => char.IsDigit(c) || c == '.').ToArray());
+                    if (Version.TryParse(v, out var ver) && (best == null || ver > best)) best = ver;
+                }
+            }
+            catch { /* an unreadable jar asks for nothing */ }
+        }
+        return best?.ToString();
     }
 
     private static bool IsCore(string file) => Path.GetFileName(file).Equals("theladscore.jar", StringComparison.OrdinalIgnoreCase);
