@@ -3612,7 +3612,9 @@ public partial class ModpacksView : UserControl
         {
             Modpacks.Save(i);
             await ModpackCoreSync.EnsureFabricApiAsync(i, Http, msg => ManageStatus.Text = msg, default);
-            await ModpackCoreSync.EnsureDependenciesAsync(i, Http, msg => ManageStatus.Text = msg, default);
+            await ModpackCoreSync.EnsureDependenciesAsync(i, Http, msg => ManageStatus.Text = msg, default, (id, slug) => Host is { } host
+                ? host.ConfirmModpackAsync("Install a mod", $"A mod in '{i.Name}' needs '{id}'. Install the Modrinth project '{slug}' for it? Only say yes if you recognise it; the launcher guessed the name.", "Install")
+                : Task.FromResult(false));
             ModpackCoreSync.Sync(i, status: msg => ManageStatus.Text = msg);
             OpenManage(i);
             ManageStatus.Text = "Saved.";

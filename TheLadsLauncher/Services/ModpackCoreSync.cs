@@ -358,7 +358,7 @@ public static class ModpackCoreSync
 
     /// <summary>Installs the libraries the mods of an own Fabric/Quilt instance require and none provides (see <see cref="ModDependencyInstaller"/>).</summary>
     public static async System.Threading.Tasks.Task EnsureDependenciesAsync(ModpackInstance instance, System.Net.Http.HttpClient http,
-        Action<string>? status, System.Threading.CancellationToken token)
+        Action<string>? status, System.Threading.CancellationToken token, Func<string, string, System.Threading.Tasks.Task<bool>>? confirm = null)
     {
         if (instance.IsExternal) return;
         if (Environment.GetEnvironmentVariable(SkipEnvironmentVariable) == "1") return;
@@ -366,7 +366,7 @@ public static class ModpackCoreSync
         await EnsureSiteDependenciesAsync(instance, new ContentCatalog(http, settings.ModrinthApiUrl, settings.CurseForgeApiUrl, settings.CurseForgeApiKey), status, token);
         // Then the mod metadata, for jars the sites do not know.
         string mods = Path.Combine(instance.GameDirectory, "mods");
-        await ModDependencyInstaller.EnsureAsync(http, mods, instance.McVersion, instance.Loader, status, token);
+        await ModDependencyInstaller.EnsureAsync(http, mods, instance.McVersion, instance.Loader, status, token, confirm); // a guessed project only after the player's yes
     }
 
     /// <summary>Brings the Core of an instance up to date according to its <see cref="ModpackInstance.LadsCore"/> setting:

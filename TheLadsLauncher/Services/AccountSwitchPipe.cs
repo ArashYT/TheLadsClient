@@ -44,6 +44,9 @@ public static class AccountSwitchPipe
         return PipeName + " " + key;
     }
 
+    /// <summary>Ends a game's key (its process exited): the pipe no longer answers it.</summary>
+    public static void Revoke(string key) => GameDirectories.TryRemove(key, out _);
+
     /// <summary>One request line to one reply line. <paramref name="resolve"/> gets the token; <paramref name="switched"/> is told a game switched (its directory);
     /// <paramref name="remove"/> removes a saved account for a game's switcher (an empty error means done).</summary>
     public static async Task<string> AnswerAsync(string? line, Func<AccountSwitchRequest, CancellationToken, Task<AccountTokenReply>> resolve, Action<string> switched, CancellationToken token,

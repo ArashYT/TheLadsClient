@@ -464,6 +464,10 @@ public final class ShareCode {
         if (isMachineSpecificOption(optionName)) {
             return true;
         }
+        // Privacy switches a stranger's code must not flip: Translate Chat sends every chat line to Google.
+        if (com.thelads.core.client.ladsapi.LadsApiRules.isPrivateOption(moduleName, optionName)) {
+            return true;
+        }
         if (HypixelMods.HYPIXEL_MODS.equals(moduleName)) {
             int setting = optionName.indexOf(": ");
             String baseFeature = setting < 0 ? optionName : optionName.substring(0, setting);

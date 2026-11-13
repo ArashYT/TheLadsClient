@@ -43,9 +43,50 @@ public class ModDependencyInstallerTests : IDisposable
         Jar("a.jar", "moda", "\"cloth-config\":\"*\"");
         using var http = new HttpClient();
         Assert.Empty(await ModDependencyInstaller.EnsureAsync(http, _mods, "1.20.1", "forge", null, default));
-        var installed = await ModDependencyInstaller.EnsureAsync(http, _mods, "1.20.1", "fabric", null, default);
+        var installed = await ModDependencyInstaller.EnsureAsync(http, _mods, "1.20.1", "fabric", null, default, (_, _) => Task.FromResult(true));
         Assert.Single(installed);
         Assert.True(File.Exists(Path.Combine(_mods, installed[0])));
         Assert.DoesNotContain("cloth-config", ModDependencyInstaller.MissingIds(_mods));
+    }
+
+    private sealed class Modrinth : HttpMessageHandler
+    {
+        public readonly List<string> Requests = new();
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+        {
+            Requests.Add(request.RequestUri!.AbsoluteUri);
+            string json = request.RequestUri.AbsolutePath.EndsWith("/version")
+                ? "[{\"version_type\":\"release\",\"files\":[{\"primary\":true,\"filename\":\"lib.jar\",\"url\":\"https://cdn.modrinth.com/lib.jar\",\"hashes\":{}}]}]"
+                : "";
+            return Task.FromResult(new HttpResponseMessage { Content = new ByteArrayContent(json == "" ? new byte[] { 1 } : Encoding.UTF8.GetBytes(json)) });
+        }
+    }
+
+    // A mod id is not a Modrinth name: whoever owns the slug the id maps to must not get code into the pack without the player's yes.
+    [Fact]
+    public async Task EnsureAsync_does_not_install_a_guessed_slug_unless_the_player_confirms()
+    {
+        Jar("a.jar", "moda", "\"some_lib\":\"*\"");
+        var modrinth = new Modrinth();
+        using var http = new HttpClient(modrinth);
+        Assert.Empty(await ModDependencyInstaller.EnsureAsync(http, _mods, "1.20.1", "fabric", null, default));
+        Assert.Empty(await ModDependencyInstaller.EnsureAsync(http, _mods, "1.20.1", "fabric", null, default, (_, _) => Task.FromResult(false)));
+        Assert.Empty(modrinth.Requests);
+        Assert.False(File.Exists(Path.Combine(_mods, "lib.jar")));
+
+        string? asked = null;
+        var installed = await ModDependencyInstaller.EnsureAsync(http, _mods, "1.20.1", "fabric", null, default, (id, slug) => { asked = id + "/" + slug; return Task.FromResult(true); });
+        Assert.Equal("some_lib/some-lib", asked);
+        Assert.Equal(new[] { "lib.jar" }, installed);
+    }
+
+    [Fact]
+    public async Task EnsureAsync_still_installs_fabric_api_without_asking()
+    {
+        Jar("a.jar", "moda", "\"fabric-resource-loader-v0\":\"*\"");
+        var modrinth = new Modrinth();
+        using var http = new HttpClient(modrinth);
+        Assert.Equal(new[] { "lib.jar" }, await ModDependencyInstaller.EnsureAsync(http, _mods, "1.20.1", "fabric", null, default));
+        Assert.Contains(modrinth.Requests, r => r.Contains("/project/fabric-api/version"));
     }
 }

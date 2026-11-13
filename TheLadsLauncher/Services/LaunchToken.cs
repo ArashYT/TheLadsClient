@@ -20,7 +20,9 @@ public static class LaunchToken
 
     // Keyed by the start info, not the Process: a relaunch with the same start info (the QA harness's one retry after a mod-loading race)
     // must get the token too, or the game waits on stdin forever (Arash-PC int QA, 2026-10-11).
-    private static readonly ConditionalWeakTable<ProcessStartInfo, string> Pending = new();
+    // The hand-off key is made in Send, per started process, and revoked when that process exits.
+    private static readonly ConditionalWeakTable<ProcessStartInfo, Hidden> Pending = new();
+    private sealed record Hidden(string Token, string? HandOffDirectory);
 
     /// <summary>Call on the built game process before Start; <see cref="Send"/> after Start. The token stays on the command
     /// line when no Core in the game's mods reads stdin. <paramref name="accountHandOff"/> false: the game gets no way to ask for other accounts' tokens.</summary>
@@ -34,13 +36,21 @@ public static class LaunchToken
         start.Arguments = arguments;
         start.RedirectStandardInput = true;
         start.StandardInputEncoding = new UTF8Encoding(false);
-        Pending.AddOrUpdate(start, accountHandOff ? accessToken + "\n" + AccountSwitchPipe.HandOff(gameDirectory) : accessToken);
+        Pending.AddOrUpdate(start, new Hidden(accessToken, accountHandOff ? gameDirectory : null));
     }
 
     /// <summary>Writes the token <see cref="Hide"/> took off the command line to the started game, off the caller's thread.</summary>
     public static void Send(Process process)
     {
-        if (!Pending.TryGetValue(process.StartInfo, out var lines)) return;
+        if (!Pending.TryGetValue(process.StartInfo, out var hidden)) return;
+        string lines = hidden.Token;
+        if (hidden.HandOffDirectory != null)
+        {
+            string handOff = AccountSwitchPipe.HandOff(hidden.HandOffDirectory);
+            lines += "\n" + handOff;
+            process.EnableRaisingEvents = true;
+            process.Exited += (_, _) => AccountSwitchPipe.Revoke(handOff[(handOff.LastIndexOf(' ') + 1)..]);
+        }
         var input = process.StandardInput;
         _ = Task.Run(async () =>
         {

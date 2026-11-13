@@ -72,7 +72,8 @@ public static class ModrinthJarInstaller
 
 /// <summary>Installs the libraries the mods in a modpack's mods folder require and nothing provides, from Modrinth. A required id
 /// is looked up as a Modrinth project with the same slug (Fabric API's modules map to fabric-api); ids with no such project are
-/// left for the game's own error. Fabric and Quilt only; Forge packs bring their libraries.</summary>
+/// left for the game's own error. A mod id is not a Modrinth name, so apart from Fabric API a guessed project is installed only when the
+/// player confirms it. Fabric and Quilt only; Forge packs bring their libraries.</summary>
 public static class ModDependencyInstaller
 {
     private static readonly HashSet<string> Builtin = new(StringComparer.Ordinal)
@@ -110,9 +111,10 @@ public static class ModDependencyInstaller
 
     private static bool IsFabricApiId(string id) => id is "fabric" or "fabric-api" || Regex.IsMatch(id, "^fabric-.+-v\\d+$");
 
-    /// <summary>Installs what is missing (up to three rounds). Returns the installed file names; status reports each install and each id Modrinth could not supply.</summary>
+    /// <summary>Installs what is missing (up to three rounds). Returns the installed file names; status reports each install and each id Modrinth could not supply.
+    /// <paramref name="confirm"/> (id, slug) asks the player about a guessed project; without it only Fabric API is installed.</summary>
     public static async Task<IReadOnlyList<string>> EnsureAsync(HttpClient http, string modsDirectory, string mcVersion, string loader,
-        Action<string>? status, CancellationToken token)
+        Action<string>? status, CancellationToken token, Func<string, string, Task<bool>>? confirm = null)
     {
         var installed = new List<string>();
         loader = (loader ?? "").Trim().ToLowerInvariant();
@@ -128,6 +130,11 @@ public static class ModDependencyInstaller
                 token.ThrowIfCancellationRequested();
                 var slug = IsFabricApiId(id) ? "fabric-api" : id.Replace('_', '-');
                 if (!slugs.Add(slug)) continue; // one Fabric API download covers every module id
+                if (slug != "fabric-api" && (confirm == null || !await confirm(id, slug)))
+                {
+                    status?.Invoke($"The required mod '{id}' was not installed from Modrinth ('{slug}' is only a guess; add it yourself or confirm it when saving the modpack).");
+                    continue;
+                }
                 status?.Invoke($"Installing {slug} (needed by a mod)...");
                 var file = await ModrinthJarInstaller.InstallLatestAsync(http, slug, modsDirectory, mcVersion, loader, status, token);
                 if (file != null) { installed.Add(file); status?.Invoke($"Installed {file}."); }

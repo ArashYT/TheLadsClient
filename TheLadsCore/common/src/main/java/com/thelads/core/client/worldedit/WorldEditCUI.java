@@ -40,6 +40,10 @@ public final class WorldEditCUI {
         NONE, CUBOID, UNSUPPORTED
     }
 
+    /** The server sends the points: inside the world border, and no more grid lines than a frame can draw. */
+    private static final int MAX_COORD = 30_000_000;
+    private static final int MAX_GRID_LINES = 4096;
+
     private static Shape shape = Shape.NONE;
     private static BlockPos pos1 = null;
     private static BlockPos pos2 = null;
@@ -130,9 +134,9 @@ public final class WorldEditCUI {
                 if (parts.length >= 5) {
                     try {
                         int id = Integer.parseInt(parts[1]);
-                        int x = Integer.parseInt(parts[2]);
-                        int y = Integer.parseInt(parts[3]);
-                        int z = Integer.parseInt(parts[4]);
+                        int x = clamp(Integer.parseInt(parts[2]));
+                        int y = clamp(Integer.parseInt(parts[3]));
+                        int z = clamp(Integer.parseInt(parts[4]));
                         BlockPos pos = new BlockPos(x, y, z);
                         if (id == 0) {
                             pos1 = pos;
@@ -145,6 +149,10 @@ public final class WorldEditCUI {
                 }
                 break;
         }
+    }
+
+    private static int clamp(int coord) {
+        return Math.max(-MAX_COORD, Math.min(MAX_COORD, coord));
     }
 
     /** Returns the CUI handshake packet payload (v|4). */
@@ -217,6 +225,7 @@ public final class WorldEditCUI {
     }
 
     private static void drawGrid(Lines out, double x0, double y0, double z0, double x1, double y1, double z1, int color, int step) {
+        if ((y1 - y0 + x1 - x0 + z1 - z0) / step > MAX_GRID_LINES) return; // a huge region: the outline only
         // X-Z grids along Y
         for (double y = y0 + step; y < y1; y += step) {
             out.line(x0, y, z0, x1, y, z0, color);

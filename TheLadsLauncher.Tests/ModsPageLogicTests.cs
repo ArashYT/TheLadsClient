@@ -87,6 +87,18 @@ public sealed class ModsPageLogicTests : IDisposable
         Assert.Equal(new[] { "libjar", "packmod", "usermod" }, ModInventoryView.EnabledJarIds(withBroken));
     }
 
+    // A mod the player added could use the account hand-off to take every saved account's token: only a profile without one gets it.
+    [Fact]
+    public async Task OnlyAnEnabledPlayerJarWithholdsTheAccountHandOff()
+    {
+        var inventory = await Inventory();
+        Assert.True(ModInventoryView.HasEnabledUserJar(inventory));
+        var withoutUserJars = inventory with { Entries = inventory.Entries.Where(e => e.Ownership != ModOwnership.User).ToList() };
+        Assert.False(ModInventoryView.HasEnabledUserJar(withoutUserJars));
+        var disabledOnly = inventory with { Entries = inventory.Entries.Select(e => e with { EnabledOnDisk = false }).ToList() };
+        Assert.False(ModInventoryView.HasEnabledUserJar(disabledOnly));
+    }
+
     // UI-1: right after a profile switch the old list may still be on screen; the page changes only the active profile's list.
     [Fact]
     public async Task AnInventoryBelongsOnlyToItsOwnProfileFolder()

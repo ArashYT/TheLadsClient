@@ -49,6 +49,11 @@ public final class LadsApiRules {
             || HypixelSafetyManager.isGatedHypixelModule(moduleName);
     }
 
+    /** A privacy option of another module that never travels or is forced (Translate Chat); share codes leave it out too. */
+    public static boolean isPrivateOption(String moduleName, String optionName) {
+        return moduleName != null && optionName != null && NEVER_FORCED_OPTIONS.contains(key(moduleName) + "." + key(optionName));
+    }
+
     /** A server may not touch this option (its rules are ignored and reported): every option of a never-forced module, and privacy ones. */
     public static boolean isNeverForced(String moduleName, String optionName) {
         if (moduleName == null) return false;
