@@ -260,9 +260,9 @@ public static class ModSyncService
         string originFile = Path.Combine(instance.GameDirectory, SyncFolder, relaunch.Host + ".jars.json");
         var recorded = Read<List<string>>(originFile);
         string profileMods = Path.Combine(game, "mods");
-        // A pack made before the record existed: what ModSync put there stands in for it, except the jars of the profile that asked
+        // A pack made before the record existed: the jars named like the host's (<sha-512 start>-<name>) that ModSync put there
         var legacy = recorded != null || made || relaunch.HostFiles == null ? new List<string>()
-            : (Read<List<string>>(Path.Combine(instance.Directory, ManagedFile)) ?? new()).Where(n => !File.Exists(Path.Combine(profileMods, n)) || Path.GetFullPath(game).Equals(Path.GetFullPath(instance.GameDirectory), StringComparison.OrdinalIgnoreCase)).ToList();
+            : (Read<List<string>>(Path.Combine(instance.Directory, ManagedFile)) ?? new()).Where(n => System.Text.RegularExpressions.Regex.IsMatch(n, "^[0-9a-f]{12}-.*[.]jar$")).ToList();
         var origin = recorded ?? legacy;
         var stale = relaunch.HostFiles == null ? new HashSet<string>() : origin.Where(n => !relaunch.HostFiles.Contains(n, StringComparer.OrdinalIgnoreCase)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (Directory.Exists(profileMods))

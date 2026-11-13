@@ -94,6 +94,8 @@ public class SocialBridge26 implements SocialBridge {
                 return -1;
             }
 
+            // QA only (LADS_QA_MODSYNC=host against a local dev backend): both games are offline accounts, so the host does not ask Mojang
+            if ("host".equals(System.getenv("LADS_QA_MODSYNC")) && com.thelads.core.client.social.SocialState.get().client().local()) server.setUsesAuthentication(false);
             applyHostOptions(options);
             return server.getPort();
         } catch (Throwable t) {

@@ -45,7 +45,8 @@ final class ModSyncQa {
                     s.startHosting(o);
                 }
                 say("host: opening the world to friends");
-            } else if (!invited) {
+            } else if (!invited || (s.hostSession().activeGuestCount() == 0 && seconds % 40 == 0 && peer.presence() != null && peer.presence().online())) {
+                // again every 40 s while nobody is in: a restarted guest may have dropped the first one while its game was still loading
                 boolean online = peer.presence() != null && peer.presence().online();
                 if (online) { invited = true; s.invite(peer.id()); }
                 say("host: hosting, " + PEER + (online ? " invited" : " is offline"));
@@ -66,7 +67,7 @@ final class ModSyncQa {
                     + System.getProperty("fabric.addMods"));
             } else {
                 // A game the launcher restarted for a host accepts that host's invite by itself (SocialState.rejoinHost)
-                if (restarted == null) for (SocialState.Invite invite : invites) {
+                if (restarted == null || seconds > 25) for (SocialState.Invite invite : invites) {
                     if (!invite.isServer() && peer.id().equals(invite.from())) { s.acceptInvite(invite.inviteId()); break; }
                 }
                 say("guest: friends with " + PEER + ", invites " + invites.size() + ", restarted for " + restarted);

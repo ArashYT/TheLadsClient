@@ -222,9 +222,11 @@ public partial class MainWindow : Window
         else if (IsDevOfflineAllowed && args.Contains("--auto-launch-offline"))
         {
             Log("[AUTOMATION] --auto-launch-offline detected. Triggering LaunchGame...");
-            if (!settings.OfflineAccounts.Contains("TestPlayer"))
+            // QA: LADS_DEV_OFFLINE_NAME lets two games on one PC be two different players
+            string offlineName = Environment.GetEnvironmentVariable("LADS_DEV_OFFLINE_NAME") is { Length: > 0 } n ? n : "TestPlayer";
+            if (!settings.OfflineAccounts.Contains(offlineName))
             {
-                settings.OfflineAccounts.Add("TestPlayer");
+                settings.OfflineAccounts.Add(offlineName);
                 settings.Save();
             }
             Dispatcher.UIThread.Post(async () =>
@@ -232,7 +234,7 @@ public partial class MainWindow : Window
                 try
                 {
                     await Task.Delay(2000);
-                    _selectedAccount = "TestPlayer";
+                    _selectedAccount = offlineName;
                     await LaunchGame();
                 }
                 catch (Exception ex)
@@ -5373,6 +5375,7 @@ public partial class MainWindow : Window
             // A renderer relaunch goes back where the player was (a world, a server or the title screen) instead.
             if (relaunch?.World is { } world) ModpackLauncher.JoinWorld(launchOpt, world);
             else if (relaunch?.Server is { } server) ModpackLauncher.JoinServer(launchOpt, server);
+            else if (relaunch == null && IsDevOfflineAllowed && Environment.GetEnvironmentVariable("LADS_DEV_WORLD") is { Length: > 0 } devWorld) ModpackLauncher.JoinWorld(launchOpt, devWorld); // QA: open this save at start
             else if (relaunch == null && !isCrashRelaunch && settings.AutoJoinNetwork) ModpackLauncher.JoinServer(launchOpt, ServerListService.PinnedAddress);
             else if (relaunch == null && !isCrashRelaunch && settings.AutoRejoinServer)
             {
