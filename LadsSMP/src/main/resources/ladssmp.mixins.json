@@ -62,6 +62,7 @@
     "MixinWorldGenRegionBiome"
   ],
   "client": [
+    "MixinInputConstantsKeyBounds",
     "MixinScreenPortalGui",
     "MixinAdvancementToast",
     "MixinLocalPlayerCutThrough",
