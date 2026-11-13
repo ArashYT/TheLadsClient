@@ -610,6 +610,12 @@ public partial class ExperiencesView : UserControl
             }
 
             await ExperiencesService.ApplyPendingPatchesAsync(DataDirectory, instance.Id, Http, Report, token, ExperiencesService.BundledPatchesDirectory);
+            // Patched mods can need a newer Fabric Loader than the one the instance was installed with.
+            if (instance.LoaderVersion != exp.LoaderVersion)
+            {
+                instance.LoaderVersion = exp.LoaderVersion;
+                Modpacks.Save(instance);
+            }
 
             Report("Signing in...");
             var session = await host.ResolveModpackSessionAsync(token, instance.GameDirectory);
