@@ -242,7 +242,7 @@ public class SmokeMod implements ModInitializer {
         else if (k == LootContextParams.ENCHANTMENT_ACTIVE) v = true;
         else if (k == LootContextParams.ADDITIONAL_COST_COMPONENT_ALLOWED) v = net.minecraft.util.Unit.INSTANCE;
         else if (k == LootContextParams.CONTAINER) v = fp;
-        else if (k == LootContextParams.BLOCK_ENTITY) v = null;
+        else if (k == LootContextParams.BLOCK_ENTITY) v = net.minecraft.world.level.block.entity.BlockEntityTypes.CHEST.create(new BlockPos(X0, Y, Z0), Blocks.CHEST.defaultBlockState());
         if (v != null) b.withParameter(k, v);
     }
 
@@ -277,9 +277,12 @@ public class SmokeMod implements ModInitializer {
         String line = phase + " " + id + " " + what;
         write("current.txt", line, false);
         int[] c = perMod.computeIfAbsent(id.getNamespace(), k -> new int[2]);
+        long t0 = System.nanoTime();
         try {
             r.run();
             c[0]++;
+            long ms = (System.nanoTime() - t0) / 1_000_000;
+            if (ms >= 2000) log("SLOW " + ms + " ms | " + line);
         } catch (Throwable t) {
             c[1]++;
             StringWriter sw = new StringWriter();

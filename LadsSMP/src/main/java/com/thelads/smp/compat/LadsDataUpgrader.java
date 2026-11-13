@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public final class LadsDataUpgrader {
     private static final Logger LOGGER = LoggerFactory.getLogger("LadsSMP/DataUpgrader");
+    static final int MAX_MAP_SEARCH_RADIUS = 16;
 
     public static final AtomicInteger UPGRADED_LOOT_TABLES = new AtomicInteger();
     public static final AtomicInteger UPGRADED_LOOT_CONDITIONS = new AtomicInteger();
@@ -358,6 +359,15 @@ public final class LadsDataUpgrader {
             if ("minecraft:set_nbt".equals(type)) {
                 fnObj.addProperty("type", "minecraft:set_custom_data");
                 modified = true;
+            }
+            // Explorer maps search on the server thread; Dungeons & Taverns charts use radius 100, which froze a test server for
+            // ~4 minutes on one Lone Citadel map (a live server's watchdog stops at 60 s). Default radius is 50.
+            if ("minecraft:exploration_map".equals(type)) {
+                int radius = fnObj.has("search_radius") && fnObj.get("search_radius").isJsonPrimitive() ? fnObj.get("search_radius").getAsInt() : 50;
+                if (radius > MAX_MAP_SEARCH_RADIUS) {
+                    fnObj.addProperty("search_radius", MAX_MAP_SEARCH_RADIUS);
+                    modified = true;
+                }
             }
         }
         if (fnObj.has("functions") && fnObj.get("functions").isJsonArray()) {
