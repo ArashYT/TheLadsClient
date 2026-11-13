@@ -117,9 +117,23 @@ final class ScreenshotList
    }
 
    /** Scans (or lists) again. Only first open, Refresh/F5, Add folder and a changed folder setting call this; see relayout. */
-   void init() {
+   void init() {init(true);}
+
+   /** A new screenshot taken while the gallery is open: checked about every 2 s, then a rescan that keeps scroll and loaded images. */
+   private long watched,watchTick;
+   void pollNew() {
+      if (scanning || ++watchTick % 40 != 0) return;
+      long stamp=0;
+      for (java.io.File dir : new java.io.File[]{screenshotsFolder,client.gameDirectory.toPath().resolve("screenshots").toFile()}) {
+         String[] names=dir.list();stamp=stamp*31+dir.lastModified()+(names==null?0:names.length);
+      }
+      if (watched!=0 && stamp!=watched) init(false);
+      watched=stamp;
+   }
+
+   void init(boolean reset) {
       cancelScan();
-      int revision=scanRevision;fresh=true;scanned=false;deletedDuringScan.clear();renamedDuringScan.clear();
+      int revision=scanRevision;fresh=reset;scanned=false;deletedDuringScan.clear();renamedDuringScan.clear();
       if (com.thelads.core.v26_2.feature.GlobalScreenshots.sharedGallery(screenshotsFolder)) {
          scanning=true;
          scanTask=SCANNER.submit(()->{

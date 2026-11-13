@@ -93,6 +93,7 @@ public class ManageScreenshotsScreen extends Screen implements ConfigListener, O
    }
 
    public void tick() {
+      if (this.list != null && this.dialogScreen == null) this.list.pollNew();
       if (this.dialogScreen != null) {
          this.dialogScreen.tick();
       }
