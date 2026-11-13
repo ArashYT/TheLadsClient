@@ -244,4 +244,24 @@ public sealed class ModSyncServiceTests : IDisposable
         Assert.False(File.Exists(Path.Combine(forge.GameDirectory, ModSyncService.RelaunchFile)));
         Assert.False(File.Exists(Path.Combine(forge.GameDirectory, ".lads-mod-cache", ModSyncService.ListFile)));
     }
+    [Fact] public void RequiredLoaderIsTheHighestVersionTheHostsJarsAskFor()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "lads-reqloader-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            void Jar(string name, string json)
+            {
+                using var zip = System.IO.Compression.ZipFile.Open(Path.Combine(dir, name), System.IO.Compression.ZipArchiveMode.Create);
+                using var w = new StreamWriter(zip.CreateEntry("fabric.mod.json").Open());
+                w.Write(json);
+            }
+            Assert.Null(ModSyncService.RequiredLoader(dir));
+            Jar("a.jar", "{\"depends\":{\"fabricloader\":\">=0.19.2\"}}");
+            Jar("b.jar", "{\"depends\":{\"fabricloader\":[\">=0.20.0\"]}}");
+            Jar("c.jar", "{\"depends\":{\"fabricloader\":\"*\"}}");
+            Assert.Equal("0.20.0", ModSyncService.RequiredLoader(dir));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
 }
