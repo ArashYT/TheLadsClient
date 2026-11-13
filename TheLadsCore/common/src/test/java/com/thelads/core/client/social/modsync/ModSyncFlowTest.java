@@ -212,6 +212,22 @@ public class ModSyncFlowTest {
     }
 
     @Test
+    void aPackWithoutAnOriginRecordUsesTheLaunchersManagedList() throws Exception {
+        Path pack = guestDir.getParent().resolve("pack");
+        Path game = pack.resolve("minecraft");
+        Files.createDirectories(game.resolve("mods"));
+        Files.writeString(game.resolve("mods").resolve("dropped.jar"), "x");
+        Files.writeString(pack.resolve(".lads-modsync-managed.json"), "[\"dropped.jar\",\"site-mod.jar\"]");
+        System.setProperty(ModSyncFlow.HOST_PROPERTY, HOST.toString());
+        try {
+            assertEquals(List.of("dropped.jar"), ModSyncFlow.staleJars(game, HOST, List.of(siteMod)));
+        } finally {
+            System.clearProperty(ModSyncFlow.HOST_PROPERTY);
+        }
+        assertEquals(List.of(), ModSyncFlow.staleJars(game, HOST, List.of(siteMod))); // not started for this host: nothing
+    }
+
+    @Test
     void sharedListsOnlyJarsThatAreInTheModsFolderAsListed() throws Exception {
         assertEquals(List.of(siteMod, hostOnly), ModSyncFlow.shared(hostDir).stream().map(ModSyncServer.Shared::entry).toList());
         Files.write(hostDir.resolve("mods/site-mod.jar"), new byte[10]); // changed since the launcher listed it

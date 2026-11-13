@@ -164,6 +164,8 @@ public final class ModSyncFlow {
         List<String> out = new ArrayList<>();
         try {
             Path file = originFile(gameDir, host);
+            // A pack made before the origin record existed: the launcher's list of jars it put there stands in for it
+            if (!Files.isRegularFile(file) && relaunchedFor(host) && gameDir.getParent() != null) file = gameDir.getParent().resolve(".lads-modsync-managed.json");
             if (!Files.isRegularFile(file) || Files.size(file) > 256 * 1024) return out;
             Set<String> listed = new HashSet<>();
             for (ModSyncEntry m : hostList) listed.add(m.localName());

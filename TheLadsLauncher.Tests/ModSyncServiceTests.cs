@@ -178,6 +178,16 @@ public sealed class ModSyncServiceTests : IDisposable
         Assert.Equal(new[] { "a.jar", "mine.jar" }, Modpacks.Mods(again).Select(m => m.FileName));
     }
 
+    [Fact] public void APackFromBeforeTheOriginRecordStillDropsWhatTheHostDropped()
+    {
+        string data = Path.Combine(game, "data");
+        var first = ModSyncService.BuildInstance(data, HostFolder("Survival", "Alice", ("a.jar", new byte[] { 1 }), ("c.jar", new byte[] { 3 })), game, "26.3", "0.19.5", log.Add);
+        File.Delete(Path.Combine(first.GameDirectory, ModSyncService.SyncFolder, HostFolder("Survival", "Alice").Host + ".jars.json"));
+        var drop = HostFolder("Survival", "Alice") with { HostFiles = new[] { "a.jar" } };
+        var again = ModSyncService.BuildInstance(data, drop, first.GameDirectory, "26.3", "0.19.5", log.Add);
+        Assert.Equal(new[] { "a.jar" }, Modpacks.Mods(again).Select(m => m.FileName));
+    }
+
     [Fact] public void ADifferentWorldOfTheSameHostMakesANewModpack()
     {
         string data = Path.Combine(game, "data");
