@@ -66,9 +66,29 @@ public class SmokeMod implements ModInitializer {
     private boolean started, finished;
     private long startMs;
 
+    private static volatile long stepStart;
+    private static volatile String stepName;
+    private static volatile Thread stepThread;
+    private static volatile boolean dumped;
+
     @Override
     public void onInitialize() {
         if (!ON) return;
+        Thread dog = new Thread(() -> {
+            while (true) {
+                try { Thread.sleep(1000); } catch (InterruptedException e) { return; }
+                long st = stepStart; Thread th = stepThread;
+                if (st != 0 && !dumped && th != null && System.currentTimeMillis() - st > 5000) {
+                    dumped = true;
+                    StringBuilder sb = new StringBuilder("STUCK >5s | " + stepName);
+                    StackTraceElement[] trace = th.getStackTrace();
+                    for (int i = 0; i < Math.min(60, trace.length); i++) sb.append("\n    at ").append(trace[i]);
+                    log(sb.toString());
+                }
+            }
+        }, "LadsQA-watchdog");
+        dog.setDaemon(true);
+        dog.start();
         try { Files.createDirectories(DIR); Files.writeString(DIR.resolve("report.txt"), ""); } catch (IOException ignored) { }
         ServerTickEvents.END_SERVER_TICK.register(this::tick);
     }
@@ -136,7 +156,9 @@ public class SmokeMod implements ModInitializer {
         }
         if (only.contains("loot")) {
             var lookup = server.reloadableRegistries().lookup().lookupOrThrow(Registries.LOOT_TABLE);
-            lookup.listElementIds().forEach(k -> steps.add(() -> loot(server, level, k)));
+            String filter = System.getProperty("ladsqa.lootfilter", "");
+            lookup.listElementIds().filter(k -> filter.isEmpty() || k.identifier().toString().matches(filter))
+                    .forEach(k -> steps.add(() -> loot(server, level, k)));
         }
         if (only.contains("worldgen")) {
             int r = Integer.getInteger("ladsqa.radius", 6);
@@ -147,7 +169,9 @@ public class SmokeMod implements ModInitializer {
                 }
             }
             var structures = server.registryAccess().lookupOrThrow(Registries.STRUCTURE);
-            structures.listElements().forEach(h -> steps.add(() -> structure(server, h)));
+            String sf = System.getProperty("ladsqa.structfilter", "");
+            structures.listElements().filter(h -> sf.isEmpty() || h.unwrapKey().map(k -> k.identifier().toString().matches(sf)).orElse(false))
+                    .forEach(h -> steps.add(() -> structure(server, h)));
         }
     }
 
@@ -278,6 +302,7 @@ public class SmokeMod implements ModInitializer {
         write("current.txt", line, false);
         int[] c = perMod.computeIfAbsent(id.getNamespace(), k -> new int[2]);
         long t0 = System.nanoTime();
+        stepStart = System.currentTimeMillis(); stepName = line; stepThread = Thread.currentThread(); dumped = false;
         try {
             r.run();
             c[0]++;
@@ -290,6 +315,8 @@ public class SmokeMod implements ModInitializer {
             String trace = sw.toString();
             String head = trace.lines().limit(14).reduce("", (a, b2) -> a + "\n    " + b2);
             log("FAIL " + id.getNamespace() + " | " + line + " | " + t + head);
+        } finally {
+            stepStart = 0;
         }
     }
 

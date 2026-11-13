@@ -4,6 +4,9 @@
   "package": "com.thelads.smp.mixin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
+    "MixinExplorationMapFunction",
+    "MixinChunkGeneratorMapSearch",
+    "MixinMapItemPreviewBudget",
     "MixinRegistryLoadTask",
     "MixinItemEntity",
     "MixinServerPlayer",
