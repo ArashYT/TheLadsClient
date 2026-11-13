@@ -100,10 +100,18 @@ public final class ModSyncFlow {
         ui.status("Checking mods");
         Set<String> own = new HashSet<>();
         for (ModSyncServer.Shared s : shared(gameDir)) own.add(s.entry().sha512());
-        List<ModSyncEntry> missing = ModSyncList.missing(client.list(), own, loaded);
-        if (missing.isEmpty()) return Result.CONNECT;
-
+        List<ModSyncEntry> hostList = client.list();
+        List<ModSyncEntry> missing = ModSyncList.missing(hostList, own, loaded);
         Path dir = gameDir.resolve(FOLDER).resolve(host.toString());
+        if (missing.isEmpty()) {
+            // Nothing to fetch, but a jar an earlier sync took from this host that the host dropped must leave the pack: restart once.
+            if (relaunched || staleJars(gameDir, host, hostList).isEmpty()) return Result.CONNECT;
+            Files.createDirectories(dir);
+            ui.status("Removing mods the host no longer has");
+            writeRelaunch(gameDir, host, world, owner, missing, hostList);
+            client.byeRelaunch();
+            return Result.RELAUNCH;
+        }
         // Fabric Loader splits fabric.addMods at this character: a folder with it in its path cannot be added to a launch
         if (dir.toString().contains(java.io.File.pathSeparator)) throw new IOException("ModSync: the game folder's path cannot hold synced mods");
         Files.createDirectories(dir);
@@ -141,9 +149,33 @@ public final class ModSyncFlow {
         }
         if (ui.cancelled()) return Result.CANCELLED;
         ui.status("Restarting the game with " + missing.size() + (missing.size() == 1 ? " mod" : " mods"));
-        writeRelaunch(gameDir, host, world, owner, missing);
+        writeRelaunch(gameDir, host, world, owner, missing, hostList);
         client.byeRelaunch();
         return Result.RELAUNCH;
+    }
+
+    /** Written by the launcher in the pack: the jar names it took from this host (a JSON array). */
+    static Path originFile(Path gameDir, UUID host) {
+        return gameDir.resolve(FOLDER).resolve(host + ".jars.json");
+    }
+
+    /** Jars still in the mods folder that an earlier sync took from this host and the host's list no longer holds. */
+    static List<String> staleJars(Path gameDir, UUID host, List<ModSyncEntry> hostList) {
+        List<String> out = new ArrayList<>();
+        try {
+            Path file = originFile(gameDir, host);
+            if (!Files.isRegularFile(file) || Files.size(file) > 256 * 1024) return out;
+            Set<String> listed = new HashSet<>();
+            for (ModSyncEntry m : hostList) listed.add(m.localName());
+            Path mods = gameDir.resolve("mods");
+            for (JsonElement e : JsonParser.parseString(Files.readString(file)).getAsJsonArray()) {
+                String name = e.getAsString();
+                if (!listed.contains(name) && (Files.exists(mods.resolve(name)) || Files.exists(mods.resolve(name + ".disabled")))) out.add(name);
+            }
+        } catch (IOException | RuntimeException ex) { // unreadable record: nothing is removed
+            out.clear();
+        }
+        return out;
     }
 
     private static String label(ModSyncEntry m) {
@@ -156,6 +188,11 @@ public final class ModSyncFlow {
 
     /** {host, world, owner, mods: [{file, size, sha512}]}: the launcher checks every file again, then puts them in a modpack of their own. */
     static void writeRelaunch(Path gameDir, UUID host, String world, String owner, List<ModSyncEntry> mods) throws IOException {
+        writeRelaunch(gameDir, host, world, owner, mods, null);
+    }
+
+    /** As above; <code>hostList</code> (the host's whole list, may be null) goes along as "all", so the launcher drops what the host no longer has. */
+    static void writeRelaunch(Path gameDir, UUID host, String world, String owner, List<ModSyncEntry> mods, List<ModSyncEntry> hostList) throws IOException {
         JsonArray array = new JsonArray();
         for (ModSyncEntry m : mods) {
             JsonObject o = new JsonObject();
@@ -169,6 +206,11 @@ public final class ModSyncFlow {
         root.addProperty("world", world == null ? "" : world);
         root.addProperty("owner", owner == null ? "" : owner);
         root.add("mods", array);
+        if (hostList != null) {
+            JsonArray all = new JsonArray();
+            for (ModSyncEntry m : hostList) all.add(m.localName());
+            root.add("all", all);
+        }
         Path tmp = gameDir.resolve(RELAUNCH_FILE + ".tmp");
         Files.writeString(tmp, root.toString());
         Files.move(tmp, gameDir.resolve(RELAUNCH_FILE), StandardCopyOption.REPLACE_EXISTING);

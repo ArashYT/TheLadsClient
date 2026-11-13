@@ -196,6 +196,22 @@ public class ModSyncFlowTest {
     }
 
     @Test
+    void aJarTheHostDroppedIsRemovedByARestartWithNothingToFetch() throws Exception {
+        Files.createDirectories(guestDir.resolve("mods"));
+        for (String name : List.of("site-mod.jar", "My Own Mod.jar")) Files.copy(hostDir.resolve("mods").resolve(name), guestDir.resolve("mods").resolve(name));
+        Files.writeString(guestDir.resolve("mods").resolve("dropped.jar"), "x");
+        Files.createDirectories(guestDir.resolve(ModSyncFlow.FOLDER));
+        Files.writeString(ModSyncFlow.originFile(guestDir, HOST), "[\"dropped.jar\",\"site-mod.jar\"]");
+        writeList(guestDir, List.of(siteMod, hostOnly));
+        assertEquals(ModSyncFlow.Result.RELAUNCH, join(Map.of(), false));
+        JsonObject request = JsonParser.parseString(Files.readString(guestDir.resolve(ModSyncFlow.RELAUNCH_FILE))).getAsJsonObject();
+        assertEquals(0, request.getAsJsonArray("mods").size());
+        assertEquals(2, request.getAsJsonArray("all").size());
+        Files.delete(guestDir.resolve(ModSyncFlow.RELAUNCH_FILE));
+        assertEquals(ModSyncFlow.Result.CONNECT, join(Map.of(), true)); // never a loop
+    }
+
+    @Test
     void sharedListsOnlyJarsThatAreInTheModsFolderAsListed() throws Exception {
         assertEquals(List.of(siteMod, hostOnly), ModSyncFlow.shared(hostDir).stream().map(ModSyncServer.Shared::entry).toList());
         Files.write(hostDir.resolve("mods/site-mod.jar"), new byte[10]); // changed since the launcher listed it

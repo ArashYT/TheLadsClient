@@ -167,6 +167,17 @@ public sealed class ModSyncServiceTests : IDisposable
         Assert.Contains(log, l => l.Contains("updated in place: 1 added, 1 updated, 1 removed"));
     }
 
+    [Fact] public void AModTheHostDroppedLeavesThePackEvenWhenThePackAsksItself()
+    {
+        string data = Path.Combine(game, "data");
+        var first = ModSyncService.BuildInstance(data, HostFolder("Survival", "Alice", ("a.jar", new byte[] { 1 }), ("c.jar", new byte[] { 3 })), game, "26.3", "0.19.5", log.Add);
+        File.WriteAllBytes(Path.Combine(first.GameDirectory, "mods", "mine.jar"), new byte[] { 9 });
+        // The pack's own game found c gone from the host: the restart names the host's whole list and no new jar.
+        var drop = HostFolder("Survival", "Alice") with { HostFiles = new[] { "a.jar" } };
+        var again = ModSyncService.BuildInstance(data, drop, first.GameDirectory, "26.3", "0.19.5", log.Add);
+        Assert.Equal(new[] { "a.jar", "mine.jar" }, Modpacks.Mods(again).Select(m => m.FileName));
+    }
+
     [Fact] public void ADifferentWorldOfTheSameHostMakesANewModpack()
     {
         string data = Path.Combine(game, "data");

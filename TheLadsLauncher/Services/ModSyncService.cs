@@ -32,7 +32,7 @@ public static class ModSyncService
     /// <summary>What is known about one jar (keyed by name, size and write time): its hashes and, once the sites were asked, its site.</summary>
     public sealed record Known(string Sha1, string Sha512, uint Fingerprint, bool Asked, string Source, string Url);
     /// <summary>A checked restart request: the host's UUID, the folder of checked jars, and the host's world and username (may be empty).</summary>
-    public sealed record Relaunch(string Host, string Folder, string World = "", string Owner = "");
+    public sealed record Relaunch(string Host, string Folder, string World = "", string Owner = "", IReadOnlyList<string>? HostFiles = null);
     /// <summary>Whether a Modpacks-page instance takes part in ModSync: the launcher's own Fabric instances that run the Lads Core. Another
     /// launcher's instance is never written to, Forge-family loaders are not synced, and a Lads Experience is a fixed pack the join check
     /// matches by pack id (the game calls it a "pack" profile), so its mods are never swapped.</summary>
@@ -61,7 +61,7 @@ public static class ModSyncService
 
     /// <summary>The player's settings a ModSync modpack starts with: copied once, when it is made.</summary>
     public static readonly string[] SettingsFiles = { "options.txt", "optionsof.txt", "optionsshaders.txt", "servers.dat" };
-    private sealed record Request(string? Host, string? World, string? Owner, List<RequestMod>? Mods);
+    private sealed record Request(string? Host, string? World, string? Owner, List<RequestMod>? Mods, List<string>? All = null);
     private sealed record RequestMod(string? File, long Size, string? Sha512);
 
     /// <summary>Writes <see cref="ListFile"/> for this launch: the enabled jars the player added themselves. With a
@@ -154,7 +154,7 @@ public static class ModSyncService
         try { File.Delete(file); }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { } // read once already; the next launch deletes it
         const string plain = " The game starts without the host's mods.";
-        if (request?.Mods == null || request.Mods.Count == 0 || request.Mods.Count > MaxMods || !Guid.TryParseExact(request.Host, "D", out var host))
+        if (request?.Mods == null || (request.Mods.Count == 0 && request.All == null) || request.Mods.Count > MaxMods || !Guid.TryParseExact(request.Host, "D", out var host))
         {
             log("ModSync: the game's restart request could not be read." + plain);
             return null;
@@ -188,7 +188,8 @@ public static class ModSyncService
             }
         }
         log($"ModSync: starting again with {named.Count} mod(s) from the host's world.");
-        return new Relaunch(host.ToString("D"), folder, request.World ?? "", request.Owner ?? "");
+        return new Relaunch(host.ToString("D"), folder, request.World ?? "", request.Owner ?? "",
+            request.All?.Where(n => SafeFileOps.IsPlainFileName(n)).ToList());
     }
 
     /// <summary>"&lt;world&gt; - &lt;owner&gt;": control characters dropped, each part capped, a placeholder for a missing one.</summary>
@@ -254,9 +255,14 @@ public static class ModSyncService
 
         // What the pack should hold: the profile's enabled jars, then the host's (same name: the host's).
         var wanted = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        // Jars an earlier sync took from this host (recorded in the pack) that the host's list no longer holds: gone from the pack,
+        // even when the game that asked runs in the pack itself and so counts them as its own.
+        string originFile = Path.Combine(instance.GameDirectory, SyncFolder, relaunch.Host + ".jars.json");
+        var origin = Read<List<string>>(originFile) ?? new();
+        var stale = relaunch.HostFiles == null ? new HashSet<string>() : origin.Where(n => !relaunch.HostFiles.Contains(n, StringComparer.OrdinalIgnoreCase)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         string profileMods = Path.Combine(game, "mods");
         if (Directory.Exists(profileMods))
-            foreach (var jar in Directory.EnumerateFiles(profileMods, "*.jar").Where(f => !SafeFileOps.IsLink(f) && !IsCore(f)))
+            foreach (var jar in Directory.EnumerateFiles(profileMods, "*.jar").Where(f => !SafeFileOps.IsLink(f) && !IsCore(f) && !stale.Contains(Path.GetFileName(f))))
                 wanted[Path.GetFileName(jar)] = jar;
         var hostJars = Directory.EnumerateFiles(relaunch.Folder, "*.jar").Where(f => !IsCore(f)).ToList();
         foreach (var jar in hostJars) wanted[Path.GetFileName(jar)] = jar;
@@ -278,6 +284,8 @@ public static class ModSyncService
         foreach (var gone in managed.Where(m => !wanted.ContainsKey(m) && SafeFileOps.IsPlainFileName(m) && !IsCore(m)))
             foreach (var path in new[] { Path.Combine(mods, gone), Path.Combine(mods, gone) + ".disabled" })
                 if (File.Exists(path)) { File.Delete(path); removed++; }
+        Directory.CreateDirectory(Path.GetDirectoryName(originFile)!);
+        File.WriteAllText(originFile, JsonSerializer.Serialize(origin.Where(n => !stale.Contains(n)).Concat(hostJars.Select(Path.GetFileName)).Distinct(StringComparer.OrdinalIgnoreCase)));
         File.WriteAllText(record, JsonSerializer.Serialize(wanted.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase)));
         Modpacks.Save(instance);
         log(made ? $"ModSync: '{name}' has your {own} mod(s) and {host} from the host."
