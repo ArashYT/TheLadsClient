@@ -16,6 +16,8 @@ public final class SocialToasts {
     public static final long DEFAULT_DURATION_MS = 15_000L;
     public static final int TOAST_WIDTH = 200;
     public static final int TOAST_HEIGHT = 50;
+    private static final int HEAD_SIZE = 20;
+    private static final int HEAD_GAP = HEAD_SIZE + 4;
 
     public record Toast(
             String id,
@@ -26,7 +28,8 @@ public final class SocialToasts {
             Runnable onAccept,
             Runnable onDeny,
             long createdAt,
-            long durationMs
+            long durationMs,
+            String headUuid
     ) {}
 
     private static final List<Toast> toasts = new ArrayList<>();
@@ -47,11 +50,11 @@ public final class SocialToasts {
 
     public static synchronized void show(String title, String body, String acceptAction, String denyAction,
                                          Runnable onAccept, Runnable onDeny) {
-        show(null, title, body, acceptAction, denyAction, onAccept, onDeny);
+        show(null, title, body, acceptAction, denyAction, onAccept, onDeny, null);
     }
 
     /** id: the SocialState action id the buttons run (purgeExpired drops the toast once it is no longer pending), or null. */
-    private static void show(String id, String title, String body, String acceptAction, String denyAction, Runnable onAccept, Runnable onDeny) {
+    private static void show(String id, String title, String body, String acceptAction, String denyAction, Runnable onAccept, Runnable onDeny, String headUuid) {
         long now = timeSupplier.getAsLong();
         Toast toast = new Toast(
                 id != null ? id : now + "_" + toasts.size(),
@@ -62,7 +65,8 @@ public final class SocialToasts {
                 onAccept != null ? onAccept : () -> {},
                 onDeny != null ? onDeny : () -> {},
                 now,
-                DEFAULT_DURATION_MS
+                DEFAULT_DURATION_MS,
+                headUuid
         );
         show(toast);
     }
@@ -75,7 +79,7 @@ public final class SocialToasts {
                 : acceptAction.startsWith("invite_accept:") || acceptAction.startsWith("p2p_join:") || acceptAction.startsWith("party_warp_join:") ? "Join"
                 : acceptAction.startsWith("dm:") ? "Reply" : "Accept";
         show(acceptAction != null ? acceptAction : denyAction, title, body, acceptLabel, denyAction == null ? null : denyAction.startsWith("party_warp_ignore:") ? "Ignore" : "Decline",
-                action(acceptAction), action(denyAction));
+                action(acceptAction), action(denyAction), SocialState.get().actionSender(acceptAction != null ? acceptAction : denyAction));
     }
 
     private static Runnable action(String id) {
@@ -161,9 +165,15 @@ public final class SocialToasts {
             // Accent top border
             g.fill(tx + 4, ty, tx + TOAST_WIDTH - 4, ty + 1, LadsPalette.ACCENT);
 
-            // Text
-            g.drawText(MenuGraphics.fit(g, t.title(), TOAST_WIDTH - 16), tx + 8, ty + 6, LadsPalette.TEXT, true);
-            g.drawText(MenuGraphics.fit(g, t.body(), TOAST_WIDTH - 16), tx + 8, ty + 18, LadsPalette.MUTED, false);
+            // The sender's skin head (face + outer layer), when the toast comes from a player
+            int textX = tx + 8, textW = TOAST_WIDTH - 16;
+            if (t.headUuid() != null) {
+                g.drawHead(null, t.headUuid(), tx + 8, ty + 6, HEAD_SIZE);
+                textX += HEAD_GAP;
+                textW -= HEAD_GAP;
+            }
+            g.drawText(MenuGraphics.fit(g, t.title(), textW), textX, ty + 6, LadsPalette.TEXT, true);
+            g.drawText(MenuGraphics.fit(g, t.body(), textW), textX, ty + 18, LadsPalette.MUTED, false);
 
             // Action buttons
             boolean hasAccept = t.acceptAction() != null && !t.acceptAction().isEmpty();
