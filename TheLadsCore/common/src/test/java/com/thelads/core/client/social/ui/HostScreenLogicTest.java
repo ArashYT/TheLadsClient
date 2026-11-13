@@ -97,6 +97,23 @@ class HostScreenLogicTest {
     }
 
     @Test
+    void playersSectionInvitesOnlineFriendsWhileHosting() {
+        FakeHostCallbacks callbacks = new FakeHostCallbacks(new HostOptions());
+        callbacks.hosting = true;
+        UUID on = UUID.randomUUID(), off = UUID.randomUUID();
+        callbacks.friends.add(new com.thelads.core.client.social.FriendEntry(on, "Pal", null, new com.thelads.core.client.social.Presence("menu", null, null, null), 0));
+        callbacks.friends.add(new com.thelads.core.client.social.FriendEntry(off, "Sleeper", null, null, 0));
+        HostScreenLogic logic = new HostScreenLogic(callbacks);
+        logic.setSection(HostScreenLogic.Section.GUESTS);
+        logic.render(new TestGraphics(480, 270), 0, 0);
+        assertNull(logic.inviteButtonBox(off), "an offline friend cannot be invited");
+        HostScreenLogic.Box invite = logic.inviteButtonBox(on);
+        assertNotNull(invite, "an online friend gets an Invite button");
+        assertTrue(logic.mouseClicked(invite.x() + 2, invite.y() + 2, 0));
+        assertEquals(List.of(on), callbacks.invited);
+    }
+
+    @Test
     void bannedSectionUnbansAndBansSurviveSaving() {
         FakeHostCallbacks callbacks = new FakeHostCallbacks(new HostOptions());
         String id = UUID.randomUUID().toString();
@@ -455,6 +472,10 @@ class HostScreenLogicTest {
         @Override public void onClose() { closed = true; }
         final List<HostScreenLogic.Banned> banned = new ArrayList<>();
         final List<String> unbanned = new ArrayList<>();
+        final List<com.thelads.core.client.social.FriendEntry> friends = new ArrayList<>();
+        final List<UUID> invited = new ArrayList<>();
+        @Override public List<com.thelads.core.client.social.FriendEntry> friends() { return friends; }
+        @Override public void invite(UUID id) { invited.add(id); }
         @Override public List<HostScreenLogic.Banned> banned() { return banned; }
         @Override public void unban(String uuid) { unbanned.add(uuid); banned.removeIf(b -> b.uuid().equals(uuid)); }
     }

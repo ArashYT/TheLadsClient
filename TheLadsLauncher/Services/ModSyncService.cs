@@ -258,9 +258,13 @@ public static class ModSyncService
         // Jars an earlier sync took from this host (recorded in the pack) that the host's list no longer holds: gone from the pack,
         // even when the game that asked runs in the pack itself and so counts them as its own.
         string originFile = Path.Combine(instance.GameDirectory, SyncFolder, relaunch.Host + ".jars.json");
-        var origin = Read<List<string>>(originFile) ?? new();
-        var stale = relaunch.HostFiles == null ? new HashSet<string>() : origin.Where(n => !relaunch.HostFiles.Contains(n, StringComparer.OrdinalIgnoreCase)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var recorded = Read<List<string>>(originFile);
         string profileMods = Path.Combine(game, "mods");
+        // A pack made before the record existed: what ModSync put there stands in for it, except the jars of the profile that asked
+        var legacy = recorded != null || made || relaunch.HostFiles == null ? new List<string>()
+            : (Read<List<string>>(Path.Combine(instance.Directory, ManagedFile)) ?? new()).Where(n => !File.Exists(Path.Combine(profileMods, n)) || Path.GetFullPath(game).Equals(Path.GetFullPath(instance.GameDirectory), StringComparison.OrdinalIgnoreCase)).ToList();
+        var origin = recorded ?? legacy;
+        var stale = relaunch.HostFiles == null ? new HashSet<string>() : origin.Where(n => !relaunch.HostFiles.Contains(n, StringComparer.OrdinalIgnoreCase)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (Directory.Exists(profileMods))
             foreach (var jar in Directory.EnumerateFiles(profileMods, "*.jar").Where(f => !SafeFileOps.IsLink(f) && !IsCore(f) && !stale.Contains(Path.GetFileName(f))))
                 wanted[Path.GetFileName(jar)] = jar;
@@ -285,7 +289,7 @@ public static class ModSyncService
             foreach (var path in new[] { Path.Combine(mods, gone), Path.Combine(mods, gone) + ".disabled" })
                 if (File.Exists(path)) { File.Delete(path); removed++; }
         Directory.CreateDirectory(Path.GetDirectoryName(originFile)!);
-        File.WriteAllText(originFile, JsonSerializer.Serialize(origin.Where(n => !stale.Contains(n)).Concat(hostJars.Select(Path.GetFileName)).Distinct(StringComparer.OrdinalIgnoreCase)));
+        File.WriteAllText(originFile, JsonSerializer.Serialize((recorded ?? new()).Where(n => !stale.Contains(n)).Concat(hostJars.Select(Path.GetFileName)).Distinct(StringComparer.OrdinalIgnoreCase)));
         File.WriteAllText(record, JsonSerializer.Serialize(wanted.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase)));
         Modpacks.Save(instance);
         log(made ? $"ModSync: '{name}' has your {own} mod(s) and {host} from the host."

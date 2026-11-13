@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -97,6 +98,9 @@ public final class HostScreenLogic {
         /** This world's banned players (kept in lads-host.json) and how to lift a ban. */
         default List<Banned> banned() { return List.of(); }
         default void unban(String uuid) {}
+        /** The player's friends (the Invite list shows the online ones) and how to invite one to this world. */
+        default List<com.thelads.core.client.social.FriendEntry> friends() { return List.of(); }
+        default void invite(UUID id) {}
         /** The world's current game rules by RULES name. */
         default Map<String, String> liveGamerules() { return Map.of(); }
         default boolean canSharePacks() { return false; }
@@ -214,6 +218,8 @@ public final class HostScreenLogic {
                 s.unban(uuid);
                 bannedCache = null;
             }
+            @Override public List<com.thelads.core.client.social.FriendEntry> friends() { return s.friends(); }
+            @Override public void invite(UUID id) { s.invite(id); }
             @Override public Map<String, String> liveGamerules() { return SocialBridge.get().liveGamerules(); }
             @Override public boolean canSharePacks() { return SocialBridge.get().canSharePacks(); }
             @Override public Map<String, String> shareablePacks() { return SocialBridge.get().shareablePacks(); }
@@ -550,6 +556,11 @@ public final class HostScreenLogic {
         return clickables.get("unban:" + uuid);
     }
 
+    /** Where a friend's Invite button was last drawn (null: not on screen). */
+    public Box inviteButtonBox(UUID friend) {
+        return clickables.get("invite:" + friend);
+    }
+
     /** Where a guest's Make Operator / Remove Operator button was last drawn (null: not on screen). */
     public Box operatorButtonBox(UUID guest) {
         Map<SocialBridge.GuestAction, Box> actions = guestActionBoxes.get(guest);
@@ -569,9 +580,7 @@ public final class HostScreenLogic {
         y = group(g, "In this world (" + guests.size() + ")", y);
         if (guests.isEmpty()) {
             g.drawText("Nobody has joined yet.", contentX, y + 2, LadsPalette.TEXT, false);
-            g.drawText(MenuGraphics.fit(g, callbacks.isHosting() ? "Invite friends from the Friends screen."
-                    : "Open the world first, then invite friends.", contentW), contentX, y + 14, LadsPalette.MUTED, false);
-            y += 30;
+            y += 16;
         }
         for (SocialBridge.GuestInfo guest : guests) {
             int cardH = 46;
@@ -617,6 +626,8 @@ public final class HostScreenLogic {
             y += cardH + 4;
         }
 
+        y = renderInvites(g, y + GAP, mx, my, guests);
+
         // Banned from this world (lads-host.json): Unban lets them ask to join again
         y = group(g, "Banned (" + banned.size() + ")", y + GAP);
         if (banned.isEmpty()) {
@@ -631,6 +642,37 @@ public final class HostScreenLogic {
             g.drawCenteredText("Unban", unbanB.x + unbanB.w / 2, unbanB.y + 4, LadsPalette.TEXT, false);
             click("unban:" + b.uuid(), unbanB);
             y += 26;
+        }
+        return y;
+    }
+
+    /** Online friends who are not in the world and not banned from it, each with an Invite button (hosting only). */
+    private int renderInvites(LadsGraphics g, int y, int mx, int my, List<SocialBridge.GuestInfo> guests) {
+        y = group(g, "Invite friends", y);
+        if (!callbacks.isHosting()) {
+            g.drawText(MenuGraphics.fit(g, "Open the world first, then invite friends.", contentW), contentX, y + 2, LadsPalette.MUTED, false);
+            return y + 14;
+        }
+        Set<String> skip = new HashSet<>();
+        for (SocialBridge.GuestInfo guest : guests) skip.add(guest.id().toString());
+        for (Banned b : safeBanned()) skip.add(b.uuid());
+        int shown = 0;
+        List<com.thelads.core.client.social.FriendEntry> friends = callbacks.friends();
+        for (com.thelads.core.client.social.FriendEntry f : friends != null ? friends : List.<com.thelads.core.client.social.FriendEntry>of()) {
+            if (f.presence() == null || !f.presence().online() || skip.contains(f.id().toString())) continue;
+            shown++;
+            MenuGraphics.round(g, contentX - 4, y, contentW + 8, 24, LadsPalette.PANEL);
+            g.drawHead(f.displayName(), f.id().toString(), contentX, y + 4, 16);
+            g.drawText(MenuGraphics.fit(g, f.displayName(), contentW - 90), contentX + 22, y + 8, LadsPalette.TEXT, false);
+            Box inv = new Box(contentX + contentW - 54, y + 4, 54, CONTROL_H);
+            MenuGraphics.round(g, inv.x, inv.y, inv.w, inv.h, inv.has(mx, my) ? MenuGraphics.mix(LadsPalette.CARD_ON, LadsPalette.CARD_ON_GLOW, 0.25f) : LadsPalette.CARD_ON);
+            g.drawCenteredText("Invite", inv.x + inv.w / 2, inv.y + 4, LadsPalette.TEXT, false);
+            click("invite:" + f.id(), inv);
+            y += 28;
+        }
+        if (shown == 0) {
+            g.drawText(MenuGraphics.fit(g, "No friends to invite: none are online.", contentW), contentX, y + 2, LadsPalette.MUTED, false);
+            y += 14;
         }
         return y;
     }
@@ -842,6 +884,8 @@ public final class HostScreenLogic {
     private void handleClick(String key) {
         if (key.startsWith("unban:")) {
             callbacks.unban(key.substring("unban:".length()));
+        } else if (key.startsWith("invite:")) {
+            callbacks.invite(UUID.fromString(key.substring("invite:".length())));
         } else if (key.startsWith("scope:")) {
             setScope(HostOptions.Scope.valueOf(key.substring("scope:".length())));
         } else if (key.startsWith("approval:")) {
