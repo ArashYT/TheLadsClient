@@ -176,3 +176,7 @@ TheLadsLauncher/settings.json
 
 # local SQLite databases (tests create them; live data must never be committed)
 *.db
+
+# Bot secrets (cosmetics-server / bot-staging)
+.bot_token
+.share_ip_salt
