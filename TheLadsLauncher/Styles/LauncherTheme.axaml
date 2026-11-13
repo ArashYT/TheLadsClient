@@ -54,7 +54,7 @@
   <Style Selector="Window.motion Button">
     <Setter Property="Opacity" Value="0.92" />
     <Setter Property="Transitions">
-      <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.15" /></Transitions>
+      <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.15" Easing="CubicEaseOut" /></Transitions>
     </Setter>
   </Style>
   <Style Selector="Window.motion Button:pointerover, Window.motion Button:focus-visible">
@@ -423,8 +423,8 @@
   <Style Selector="Window.motion Border.card.interactive">
     <Setter Property="Transitions">
       <Transitions>
-        <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
-        <BrushTransition Property="Background" Duration="0:0:0.15"/>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="CubicEaseOut"/>
+        <BrushTransition Property="Background" Duration="0:0:0.15" Easing="CubicEaseOut"/>
       </Transitions>
     </Setter>
   </Style>
