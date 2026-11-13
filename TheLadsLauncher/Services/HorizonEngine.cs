@@ -21,11 +21,11 @@ public static class HorizonEngine
 {
     public const string MinecraftVersion = "26.3";
     public const string InviteId = "experimental";
-    // ponytail: one pinned Lads Horizon build (lads-horizon tools/lads/build-windows.ps1, on Horizon v0.2.75); bump Tag + ZipSha256 together.
-    public const string Tag = "lads-0.1.0";
-    public const string ZipSha256 = "36b8bab572ee88ae00c659cb00b922334f916741f44a79da6282d088f3589ba0";
-    const string ZipUrl = "https://bot.arashyt.ca/packs/lads-horizon-0.1.0-windows-x64.zip";
-    // research-lock.json of Horizon v0.2.75: the 26.3 server jar its preparation accepts.
+    // ponytail: one pinned Lads Horizon build (lads-horizon tools/lads/build-windows.ps1, on Horizon v0.2.97); bump Tag + ZipSha256 together.
+    public const string Tag = "lads-0.1.1";
+    public const string ZipSha256 = "da78f497e0007180b9af98404512869668a2e251c9b4a1bfa121296bb7a5d26e";
+    const string ZipUrl = "https://bot.arashyt.ca/packs/lads-horizon-0.1.1-windows-x64.zip";
+    // research-lock.json of Horizon v0.2.97: the 26.3 server jar its preparation accepts.
     public const string ServerJarSha1 = "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c";
     public const long MaxZipBytes = 250L * 1024 * 1024; // 250 MB max for Horizon zip
     public const long MaxServerJarBytes = 100L * 1024 * 1024; // 100 MB max for 26.3 server jar
