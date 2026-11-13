@@ -49,13 +49,13 @@ public static class ExperiencesService
         Description: "The Lads SMP is back! This time with fully custom mods, and more polished than ever!",
         McVersion: "26.3",
         Loader: "fabric",
-        LoaderVersion: "0.19.5",
-        ModCount: 335,
+        LoaderVersion: "0.20.1",
+        ModCount: 353,
         ServerAddress: "",
         IconAsset: "avares://TheLadsLauncher/Assets/lads_smp_reborn_icon.png",
         RecommendedRamMb: 8192,
-        PackArchiveUrl: "https://bot.arashyt.ca/packs/lads-smp-reborn-26.3.zip",
-        PackArchiveSha256: "E92C7DB5C12BC78AA130BF7D793ED9062A82E5D9FC39FDAC7F0A73CF21A05E88",
+        PackArchiveUrl: "https://bot.arashyt.ca/packs/lads-smp-reborn-26.3-0.5.0.zip",
+        PackArchiveSha256: "036D53D4B710F834058F34938842C8C71488DB3D838789D2501495B6ECDDE8B8",
         InviteOnly: true
     );
 
