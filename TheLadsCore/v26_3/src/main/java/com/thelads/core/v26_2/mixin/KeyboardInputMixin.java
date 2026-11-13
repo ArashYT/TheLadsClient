@@ -14,7 +14,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(KeyboardInput.class)
 public class KeyboardInputMixin extends ClientInput {
     @Inject(method = "tick()V", at = @At("TAIL"), require = 1)
-    private void ladsMovement(CallbackInfo ci) { keyPresses = NativeFeatures.movement(keyPresses); }
+    private void ladsMovement(CallbackInfo ci) {
+        // Typing in a Lads text box must never walk the player, whatever state the walk keys were left in.
+        var screen = net.minecraft.client.Minecraft.getInstance().gui.screen();
+        if (screen != null && screen.isInputCaptured()) { keyPresses = net.minecraft.world.entity.player.Input.EMPTY; return; }
+        keyPresses = NativeFeatures.movement(keyPresses);
+    }
 
     /** Inventory Move (gated): the walk and jump keys with a container screen open (ChatTweaks26.moveKey). */
     @WrapOperation(method = "tick()V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/KeyMapping;isDown()Z"), require = 7)
