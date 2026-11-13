@@ -63,6 +63,11 @@ public static class ModInventoryView
         .Where(e => e.FilePath != null && e.EnabledOnDisk && FabricModMetadata.ValidId(e.Id))
         .Select(e => e.Id).Distinct(StringComparer.Ordinal).OrderBy(id => id, StringComparer.Ordinal).ToList();
 
+    /// <summary>Whether Mods holds an enabled jar the player added: code the launcher did not vet, so the game gets no account hand-off
+    /// (AccountSwitchPipe hands out a token for every saved account; see ModpackLauncher.MaySwitchAccounts).</summary>
+    public static bool HasEnabledUserJar(ModInventory inventory) =>
+        inventory.Entries.Any(e => e.Ownership == ModOwnership.User && e.FilePath != null && e.EnabledOnDisk);
+
     /// <summary>Whether <paramref name="inventory"/> lists <paramref name="gameDirectory"/>: the Mods page changes only the
     /// active profile's list, never one still shown from before a profile switch.</summary>
     public static bool IsFor(ModInventory? inventory, string gameDirectory) =>

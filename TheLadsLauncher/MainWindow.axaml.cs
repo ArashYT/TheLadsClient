@@ -5472,7 +5472,7 @@ public partial class MainWindow : Window
             process.StartInfo.RedirectStandardError = true;
             process.StartInfo.CreateNoWindow = true;
             GameSession.Configure(process.StartInfo, gameDirectory, SharedContentService.Instance.Root, activeProfile.MinecraftVersion);
-            LaunchToken.Hide(process, gameDirectory, launchOpt.Session?.AccessToken);
+            LaunchToken.Hide(process, gameDirectory, launchOpt.Session?.AccessToken, accountHandOff: !ModInventoryView.HasEnabledUserJar(launchInventory)); // a mod the player added could use the hand-off to take every saved account's token
 
             // Pop the startup splash as soon as the process starts and feed live output to it.
             var startupSplash = new Views.GameStartupSplash();

@@ -1,6 +1,9 @@
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using TheLadsLauncher.Services;
 using Xunit;
 
@@ -70,6 +73,24 @@ public class LaunchTokenTests
         LaunchToken.Send(game);
         Assert.Equal("eyJ.secret-token_3", game.StandardOutput.ReadToEnd().Trim());
         game.WaitForExit();
+    }
+
+    [Fact]
+    public async Task TheHandOffKeyStopsWorkingWhenTheGameExits()
+    {
+        using var dir = new TestDirectory();
+        Core(dir.Path, readsStdin: true);
+        using var game = Game("eyJ.secret-token_4");
+        LaunchToken.Hide(game, dir.Path, "eyJ.secret-token_4");
+        game.Start();
+        LaunchToken.Send(game);
+        string key = game.StandardOutput.ReadToEnd().Trim().Split('\n', StringSplitOptions.TrimEntries)[1].Split(' ')[1];
+        game.WaitForExit();
+
+        string request = JsonSerializer.Serialize(new { key, op = "token", username = "Steve", uuid = "1", type = "microsoft" });
+        Task<string> Ask() => AccountSwitchPipe.AnswerAsync(request, (_, _) => Task.FromResult(AccountTokenReply.Of("leaked")), _ => { }, CancellationToken.None);
+        for (int i = 0; i < 50 && (await Ask()).Contains("leaked"); i++) await Task.Delay(100); // Exited fires just after WaitForExit
+        Assert.DoesNotContain("leaked", await Ask());
     }
 
     [Fact]
