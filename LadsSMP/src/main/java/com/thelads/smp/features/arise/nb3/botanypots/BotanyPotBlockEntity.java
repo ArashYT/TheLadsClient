@@ -32,9 +32,9 @@ public class BotanyPotBlockEntity extends BlockEntity {
     @Override
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
-        output.store("soil", ItemStack.CODEC, this.soil);
-        output.store("crop", ItemStack.CODEC, this.crop);
-        output.store("output", ItemStack.CODEC, this.output);
+        if (!this.soil.isEmpty()) output.store("soil", ItemStack.CODEC, this.soil);
+        if (!this.crop.isEmpty()) output.store("crop", ItemStack.CODEC, this.crop);
+        if (!this.output.isEmpty()) output.store("output", ItemStack.CODEC, this.output);
         output.putInt("growth_ticks", this.growthTicks);
     }
 

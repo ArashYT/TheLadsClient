@@ -1,5 +1,6 @@
 package com.thelads.smp.features.arise.nb5.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 
 import java.util.Arrays;
@@ -10,19 +11,19 @@ import java.util.Arrays;
 public final class ParkourKeyMappings {
     public static final KeyMapping KEY_DODGE_ROLL = new KeyMapping(
             "key.ladssmp.dodge_roll",
-            342, // Left Alt
+            InputConstants.KEY_LALT, // 26.x key codes are SDL scancodes: the old GLFW 342 bound nothing
             KeyMapping.Category.MOVEMENT
     );
 
     public static final KeyMapping KEY_LEDGE_GRAB = new KeyMapping(
             "key.ladssmp.ledge_grab",
-            71, // 'G'
+            InputConstants.KEY_G, // GLFW 71 was Scroll Lock here
             KeyMapping.Category.MOVEMENT
     );
 
     public static final KeyMapping KEY_SLIDE = new KeyMapping(
             "key.ladssmp.slide",
-            67, // 'C'
+            InputConstants.KEY_C, // GLFW 67 was F10 here
             KeyMapping.Category.MOVEMENT
     );
 

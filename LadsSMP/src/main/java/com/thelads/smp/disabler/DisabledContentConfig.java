@@ -121,7 +121,8 @@ public final class DisabledContentConfig {
     public static synchronized DisabledContentConfig load(Path path) {
         try {
             if (Files.exists(path)) {
-                try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+                // Read fully first: save() below replaces this file, which Windows refuses while a reader holds it open.
+                try (Reader reader = new java.io.StringReader(Files.readString(path, StandardCharsets.UTF_8))) {
                     DisabledContentConfig loaded = GSON.fromJson(reader, DisabledContentConfig.class);
                     if (loaded != null) {
                         if (loaded.existingItemPolicy == null) loaded.existingItemPolicy = ExistingItemPolicy.QUARANTINE;

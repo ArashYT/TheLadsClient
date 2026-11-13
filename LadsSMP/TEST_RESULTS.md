@@ -56,3 +56,31 @@
 - **Development Instance Path**: `%APPDATA%\.theladsclient\instances\lads-smp-26.3-dev`
   - Active mods in `minecraft/mods/`: **`225` `.jar` files** (including `ladssmp-1.0.0.jar`).
   - Consolidated/removed mods archived in `mods-disabled-by-audit/`: **`32` `.jar` files** + `README_DISABLED_MODS.json`.
+
+---
+
+## 4. Pack 0.5.0 full-content sweep (2026-11-12, arash-legion)
+
+Pack: Lads SMP Reborn 0.5.0 = 0.4.0 + Fabric Loader 0.20.1, 74 mod updates, 18 new mods (`MOD_SUGGESTIONS.md`), Lads SMP 0.3.1.
+Tool: `LadsSMP/qa-smoke` (test-only mod, never shipped): places every block (use, random tick, drops), spawns every entity
+(lives, is killed for loot), uses every item (air, on a block, inventory tick), rolls every loot table, generates terrain and
+structures in every dimension; the client half draws every item icon and tooltip. A watchdog records the server-thread stack of any
+step over 5 s.
+
+| Run | Content | Result |
+| :--- | :--- | :--- |
+| Dedicated server, 275 server-side mods | 19,765 blocks, 569 entities, 21,137 items | 0 failures |
+| Client + integrated server, 353 mods | same, plus item icons/tooltips and in-world rendering | 0 failures, clean exit |
+| Dedicated server | every loot table | 0 real failures (test-side param gaps only) |
+| Launcher code (`InstallExperienceAsync`, `ApplyPendingPatchesAsync`) | fresh 0.5.0 install; 0.4.0 + update-0.5.0.json | both 353/353 jars, keybinds fixed |
+
+Bugs found and fixed:
+- Dedicated server did not boot: `xaeroatlases` needs client-only `modmenu`; `drippyloadingscreen` mixes into client classes (server packs must leave both out).
+- Server froze (watchdog crash) when a Smart Backpacks Backpacker Camp generated: its trader built vanilla trades on the worldgen thread (fixed in `MixinSmartBackpacksCampTrader`).
+- Dungeons & Taverns chart maps held the server thread up to ~4 min: explorer-map searches now have a 3 s budget, radius cap 16, never run off-thread.
+- World join crashed: Fabrishot's key saved as an SDL keycode overran `InputConstants.isKeyDown` (bounds guard); Lads SMP parkour keys were GLFW codes (now Left Alt / G / C).
+- `disabled_items.json` / `config.json` failed to save on Windows every start; botany pots logged codec errors on every save.
+- Update reverts: More Culling 1.9.2 (needs a Sodium beta), FancyMenu 3.10.0 (startup crash with Radial), Promenade 6.0.2 (Biolith beta breaks TerraBlender).
+
+Known, not fixed: the first Eye of Ender per world takes ~13 s (stronghold rings); D&T Illager Manor / Toxic Lair charts can still take
+25–33 s (one far chunk generation); 2 Better End music discs no longer exist after the update.

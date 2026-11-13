@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "ladsqa_smoke",
+  "version": "1.0.0",
+  "name": "Lads QA Smoke (test only, never ship)",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.thelads.smp.qa.SmokeMod"],
+    "client": ["com.thelads.smp.qa.SmokeClient"]
+  },
+  "depends": { "fabricloader": ">=0.19.0", "minecraft": "~26.3", "fabric-api": "*" }
+}

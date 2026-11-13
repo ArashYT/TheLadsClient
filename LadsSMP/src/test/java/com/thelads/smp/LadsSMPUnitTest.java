@@ -176,6 +176,21 @@ public class LadsSMPUnitTest {
     }
 
     @Test
+    void testExplorationMapSearchRadiusIsCapped() {
+        // Shape of dungeons-and-taverns nova_structures:maps/lone_citadel (radius 100 froze the server thread for minutes).
+        String chart = """
+                {"type": "minecraft:chest", "pools": [{"rolls": 1, "entries": [{"type": "minecraft:item", "name": "minecraft:snowy_village_map",
+                  "modifier": [{"type": "minecraft:exploration_map", "destination": "nova_structures:lone_citadel", "search_radius": 100,
+                                "skip_existing_chunks": false},
+                               {"type": "minecraft:exploration_map", "destination": "minecraft:village", "search_radius": 8}]}]}]}
+                """;
+        JsonArray mods = LadsDataUpgrader.processRegistryJson("minecraft:loot_table", "nova_structures:maps/lone_citadel", JsonParser.parseString(chart))
+                .getAsJsonObject().getAsJsonArray("pools").get(0).getAsJsonObject().getAsJsonArray("entries").get(0).getAsJsonObject().getAsJsonArray("modifier");
+        assertEquals(16, mods.get(0).getAsJsonObject().get("search_radius").getAsInt());
+        assertEquals(8, mods.get(1).getAsJsonObject().get("search_radius").getAsInt(), "a small radius stays");
+    }
+
+    @Test
     void testSequenceFunctionPreservesFunctionsKeyInItemModifier() {
         String novaLootModifier = """
                 {

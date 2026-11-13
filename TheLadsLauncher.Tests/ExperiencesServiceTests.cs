@@ -36,9 +36,9 @@ public class ExperiencesServiceTests : IDisposable
         Assert.Equal("The Lads SMP Reborn", exp.Title);
         Assert.Equal("26.3", exp.McVersion);
         Assert.Equal("fabric", exp.Loader);
-        Assert.Equal("0.19.5", exp.LoaderVersion);
+        Assert.Equal("0.20.1", exp.LoaderVersion);
         Assert.Equal("avares://TheLadsLauncher/Assets/lads_smp_reborn_icon.png", exp.IconAsset);
-        Assert.Equal(335, exp.ModCount);
+        Assert.Equal(353, exp.ModCount);
         Assert.Equal(8192, exp.RecommendedRamMb);
         Assert.StartsWith("https://", exp.PackArchiveUrl);
         Assert.Equal(64, exp.PackArchiveSha256.Length);
@@ -586,7 +586,7 @@ public class ExperiencesServiceTests : IDisposable
         Assert.Equal("The Lads SMP Reborn (Dev)", dev!.Name);
         Assert.Equal("26.3", dev.McVersion);
         Assert.Equal("fabric", dev.Loader);
-        Assert.Equal("0.19.5", dev.LoaderVersion);
+        Assert.Equal("0.20.1", dev.LoaderVersion);
         Assert.NotEqual(regular.GameDirectory, dev.GameDirectory);
     }
 

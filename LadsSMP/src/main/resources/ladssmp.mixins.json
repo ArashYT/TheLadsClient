@@ -4,6 +4,11 @@
   "package": "com.thelads.smp.mixin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
+    "MixinExplorationMapFunction",
+    "MixinChunkGeneratorMapSearch",
+    "MixinMapItemPreviewBudget",
+    "AbstractVillagerOffersAccessor",
+    "MixinSmartBackpacksCampTrader",
     "MixinRegistryLoadTask",
     "MixinItemEntity",
     "MixinServerPlayer",
@@ -57,6 +62,7 @@
     "MixinWorldGenRegionBiome"
   ],
   "client": [
+    "MixinInputConstantsKeyBounds",
     "MixinScreenPortalGui",
     "MixinAdvancementToast",
     "MixinLocalPlayerCutThrough",
