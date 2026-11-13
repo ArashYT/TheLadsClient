@@ -105,7 +105,10 @@ public final class ModSyncFlow {
         Path dir = gameDir.resolve(FOLDER).resolve(host.toString());
         if (missing.isEmpty()) {
             // Nothing to fetch, but a jar an earlier sync took from this host that the host dropped must leave the pack: restart once.
-            if (relaunched || staleJars(gameDir, host, hostList).isEmpty()) return Result.CONNECT;
+            // A pack game asks too (it is started for this host): the launcher's removal ends it, and a record of the ask stops a loop if it did not
+            List<String> stale = staleJars(gameDir, host, hostList);
+            if (stale.isEmpty() || alreadyAsked(gameDir, host, stale)) return Result.CONNECT;
+            rememberAsk(gameDir, host, stale);
             Files.createDirectories(dir);
             ui.status("Removing mods the host no longer has");
             writeRelaunch(gameDir, host, world, owner, missing, hostList);
@@ -159,6 +162,37 @@ public final class ModSyncFlow {
         return gameDir.resolve(FOLDER).resolve(host + ".jars.json");
     }
 
+    private static final long ASK_MS = 10 * 60_000L;
+
+    /** The same stale jars were asked about within ASK_MS: they are still there, so the launcher cannot remove them; join as they are. */
+    private static boolean alreadyAsked(Path gameDir, UUID host, List<String> stale) {
+        try {
+            Path file = gameDir.resolve(FOLDER).resolve(host + ".stale-asked.json");
+            if (!Files.isRegularFile(file) || Files.size(file) > 64 * 1024) return false;
+            JsonObject o = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
+            return System.currentTimeMillis() - o.get("at").getAsLong() < ASK_MS && o.get("stale").toString().equals(staleJson(stale).toString());
+        } catch (IOException | RuntimeException e) {
+            return false;
+        }
+    }
+
+    private static JsonArray staleJson(List<String> stale) {
+        JsonArray a = new JsonArray();
+        stale.stream().sorted().forEach(a::add);
+        return a;
+    }
+
+    private static void rememberAsk(Path gameDir, UUID host, List<String> stale) {
+        try {
+            JsonObject o = new JsonObject();
+            o.addProperty("at", System.currentTimeMillis());
+            o.add("stale", staleJson(stale));
+            Files.createDirectories(gameDir.resolve(FOLDER));
+            Files.writeString(gameDir.resolve(FOLDER).resolve(host + ".stale-asked.json"), o.toString());
+        } catch (IOException e) { // no record: a failed removal could ask again, once per join
+        }
+    }
+
     /** Jars still in the mods folder that an earlier sync took from this host and the host's list no longer holds. */
     static List<String> staleJars(Path gameDir, UUID host, List<ModSyncEntry> hostList) {
         List<String> out = new ArrayList<>();
@@ -170,8 +204,10 @@ public final class ModSyncFlow {
             Set<String> listed = new HashSet<>();
             for (ModSyncEntry m : hostList) listed.add(m.localName());
             Path mods = gameDir.resolve("mods");
+            boolean legacy = file.getFileName().toString().startsWith(".lads-modsync-managed");
             for (JsonElement e : JsonParser.parseString(Files.readString(file)).getAsJsonArray()) {
                 String name = e.getAsString();
+                if (legacy && !name.matches("[0-9a-f]{12}-.*[.]jar")) continue; // the host's jars are named <sha-512 start>-<name>; the rest of that list is the guest's own
                 if (!listed.contains(name) && (Files.exists(mods.resolve(name)) || Files.exists(mods.resolve(name + ".disabled")))) out.add(name);
             }
         } catch (IOException | RuntimeException ex) { // unreadable record: nothing is removed

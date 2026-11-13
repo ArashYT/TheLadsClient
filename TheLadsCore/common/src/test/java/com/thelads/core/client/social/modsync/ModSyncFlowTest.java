@@ -216,11 +216,12 @@ public class ModSyncFlowTest {
         Path pack = guestDir.getParent().resolve("pack");
         Path game = pack.resolve("minecraft");
         Files.createDirectories(game.resolve("mods"));
-        Files.writeString(game.resolve("mods").resolve("dropped.jar"), "x");
-        Files.writeString(pack.resolve(".lads-modsync-managed.json"), "[\"dropped.jar\",\"site-mod.jar\"]");
+        Files.writeString(game.resolve("mods").resolve("aaaaaaaaaaaa-dropped.jar"), "x");
+        Files.writeString(game.resolve("mods").resolve("own.jar"), "x");
+        Files.writeString(pack.resolve(".lads-modsync-managed.json"), "[\"aaaaaaaaaaaa-dropped.jar\",\"own.jar\",\"site-mod.jar\"]");
         System.setProperty(ModSyncFlow.HOST_PROPERTY, HOST.toString());
         try {
-            assertEquals(List.of("dropped.jar"), ModSyncFlow.staleJars(game, HOST, List.of(siteMod)));
+            assertEquals(List.of("aaaaaaaaaaaa-dropped.jar"), ModSyncFlow.staleJars(game, HOST, List.of(siteMod)));
         } finally {
             System.clearProperty(ModSyncFlow.HOST_PROPERTY);
         }
