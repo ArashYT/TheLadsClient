@@ -39,7 +39,10 @@ public final class SkinProfiles<P> {
         if (id.version() != 4) return null;
         Known<P> entry = known.get(id);
         if ((entry == null || System.currentTimeMillis() >= entry.nextFetch()) && asked.add(id)) {
-            worker.execute(() -> lookUp(id));
+            // The worker may have stored its answer and cleared the id between the read above and the add: ask again only when still due.
+            Known<P> now = known.get(id);
+            if (now != null && System.currentTimeMillis() < now.nextFetch()) asked.remove(id);
+            else worker.execute(() -> lookUp(id));
         }
         return entry == null ? null : entry.profile();
     }
