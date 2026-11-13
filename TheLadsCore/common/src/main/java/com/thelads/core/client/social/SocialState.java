@@ -983,6 +983,20 @@ public class SocialState {
         };
     }
 
+    /** The player behind a request action id (their uuid string, for the toast's skin head), or null. */
+    public String actionSender(String actionId) {
+        int colon = actionId == null ? -1 : actionId.indexOf(':');
+        if (colon == -1) return null;
+        String arg = actionId.substring(colon + 1);
+        UUID id = switch (actionId.substring(0, colon)) {
+            case "invite_accept", "invite_decline" -> { Invite i = activeInvites.get(arg); yield i != null ? i.from() : null; }
+            case "join_accept", "join_deny" -> { JoinRequest r = activeJoinRequests.get(arg); yield r != null ? r.from() : null; }
+            case "friend_accept", "friend_decline", "party_accept", "party_decline", "dm" -> parseUuid(arg);
+            default -> null;
+        };
+        return id != null ? id.toString() : null;
+    }
+
     // --- Party ---
 
     /** Our party, or null when we are in none. */

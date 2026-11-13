@@ -154,6 +154,23 @@ class SocialToastsTest {
         assertEquals(0, SocialToasts.activeToasts().size());
     }
 
+    /** An invite toast draws its sender's skin head (uuid from the pending invite); a progress toast has none. */
+    @Test
+    void inviteToastShowsTheSendersHead() {
+        SocialToasts.clear();
+        java.util.UUID pal = java.util.UUID.randomUUID();
+        com.thelads.core.client.social.SocialState.get().handleJoinRequest("req-head-1", pal, null);
+        SocialToasts.showAction("Join Request", "Pal wants to join", "join_accept:req-head-1", "join_deny:req-head-1");
+        SocialToasts.showAction("Backup", "40%", null, null);
+        java.util.List<String> heads = new java.util.ArrayList<>();
+        LadsGraphics g = (LadsGraphics) java.lang.reflect.Proxy.newProxyInstance(LadsGraphics.class.getClassLoader(), new Class<?>[]{LadsGraphics.class}, (p, m, a) -> {
+            if (m.getName().equals("drawHead")) heads.add((String) a[1]);
+            return m.getReturnType() == int.class ? (Object) 9 : m.getReturnType() == boolean.class ? (Object) false : null;
+        });
+        SocialToasts.render(g, 800, 600, 0, 0);
+        assertEquals(java.util.List.of(pal.toString()), heads);
+    }
+
     @Test
     void atMostTenToasts() {
         SocialToasts.clear();
