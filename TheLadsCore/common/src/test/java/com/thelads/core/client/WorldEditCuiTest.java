@@ -89,4 +89,18 @@ class WorldEditCuiTest {
         WorldEditCUI.draw((x0, y0, z0, x1, y1, z1, argb) -> lines.incrementAndGet());
         assertEquals(0, lines.get(), "Drawing must emit 0 lines for unsupported shape");
     }
+
+    @Test
+    void serverSentExtremeCoordinatesAreClampedAndDrawFewLines() {
+        WorldEditCUI.parseCommand("s|cuboid");
+        WorldEditCUI.parseCommand("p|0|-2147483648|0|0|1");
+        WorldEditCUI.parseCommand("p|1|2147483647|255|2147483647|1");
+        assertEquals(-30_000_000, WorldEditCUI.getPos1().x());
+        assertEquals(30_000_000, WorldEditCUI.getPos2().x());
+        assertEquals(30_000_000, WorldEditCUI.getPos2().z());
+
+        AtomicInteger lines = new AtomicInteger(0);
+        WorldEditCUI.draw((x0, y0, z0, x1, y1, z1, argb) -> lines.incrementAndGet());
+        assertTrue(lines.get() < 100, "A huge region draws the outline only, not a grid of billions of lines: " + lines.get());
+    }
 }
