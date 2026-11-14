@@ -27,6 +27,9 @@ public static class HorizonEngine
     const string ZipUrl = "https://bot.arashyt.ca/packs/lads-horizon-0.1.1-windows-x64.zip";
     // research-lock.json of Horizon v0.2.97: the 26.3 server jar its preparation accepts.
     public const string ServerJarSha1 = "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c";
+    // Mojang's original 26.3.json: the launcher rewrites its own copy, and horizon-prepare only accepts this one (.local/minecraft/26.3/manifest.json).
+    const string ManifestUrl = "https://piston-meta.mojang.com/v1/packages/11f1aefe473eefba0af62e3286c33b692807b2eb/26.3.json";
+    public const string ManifestSha1 = "11f1aefe473eefba0af62e3286c33b692807b2eb";
     public const long MaxZipBytes = 250L * 1024 * 1024; // 250 MB max for Horizon zip
     public const long MaxServerJarBytes = 100L * 1024 * 1024; // 100 MB max for 26.3 server jar
 
@@ -124,6 +127,18 @@ public static class HorizonEngine
                 throw new InvalidOperationException("The 26.3 server jar does not match the one Horizon expects.");
             }
             File.Move(serverJar + ".part", serverJar, true);
+        }
+        string manifest = Path.Combine(game, ".local", "minecraft", MinecraftVersion, "manifest.json");
+        if (!File.Exists(manifest) || !string.Equals(await Sha1Async(manifest, token), ManifestSha1, StringComparison.OrdinalIgnoreCase))
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(manifest)!);
+            await DownloadAsync(ManifestUrl, manifest + ".part", token, 5L * 1024 * 1024);
+            if (!string.Equals(await Sha1Async(manifest + ".part", token), ManifestSha1, StringComparison.OrdinalIgnoreCase))
+            {
+                File.Delete(manifest + ".part");
+                throw new InvalidOperationException("The Minecraft 26.3 version file Horizon needs does not match its pinned checksum.");
+            }
+            File.Move(manifest + ".part", manifest, true);
         }
         string javaHome = Path.GetDirectoryName(Path.GetDirectoryName(javaPath))!;
         string log = Path.Combine(game, "lads-prepare.log");
