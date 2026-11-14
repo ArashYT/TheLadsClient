@@ -591,17 +591,22 @@ public class SocialState {
         if (to == null || !DmMedia.isScreenshot(gameDir(), shot)) return;
         DmMedia.background(() -> {
             try {
-                byte[] jpeg = DmMedia.encodeScreenshot(shot);
-                List<String> parts = DmMedia.parts(jpeg);
-                for (int i = 0; i < parts.size(); i++) {
-                    send(SocialProtocol.DM_IMG, "to", to.toString(), "text", DmMedia.SCREENSHOT_TEXT, "part", i, "parts", parts.size(), "data", parts.get(i));
-                }
-                recordDm(to, new Dm(selfId(), DmMedia.SCREENSHOT_TEXT, System.currentTimeMillis(), DmMedia.keepSent(jpeg), null));
+                sendPicture(to, DmMedia.encodeScreenshot(shot));
             } catch (IOException | RuntimeException e) {
                 LOGGER.warn("SocialState: screenshot {} not sent: {}", shot.getFileName(), e.toString());
                 bridge().toast("Friends", "Couldn't send that screenshot", null, null);
             }
         });
+    }
+
+    /** Sends a JPEG/PNG under {@link DmMedia#MAX_UPLOAD_BYTES} as "dm_img" parts (call off the render thread). */
+    void sendPicture(UUID to, byte[] picture) throws IOException {
+        if (picture.length > DmMedia.MAX_UPLOAD_BYTES) throw new IOException("picture too big");
+        List<String> parts = DmMedia.parts(picture);
+        for (int i = 0; i < parts.size(); i++) {
+            send(SocialProtocol.DM_IMG, "to", to.toString(), "text", DmMedia.SCREENSHOT_TEXT, "part", i, "parts", parts.size(), "data", parts.get(i));
+        }
+        recordDm(to, new Dm(selfId(), DmMedia.SCREENSHOT_TEXT, System.currentTimeMillis(), DmMedia.keepSent(picture), null));
     }
 
     /** The game folder whose screenshots folder DMs may send from. */

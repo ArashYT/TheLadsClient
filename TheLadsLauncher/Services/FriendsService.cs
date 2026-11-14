@@ -36,8 +36,29 @@ public sealed class FriendsService : IDisposable
     public sealed record World(string Name, string Scope, int Slots, int Used);
     /// <summary>An invite: to a world (World) or a server (Server).</summary>
     public sealed record Invite(string InviteId, string From, string? World, string? Server);
-    /// <summary>What the page shows. FromGame: the running game's list (Invite works through it).</summary>
-    public sealed record Snapshot(bool Connected, bool FromGame, bool CanInvite, IReadOnlyList<Friend> Friends, IReadOnlyList<Invite> Invites, string Status);
+    /// <summary>A DM. From: the sender's UUID (ours for a sent one). Img: the backend's picture id, or "file:&lt;path&gt;" for our own
+    /// copy of a sent one; Gif: a Tenor/Giphy GIF link.</summary>
+    public sealed record Message(string From, string Text, long Ts, string? Img, string? Gif);
+    public sealed record PartyMember(string Uuid, string Name);
+    public sealed record Party(string Leader, IReadOnlyList<PartyMember> Members);
+    public sealed record PartyInvite(string From, string Name);
+    /// <summary>The party leader is going to this server (the backend's "party_warp").</summary>
+    public sealed record PartyWarp(string From, string Server, string? Name);
+    /// <summary>What the page shows. FromGame: the running game's list (Invite works through it). Chats: DMs per friend the source
+    /// knows (the page keeps the history).</summary>
+    public sealed record Snapshot(bool Connected, bool FromGame, bool CanInvite, IReadOnlyList<Friend> Friends, IReadOnlyList<Invite> Invites, string Status)
+    {
+        public string? Self { get; init; }
+        public IReadOnlyDictionary<string, IReadOnlyList<Message>> Chats { get; init; } = new Dictionary<string, IReadOnlyList<Message>>();
+        public Party? Party { get; init; }
+        public IReadOnlyList<PartyInvite> PartyInvites { get; init; } = Array.Empty<PartyInvite>();
+        public PartyWarp? Warp { get; init; }
+        /// <summary>The backend's last refusal (a DM too long, too fast, a full party), in words.</summary>
+        public string? Error { get; init; }
+    }
+
+    /// <summary>A DM's text limit and a picture's (social.py DM_MAX_CHARS, DM_IMG_MAX_BYTES with the game's margin) and part size.</summary>
+    public const int MaxDm = 256, MaxPicture = 950_000, PicturePart = 45_000, PartyMax = 8;
 
     public static readonly Snapshot Empty = new(false, false, false, Array.Empty<Friend>(), Array.Empty<Invite>(), "Not connected");
 
@@ -46,6 +67,12 @@ public sealed class FriendsService : IDisposable
     private readonly object _lock = new();
     private readonly Dictionary<string, Friend> _friends = new();
     private readonly Dictionary<string, Invite> _invites = new();
+    private readonly Dictionary<string, List<Message>> _chats = new();
+    private readonly Dictionary<string, PartyInvite> _partyInvites = new();
+    private readonly SemaphoreSlim _sending = new(1, 1);
+    private Party? _party;
+    private PartyWarp? _warp;
+    private string? _self, _error;
     private CancellationTokenSource? _run;
     private ClientWebSocket? _ws;
     private string _status = "Not connected";
@@ -68,7 +95,12 @@ public sealed class FriendsService : IDisposable
     {
         get
         {
-            lock (_lock) return new Snapshot(_connected, false, false, Sorted(_friends.Values), _invites.Values.ToList(), _status);
+            lock (_lock)
+                return new Snapshot(_connected, false, false, Sorted(_friends.Values), _invites.Values.ToList(), _status)
+                {
+                    Self = _self, Party = _party, Warp = _warp, Error = _error, PartyInvites = _partyInvites.Values.ToList(),
+                    Chats = _chats.ToDictionary(c => c.Key, c => (IReadOnlyList<Message>)c.Value.ToList()),
+                };
         }
     }
 
@@ -98,6 +130,7 @@ public sealed class FriendsService : IDisposable
             _connected = false;
             _friends.Clear();
             _invites.Clear();
+            ClearLink();
             _status = "Not connected";
         }
         Changed?.Invoke();
@@ -168,6 +201,7 @@ public sealed class FriendsService : IDisposable
             if ((int)reply.StatusCode != 204) throw new IOException($"Mojang join refused (HTTP {(int)reply.StatusCode})");
         }
         await SendAsync(ws, new JsonObject { ["t"] = "auth", ["name"] = who.Name, ["uuid"] = plain, ["serverId"] = serverId }, token);
+        lock (_lock) _self = Uuid(plain);
         var hello = await ReadAsync(ws, token) ?? throw new IOException("no hello");
         if (Str(hello, "t") != "hello") throw new IOException("no hello");
         OnHello(hello);
@@ -186,9 +220,100 @@ public sealed class FriendsService : IDisposable
     {
         lock (_lock) _invites.Remove(inviteId);
         Changed?.Invoke();
-        if (_ws is { State: WebSocketState.Open } ws)
-            try { await SendAsync(ws, new JsonObject { ["t"] = "invite_decline", ["inviteId"] = inviteId }, CancellationToken.None); }
-            catch (Exception e) when (e is WebSocketException or IOException or ObjectDisposedException) { }
+        await SendLinkAsync(new JsonObject { ["t"] = "invite_decline", ["inviteId"] = inviteId });
+    }
+
+    /// <summary>Sends one message on the link; false when it is down.</summary>
+    public async Task<bool> SendLinkAsync(JsonObject msg)
+    {
+        if (_ws is not { State: WebSocketState.Open } ws) return false;
+        await _sending.WaitAsync();
+        try
+        {
+            await SendAsync(ws, msg, CancellationToken.None);
+            return true;
+        }
+        catch (Exception e) when (e is WebSocketException or IOException or ObjectDisposedException or OperationCanceledException)
+        {
+            return false;
+        }
+        finally { _sending.Release(); }
+    }
+
+    /// <summary>A DM on the link: a Tenor/Giphy link goes as a GIF (its file found first). False when the link is down.</summary>
+    public async Task<bool> SendDmAsync(string to, string text)
+    {
+        text = text.Trim();
+        if (text.Length == 0) return false;
+        if (text.Length > MaxDm) text = text[..MaxDm];
+        string? gif = FriendsMedia.GifLink(text) is { } link ? await FriendsMedia.ResolveGifAsync(_http, link) : null;
+        var msg = new JsonObject { ["t"] = "dm", ["to"] = to, ["text"] = text };
+        if (gif != null) msg["gif"] = gif;
+        if (!await SendLinkAsync(msg)) return false;
+        Record(to, new Message(_self ?? "", text, Now(), null, gif));
+        return true;
+    }
+
+    /// <summary>A picture (a JPEG/PNG of at most <see cref="MaxPicture"/> bytes) as "dm_img" parts; <paramref name="kept"/> is our
+    /// copy the chat shows.</summary>
+    public async Task<bool> SendPictureAsync(string to, byte[] picture, string kept)
+    {
+        if (picture.Length > MaxPicture) return false;
+        var parts = PictureParts(picture);
+        for (int i = 0; i < parts.Count; i++)
+            if (!await SendLinkAsync(new JsonObject { ["t"] = "dm_img", ["to"] = to, ["text"] = FriendsMedia.ScreenshotText, ["part"] = i, ["parts"] = parts.Count, ["data"] = parts[i] }))
+                return false;
+        Record(to, new Message(_self ?? "", FriendsMedia.ScreenshotText, Now(), "file:" + kept, null));
+        return true;
+    }
+
+    internal static List<string> PictureParts(byte[] picture)
+    {
+        string b64 = Convert.ToBase64String(picture);
+        var parts = new List<string>();
+        for (int i = 0; i < b64.Length; i += PicturePart) parts.Add(b64.Substring(i, Math.Min(PicturePart, b64.Length - i)));
+        return parts;
+    }
+
+    /// <summary>A party answer we gave: the invite is gone from the list (the backend tells the party itself).</summary>
+    public void ForgetPartyInvite(string from)
+    {
+        lock (_lock) _partyInvites.Remove(from);
+        Changed?.Invoke();
+    }
+
+    public void ForgetWarp()
+    {
+        lock (_lock) _warp = null;
+        Changed?.Invoke();
+    }
+
+    private static long Now() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+    private void Record(string friend, Message m)
+    {
+        lock (_lock) AddMessage(friend, m);
+        Changed?.Invoke();
+    }
+
+    private void AddMessage(string friend, Message m)
+    {
+        if (!_chats.TryGetValue(friend, out var list))
+        {
+            if (_chats.Count >= 500) return;
+            _chats[friend] = list = new List<Message>();
+        }
+        list.Add(m);
+        if (list.Count > 200) list.RemoveAt(0);
+    }
+
+    private void ClearLink()
+    {
+        _chats.Clear();
+        _partyInvites.Clear();
+        _party = null;
+        _warp = null;
+        _error = null;
     }
 
     /// <summary>Takes an invite out of the list (the game the page starts accepts it).</summary>
@@ -204,9 +329,13 @@ public sealed class FriendsService : IDisposable
         {
             _friends.Clear();
             _invites.Clear();
+            ClearLink();
             if (hello["friends"] is JsonArray friends)
                 foreach (var f in friends.OfType<JsonObject>())
                     if (ParseFriend(f, f["presence"] as JsonObject) is { } friend) _friends[friend.Uuid] = friend;
+            if (hello["dms"] is JsonArray dms) // DMs that came while we were offline
+                foreach (var d in dms.OfType<JsonObject>())
+                    if (ParseMessage(d) is { } m) AddMessage(m.From, m);
             _connected = true;
             _status = "Connected";
         }
@@ -237,11 +366,58 @@ public sealed class FriendsService : IDisposable
                     else if (inviteId != null && System.Text.RegularExpressions.Regex.IsMatch(inviteId, "^[A-Za-z0-9_-]{1,64}$"))
                         _invites[inviteId] = new Invite(inviteId, from, (msg["world"] as JsonObject) is { } w ? Str(w, "name") : null, null);
                     break;
+                case "dm":
+                    if (ParseMessage(msg) is { } dm && _friends.ContainsKey(dm.From)) AddMessage(dm.From, dm);
+                    break;
+                case "party_state":
+                    _party = ParseParty(msg);
+                    if (_party != null) foreach (var m in _party.Members) _partyInvites.Remove(m.Uuid);
+                    if (_warp != null && _party?.Leader != _warp.From) _warp = null;
+                    break;
+                case "party_ended":
+                    _party = null;
+                    _warp = null;
+                    break;
+                case "party_invite_in":
+                    if (Uuid(Str(msg, "from")) is { } inviter && _friends.TryGetValue(inviter, out var by) && _party == null)
+                        _partyInvites[inviter] = new PartyInvite(inviter, by.Shown);
+                    break;
+                case "party_warp":
+                    if (Uuid(Str(msg, "from")) is { } leader && _party?.Leader == leader && Str(msg, "server") is { Length: > 0 and <= 255 } target)
+                        _warp = new PartyWarp(leader, target, Str(msg, "name"));
+                    break;
+                case "error":
+                    _error = Str(msg, "code") switch
+                    {
+                        "rate" => "Slow down a little: too many messages",
+                        "limit" => Str(msg, "ref") == "party_invites" ? "Too many party invites waiting" : "Too long or too big to send",
+                        "not_friend" => "You can only message friends",
+                        "blocked" => "You can't message this player",
+                        "full" => "The party is full",
+                        "offline" => "That friend is offline",
+                        "bad" when Str(msg, "ref") is "img" or "gif" => "That picture or GIF could not be sent",
+                        _ => _error,
+                    };
+                    break;
                 default:
                     return;
             }
         }
         Changed?.Invoke();
+    }
+
+    internal static Message? ParseMessage(JsonObject d) =>
+        Uuid(Str(d, "from")) is { } from && Str(d, "text") is { } text
+            ? new Message(from, text, d["ts"] is JsonValue v && v.TryGetValue<long>(out var ts) ? ts : Now(), Str(d, "img"), Str(d, "gif"))
+            : null;
+
+    internal static Party? ParseParty(JsonObject p)
+    {
+        if (Uuid(Str(p, "leader")) is not { } leader || p["members"] is not JsonArray arr) return null;
+        var members = arr.OfType<JsonObject>().Take(PartyMax)
+            .Select(m => Uuid(Str(m, "id")) is { } id ? new PartyMember(id, Str(m, "name") is { Length: > 0 and <= 32 } n ? n : id[..8]) : null)
+            .OfType<PartyMember>().ToList();
+        return members.Count == 0 ? null : new Party(leader, members);
     }
 
     private static Friend? ParseFriend(JsonObject f, JsonObject? presence)
@@ -265,7 +441,7 @@ public sealed class FriendsService : IDisposable
         try
         {
             string file = Path.Combine(gameDirectory, Folder, SnapshotFile);
-            if (!File.Exists(file) || new FileInfo(file).Length > 1_000_000) return null;
+            if (!File.Exists(file) || new FileInfo(file).Length > 8_000_000) return null;
             if (JsonNode.Parse(File.ReadAllText(file)) is not JsonObject o) return null;
             var friends = (o["friends"] as JsonArray ?? new()).OfType<JsonObject>()
                 .Select(f => ParseFriend(f, f["presence"] as JsonObject)).OfType<Friend>().ToList();
@@ -273,8 +449,17 @@ public sealed class FriendsService : IDisposable
                 .Where(i => Str(i, "inviteId") != null && Uuid(Str(i, "from")) != null)
                 .Select(i => new Invite(Str(i, "inviteId")!, Uuid(Str(i, "from"))!, Str(i, "world"), Str(i, "server"))).ToList();
             bool connected = o["connected"]?.GetValue<bool>() == true;
+            var chats = new Dictionary<string, IReadOnlyList<Message>>();
+            foreach (var f in (o["friends"] as JsonArray ?? new()).OfType<JsonObject>())
+                if (Uuid(Str(f, "uuid")) is { } id && f["dms"] is JsonArray dms)
+                    chats[id] = dms.OfType<JsonObject>().Select(ParseMessage).OfType<Message>().ToList();
             return new Snapshot(connected, true, connected && o["canInvite"]?.GetValue<bool>() == true, Sorted(friends), invites,
-                connected ? "Connected through your game" : "Your game is connecting…");
+                connected ? "Connected through your game" : "Your game is connecting…")
+            {
+                Self = Uuid(Str(o, "self")), Chats = chats, Party = o["party"] is JsonObject party ? ParseParty(party) : null,
+                PartyInvites = (o["partyInvites"] as JsonArray ?? new()).OfType<JsonObject>()
+                    .Select(i => Uuid(Str(i, "from")) is { } from ? new PartyInvite(from, Str(i, "name") ?? from[..8]) : null).OfType<PartyInvite>().ToList(),
+            };
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or FormatException)
         {

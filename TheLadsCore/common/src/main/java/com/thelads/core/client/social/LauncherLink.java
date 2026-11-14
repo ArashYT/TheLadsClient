@@ -3,6 +3,7 @@ package com.thelads.core.client.social;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.thelads.core.client.bridge.LadsGameBridge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -18,10 +20,14 @@ import java.util.regex.Pattern;
  * so the launcher stays off it while a game runs: the game writes what the page shows to {@code .lads-social/friends.json} and runs
  * the page's Invite / Join / Accept from {@code .lads-social/command.json}. A game the launcher started from its Friends page carries
  * {@code -Dlads.social.join=<host>} or {@code -Dlads.social.invite=<invite id> -Dlads.social.invite.from=<host>}: done once, as soon as the link is up.
+ * The page also chats (DMs, pictures it puts in {@code .lads-social/outbox/}) and runs the party through the game.
  */
 final class LauncherLink {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore/LauncherLink");
-    static final String FOLDER = ".lads-social", FRIENDS = "friends.json", COMMAND = "command.json";
+    static final String FOLDER = ".lads-social", FRIENDS = "friends.json", COMMAND = "command.json", OUTBOX = "outbox";
+    /** The last DMs per friend the page gets (the game keeps 200). */
+    static final int PAGE_DMS = 40;
+    private static final Pattern OUTBOX_FILE = Pattern.compile("[A-Za-z0-9_-]{1,64}\\.(?:jpg|png)");
     static final String JOIN_PROPERTY = "lads.social.join", INVITE_PROPERTY = "lads.social.invite", INVITE_FROM_PROPERTY = "lads.social.invite.from";
     private static final Pattern ID = Pattern.compile("[A-Za-z0-9_-]{1,64}");
 
@@ -37,7 +43,7 @@ final class LauncherLink {
         // A second after the hello: our presence (the backend's compatibility check reads its game) has gone out first
         if (connectedSeconds == 2) startup(state);
         Path folder = gameDir.resolve(FOLDER);
-        if (connected) command(state, folder.resolve(COMMAND));
+        if (connected) command(state, folder);
         write(state, folder, connected);
     }
 
@@ -55,7 +61,8 @@ final class LauncherLink {
         startJoin = startInvite = startInviteFrom = null;
     }
 
-    private static void command(SocialState state, Path file) {
+    private static void command(SocialState state, Path folder) {
+        Path file = folder.resolve(COMMAND);
         if (!Files.isRegularFile(file)) return;
         JsonObject cmd;
         try {
@@ -69,8 +76,26 @@ final class LauncherLink {
             return;
         }
         String t = str(cmd, "t");
-        if ("invite".equals(t)) {
-            UUID to = SocialClient.parseUuid(str(cmd, "to"));
+        UUID to = SocialClient.parseUuid(str(cmd, "to"));
+        if ("dm".equals(t)) {
+            String text = str(cmd, "text");
+            if (to != null && text != null) state.sendDm(to, text);
+        } else if ("dm_img".equals(t)) {
+            String name = str(cmd, "file");
+            if (to != null && name != null && OUTBOX_FILE.matcher(name).matches()) sendPicture(state, to, folder.resolve(OUTBOX).resolve(name));
+        } else if ("party_invite".equals(t)) {
+            if (to != null) state.inviteToParty(to);
+        } else if ("party_accept".equals(t) || "party_decline".equals(t)) {
+            UUID from = SocialClient.parseUuid(str(cmd, "from"));
+            if ("party_accept".equals(t)) state.acceptPartyInvite(from);
+            else state.declinePartyInvite(from);
+        } else if ("party_leave".equals(t)) {
+            state.leaveParty();
+        } else if ("party_kick".equals(t)) {
+            state.kickFromParty(to);
+        } else if ("party_promote".equals(t)) {
+            state.promoteInParty(to);
+        } else if ("invite".equals(t)) {
             if (to != null) state.invite(to);
         } else if ("join".equals(t)) {
             UUID host = SocialClient.parseUuid(str(cmd, "host"));
@@ -82,6 +107,21 @@ final class LauncherLink {
                 else state.declineInvite(id);
             }
         }
+    }
+
+    /** A picture the page made (a JPEG/PNG under the upload cap): read, removed, sent off the game thread. */
+    private static void sendPicture(SocialState state, UUID to, Path file) {
+        DmMedia.background(() -> {
+            try {
+                if (!Files.isRegularFile(file) || Files.size(file) > DmMedia.MAX_UPLOAD_BYTES) throw new java.io.IOException("missing or too big");
+                byte[] picture = Files.readAllBytes(file);
+                Files.deleteIfExists(file);
+                state.sendPicture(to, picture);
+            } catch (Exception e) {
+                try { Files.deleteIfExists(file); } catch (Exception ignored) {}
+                LOGGER.warn("LauncherLink: picture {} not sent ({})", file.getFileName(), e.getMessage());
+            }
+        });
     }
 
     private void write(SocialState state, Path folder, boolean connected) {
@@ -108,6 +148,20 @@ final class LauncherLink {
                 presence.add("world", w);
             }
             e.add("presence", presence);
+            List<SocialState.Dm> dms = state.dms(f.id());
+            if (!dms.isEmpty()) {
+                JsonArray chat = new JsonArray();
+                for (SocialState.Dm dm : dms.subList(Math.max(0, dms.size() - PAGE_DMS), dms.size())) {
+                    JsonObject m = new JsonObject();
+                    if (dm.from() != null) m.addProperty("from", dm.from().toString());
+                    m.addProperty("text", dm.text());
+                    m.addProperty("ts", dm.ts());
+                    if (dm.img() != null) m.addProperty("img", dm.img());
+                    if (dm.gif() != null) m.addProperty("gif", dm.gif());
+                    chat.add(m);
+                }
+                e.add("dms", chat);
+            }
             friends.add(e);
         }
         o.add("friends", friends);
@@ -121,6 +175,30 @@ final class LauncherLink {
             invites.add(e);
         }
         o.add("invites", invites);
+        LadsGameBridge.Session session = state.session();
+        if (session != null && session.uuid() != null) o.addProperty("self", session.uuid().toString());
+        SocialState.Party party = state.party();
+        if (party != null) {
+            JsonObject p = new JsonObject();
+            p.addProperty("leader", party.leader().toString());
+            JsonArray members = new JsonArray();
+            for (SocialState.PartyMember m : party.members()) {
+                JsonObject e = new JsonObject();
+                e.addProperty("id", m.id().toString());
+                e.addProperty("name", m.name());
+                members.add(e);
+            }
+            p.add("members", members);
+            o.add("party", p);
+        }
+        JsonArray partyInvites = new JsonArray();
+        for (SocialState.PartyInvite i : state.partyInvites()) {
+            JsonObject e = new JsonObject();
+            e.addProperty("from", i.from().toString());
+            e.addProperty("name", i.name());
+            partyInvites.add(e);
+        }
+        o.add("partyInvites", partyInvites);
         String json = o.toString();
         if (json.equals(written)) return;
         try {

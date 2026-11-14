@@ -2272,6 +2272,13 @@ async def handle_social_ws(request: web.Request) -> web.WebSocketResponse:
         hello_data = await hub.build_hello(peer)
         sent = peer.send_json(hello_data)
         await hub.register(peer)
+        # A link that replaced this account's other one (launcher <-> game) keeps the party and its pending invites: tell it
+        if peer.uuid in hub.party_of:
+            peer.send_json(hub.party_state_msg(hub.party_of[peer.uuid]))
+        now = time.time()
+        for (from_uuid, to_uuid), exp in list(hub.party_invites.items()):
+            if to_uuid == peer.uuid and exp > now and (inviter := hub.peers.get(from_uuid)):
+                peer.send_json({"t": "party_invite_in", "from": from_uuid, "name": inviter.name})
         if sent and hello_data.get("dms"):
             max_ts = max(d["ts"] for d in hello_data["dms"])
             await hub.store.clear_offline_dms(peer.uuid, max_ts=max_ts)
