@@ -1,9 +1,9 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="TheLadsLauncher.Views.FriendsView">
-  <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="28,24">
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:c="using:TheLadsLauncher.Controls" x:Class="TheLadsLauncher.Views.FriendsView">
+  <Grid RowDefinitions="Auto,Auto,*" Margin="28,24">
     <StackPanel Spacing="4">
       <TextBlock Classes="pageTitle" Text="Friends" />
       <TextBlock Classes="pageSubtitle" HorizontalAlignment="Left"
-                 Text="Your Lads friends and what they are playing. Join a friend's world or server, or invite them to yours, straight from the launcher." />
+                 Text="Chat with your Lads friends, send screenshots and GIFs, make a party, and join or invite them, straight from the launcher." />
     </StackPanel>
 
     <Grid Grid.Row="1" ColumnDefinitions="Auto,*" Margin="2,16,0,0">
@@ -11,19 +11,87 @@
       <TextBlock x:Name="StatusText" Grid.Column="1" Classes="muted" Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
     </Grid>
 
-    <StackPanel Grid.Row="2" x:Name="InvitesPanel" Spacing="8" Margin="0,14,0,0" IsVisible="False">
-      <TextBlock Classes="muted" FontWeight="SemiBold" Text="Invites" />
-      <StackPanel x:Name="InvitesList" Spacing="8" />
-    </StackPanel>
-
-    <Panel Grid.Row="3" Margin="0,14,0,0">
+    <Grid Grid.Row="2" ColumnDefinitions="360,16,*" Margin="0,14,0,0">
+      <!-- Left: invites, the party, the friends -->
       <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-        <StackPanel x:Name="FriendsList" Spacing="8" />
+        <StackPanel Spacing="14">
+          <StackPanel x:Name="InvitesPanel" Spacing="8" IsVisible="False">
+            <TextBlock Classes="muted" FontWeight="SemiBold" Text="Invites" />
+            <StackPanel x:Name="InvitesList" Spacing="8" />
+          </StackPanel>
+          <Border x:Name="PartyCard" Classes="card" Padding="12">
+            <StackPanel Spacing="8">
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <c:Glyph Kind="users" Size="14" VerticalAlignment="Center" />
+                  <TextBlock x:Name="PartyTitle" FontWeight="SemiBold" Text="Party" VerticalAlignment="Center" />
+                </StackPanel>
+                <Button x:Name="PartyLeave" Grid.Column="1" Classes="action" c:Ico.Name="exit" Content="Leave" Height="28" Padding="10,0" IsVisible="False" ToolTip.Tip="Leave the party" />
+              </Grid>
+              <TextBlock x:Name="PartyHint" Classes="muted" FontSize="12" TextWrapping="Wrap" />
+              <StackPanel x:Name="PartyMembers" Spacing="6" />
+            </StackPanel>
+          </Border>
+          <StackPanel Spacing="8">
+            <TextBlock Classes="muted" FontWeight="SemiBold" Text="Friends" />
+            <StackPanel x:Name="FriendsList" Spacing="6" />
+            <StackPanel x:Name="Empty" Spacing="6" Margin="0,30,0,0" IsVisible="False">
+              <TextBlock x:Name="EmptyTitle" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
+              <TextBlock x:Name="EmptyHint" Classes="muted" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="320" />
+            </StackPanel>
+          </StackPanel>
+        </StackPanel>
       </ScrollViewer>
-      <StackPanel x:Name="Empty" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,60" IsVisible="False">
-        <TextBlock x:Name="EmptyTitle" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
-        <TextBlock x:Name="EmptyHint" Classes="muted" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="440" />
-      </StackPanel>
-    </Panel>
+
+      <!-- Right: the chat with the picked friend -->
+      <Border Grid.Column="2" Classes="card" Padding="0">
+        <Panel>
+          <StackPanel x:Name="ChatEmpty" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <c:Glyph Kind="chat" Size="28" HorizontalAlignment="Center" Opacity="0.5" />
+            <TextBlock FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" Text="Pick a friend to chat" />
+            <TextBlock Classes="muted" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="360"
+                       Text="Messages, screenshots and GIFs reach them in game or in their launcher." />
+          </StackPanel>
+          <Grid x:Name="ChatPane" RowDefinitions="Auto,*,Auto,Auto" IsVisible="False">
+            <Border BorderBrush="#2A2B31" BorderThickness="0,0,0,1" Padding="14,10">
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <Image x:Name="ChatHead" Width="40" Height="40" Margin="0,0,12,0" RenderOptions.BitmapInterpolationMode="None" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                  <TextBlock x:Name="ChatName" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                  <TextBlock x:Name="ChatState" Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <StackPanel x:Name="ChatActions" Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" />
+              </Grid>
+            </Border>
+            <ScrollViewer x:Name="ChatScroll" Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+              <StackPanel x:Name="ChatList" Spacing="6" Margin="14,10" />
+            </ScrollViewer>
+            <TextBlock x:Name="ChatError" Grid.Row="2" Foreground="#E5484D" FontSize="12" Margin="14,0,14,6" TextWrapping="Wrap" IsVisible="False" />
+            <Border Grid.Row="3" BorderBrush="#2A2B31" BorderThickness="0,1,0,0" Padding="10">
+              <Grid ColumnDefinitions="Auto,Auto,*,Auto" >
+                <Button x:Name="PictureButton" Classes="action" c:Ico.Name="picture" Height="34" Width="38" Padding="0" ToolTip.Tip="Send a screenshot or picture" />
+                <Button x:Name="GifButton" Grid.Column="1" Classes="action" Content="GIF" Height="34" Padding="10,0" Margin="6,0,0,0"
+                        ToolTip.Tip="Send a GIF: paste a Tenor or Giphy link in the message box">
+                  <Button.Flyout>
+                    <Flyout Placement="TopEdgeAlignedLeft">
+                      <StackPanel Spacing="8" Width="300">
+                        <TextBlock FontWeight="SemiBold" Text="Send a GIF" />
+                        <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                                   Text="Find one on Tenor or Giphy, copy its link, paste it in the message box and press Enter. It plays in the chat." />
+                        <TextBox x:Name="GifSearch" Watermark="Search Tenor (e.g. dance)" />
+                        <Button x:Name="GifSearchButton" Classes="action" c:Ico.Name="search" Content="Search Tenor" HorizontalAlignment="Left" Height="30" Padding="10,0" />
+                      </StackPanel>
+                    </Flyout>
+                  </Button.Flyout>
+                </Button>
+                <TextBox x:Name="ChatInput" Grid.Column="2" Margin="8,0" MaxLength="256" VerticalContentAlignment="Center" MinHeight="34"
+                         Watermark="Message (Enter sends; a Tenor or Giphy link sends a GIF)" />
+                <Button x:Name="SendButton" Grid.Column="3" Classes="launch" c:Ico.Name="send" Content="Send" Height="34" Padding="14,0" />
+              </Grid>
+            </Border>
+          </Grid>
+        </Panel>
+      </Border>
+    </Grid>
   </Grid>
 </UserControl>

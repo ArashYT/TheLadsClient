@@ -2331,6 +2331,21 @@ async def test_party_disconnect_leaves_party(social_app):
     await c.close()
 
 
+async def test_party_replacing_link_gets_party_and_invites(social_app):
+    # The launcher's link and the game's replace each other: the new one is told its party and pending invites
+    a, b, c = await _party_trio(social_app)
+    await _join_party(a, b, A, B)
+    await a.send_json({"t": "party_invite", "to": C})
+    await recv_type(c, "party_invite_in")
+    b2, _ = await auth_ws(social_app, "Bob", B)
+    st = await recv_type(b2, "party_state")
+    assert st["leader"] == A and [m["id"] for m in st["members"]] == [A, B]
+    c2, _ = await auth_ws(social_app, "Carol", C)
+    assert await recv_type(c2, "party_invite_in") == {"t": "party_invite_in", "from": A, "name": "Alice"}
+    for ws in (a, b, c, b2, c2):
+        await ws.close()
+
+
 async def test_party_full_refused(social_app, monkeypatch):
     monkeypatch.setattr(social, "PARTY_MAX_MEMBERS", 2)
     a, b, c = await _party_trio(social_app)
