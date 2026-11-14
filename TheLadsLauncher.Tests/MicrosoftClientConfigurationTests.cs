@@ -87,7 +87,8 @@ public class MicrosoftClientConfigurationTests
         string path = Path.Combine(dir.Path, "settings.json");
         new LauncherSettings { AllowMultiInstance = true }.SaveTo(path);
         var held = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
-        _ = Task.Run(async () => { await Task.Delay(150); held.Dispose(); });
+        var release = Task.Run(async () => { await Task.Delay(150); held.Dispose(); });
         Assert.True(LauncherSettings.LoadFrom(path).AllowMultiInstance);
+        release.Wait(); // the lock must be gone before the folder is deleted
     }
 }
