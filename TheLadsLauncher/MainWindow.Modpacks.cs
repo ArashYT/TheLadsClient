@@ -16,6 +16,8 @@ public partial class MainWindow
 {
     internal LauncherSettings ModpackSettings => settings;
     internal void ModpackLog(string message) => Log("[Modpacks] " + message);
+    /// <summary>The launcher log's last lines, sent along with a game's logs ("Send logs to Lads").</summary>
+    internal static string RecentLauncherLog() => GetRecentLogText(800);
     internal Task<bool> ConfirmModpackAsync(string title, string message, string confirm) =>
         ShowLadsDialogAsync(title, message, confirm, "Cancel", danger: true);
 

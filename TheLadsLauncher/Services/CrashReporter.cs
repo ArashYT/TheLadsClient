@@ -106,6 +106,39 @@ public static class CrashReporter
         }
     }
 
+    /// <summary>The exit code a player's own "Send logs to Lads" carries (the bot shows it on the report).</summary>
+    public const string SentByPlayer = "sent by player";
+
+    /// <summary>
+    /// "Send logs to Lads": this game folder's latest.log, its newest crash report of the last day and the launcher's own log, scrubbed
+    /// like a crash report, to the same staff channel. Null when sent, else why not.
+    /// </summary>
+    public static async Task<string?> SendLogsAsync(string gameDirectory, string minecraftVersion, string launcherLog)
+    {
+        try
+        {
+            string? crashFile = Directory.Exists(Path.Combine(gameDirectory, "crash-reports"))
+                ? Directory.GetFiles(Path.Combine(gameDirectory, "crash-reports"), "*.txt").Where(f => File.GetLastWriteTime(f) > DateTime.Now.AddDays(-1))
+                    .OrderByDescending(File.GetLastWriteTime).FirstOrDefault()
+                : null;
+            string game = Read(Path.Combine(gameDirectory, "logs", "latest.log"), tail: true);
+            string own = Scrub(launcherLog ?? "");
+            if (own.Length > 40_000) own = "[...]\n" + own[^40_000..];
+            if (game.Length > PartLimit - own.Length - 100) game = "[...]\n" + game[^(PartLimit - own.Length - 100)..];
+            string log = game + (own.Length > 0 ? "\n\n===== launcher log (tail) =====\n" + own : "");
+            if (log.Trim().Length == 0) return "there is no log yet";
+            var payload = new { launcher = Program.Version, minecraft = minecraftVersion, exitCode = SentByPlayer, crash = Read(crashFile, tail: false), hsErr = "", log, windowsEvent = "" };
+            using var request = new HttpRequestMessage(HttpMethod.Post, Endpoint) { Content = JsonContent.Create(payload) };
+            request.Headers.UserAgent.ParseAdd(LauncherHttp.UserAgent);
+            using var response = await Http.SendAsync(request).ConfigureAwait(false);
+            return response.IsSuccessStatusCode ? null : (int)response.StatusCode == 429 ? "sent too often, try again in 10 minutes" : $"the server answered {(int)response.StatusCode}";
+        }
+        catch (Exception ex)
+        {
+            return ex.Message;
+        }
+    }
+
     /// <summary>
     /// Windows Application Error / WER events for java from the last 10 minutes: a native crash that left no hs_err file still
     /// names its faulting module here (GPU driver, OpenAL, LWJGL, jvm.dll). "" when none or off Windows.

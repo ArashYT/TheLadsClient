@@ -437,6 +437,10 @@ public final class QaProbe26 {
                 }
                 LOGGER.info("Lads 26.3 qa party: {} leader={} invites={} warp={}", st.party(), st.isPartyLeader(), st.partyInvites(), st.pendingPartyWarp());
             }
+            case "toasts" -> { // textui toasts accept: the newest toast's Join/Accept, as its hotkey; textui toasts log
+                if ("accept".equals(arg(s, 2))) com.thelads.core.client.social.ui.SocialToasts.acceptNewest();
+                LOGGER.info("Lads 26.3 qa toasts: {}", com.thelads.core.client.social.ui.SocialToasts.activeToasts().stream().map(t -> t.title() + ": " + t.body()).toList());
+            }
             case "expect" -> {
                 var enabled = com.mojang.blaze3d.platform.TextInputManager.class.getDeclaredField("textInputEnabled");
                 enabled.setAccessible(true);

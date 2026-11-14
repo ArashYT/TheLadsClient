@@ -77,6 +77,8 @@ public partial class ModpacksView : UserControl
     private static WriteableBitmap? _modFallback;
 
     private readonly Dictionary<string, Process> _running = new();
+    /// <summary>Earlier games of an instance still open when another was started (multi-instance): one closing leaves it "Running".</summary>
+    private readonly Dictionary<string, List<Process>> _alsoRunning = new();
     private readonly Dictionary<string, CancellationTokenSource> _launching = new();
     private readonly HashSet<string> _busy = new(); // instance ids with an update running
     private List<ModpackInstance> _instances = new();
@@ -2371,6 +2373,19 @@ public partial class ModpacksView : UserControl
         }
     }
 
+    private async void SendLogs_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_selected is not { } instance) return;
+        if (sender is Button button) button.IsEnabled = false;
+        try
+        {
+            ManageStatus.Text = "Sending logs to the Lads team...";
+            string? error = await CrashReporter.SendLogsAsync(instance.GameDirectory, instance.McVersion ?? "", MainWindow.RecentLauncherLog());
+            ManageStatus.Text = error == null ? "Logs sent to the Lads team. Tell them in Discord what went wrong." : $"Could not send logs: {error}";
+        }
+        finally { if (sender is Button b) b.IsEnabled = true; }
+    }
+
     private void OpenLogFile_Click(object? sender, RoutedEventArgs e)
     {
         if (_selected is not { } instance) return;
@@ -3502,6 +3517,8 @@ public partial class ModpacksView : UserControl
                 relaunch?.Server, relaunch?.World, modSyncHost);
             var launchedUtc = DateTime.UtcNow;
             InstanceAnalyticsService.RecordLaunch(instance.Directory, instance.Id);
+            if (_running.TryGetValue(instance.Id, out var earlier) && !earlier.HasExited)
+                (_alsoRunning.TryGetValue(instance.Id, out var list) ? list : _alsoRunning[instance.Id] = new()).Add(earlier);
             _running[instance.Id] = process;
             process.EnableRaisingEvents = true;
             process.Exited += (_, _) => Dispatcher.UIThread.Post(() =>
@@ -3510,13 +3527,19 @@ public partial class ModpacksView : UserControl
                 try { start = process.StartTime.ToUniversalTime(); } catch { }
                 var sessionDuration = start != null ? DateTime.UtcNow - start.Value : (DateTime.UtcNow - launchedUtc);
                 InstanceAnalyticsService.RecordSessionExit(instance.Directory, instance.Id, sessionDuration);
+                _alsoRunning.GetValueOrDefault(instance.Id)?.RemoveAll(p => p == process || p.HasExited);
                 if (_running.TryGetValue(instance.Id, out var current) && current == process)
-                    _running.Remove(instance.Id);
+                {
+                    // Another game of this instance still runs: it is the one tracked now
+                    if (_alsoRunning.GetValueOrDefault(instance.Id) is { Count: > 0 } still) { _running[instance.Id] = still[^1]; still.RemoveAt(still.Count - 1); }
+                    else _running.Remove(instance.Id);
+                }
+                bool stillRunning = _running.ContainsKey(instance.Id);
                 int code = process.ExitCode;
-                host.ModpackLog($"{instance.Name} closed (exit code {code}).");
+                host.ModpackLog($"{instance.Name} closed (exit code {code}).{(stillRunning ? " Another game of it is still running." : "")}");
                 if (_selected == instance)
                 {
-                    ManageStatus.Text = code == 0 ? "Game closed." : $"Minecraft closed with exit code {code}. See minecraft\\logs\\latest.log (and crash-reports) in Open folder.";
+                    ManageStatus.Text = stillRunning ? "One game closed; another is still running." : code == 0 ? "Game closed." : $"Minecraft closed with exit code {code}. See minecraft\\logs\\latest.log (and crash-reports) in Open folder.";
                     var analytics = InstanceAnalyticsService.GetAnalytics(instance.Directory, instance.Id);
                     ManagePlaytime.Text = PlaytimeText(analytics.TotalPlaySeconds);
                 }
@@ -3560,8 +3583,14 @@ public partial class ModpacksView : UserControl
     {
         try
         {
+            string changes = "";
             var made = await Task.Run(() => ModSyncService.BuildInstance(DataDirectory, sync, source.GameDirectory, source.McVersion, source.LoaderVersion,
-                m => Host?.ModpackLog(m)));
+                m =>
+                {
+                    if (m.StartsWith("ModSync: " + ModSyncService.SummaryPrefix)) changes = m["ModSync: ".Length..];
+                    Host?.ModpackLog(m);
+                }));
+            if (changes.Length > 0) Status.Text = $"{made.Name}: {changes} Details in Logs.";
             await PlayModSyncAsync(made, sync.Host);
         }
         catch (Exception error)

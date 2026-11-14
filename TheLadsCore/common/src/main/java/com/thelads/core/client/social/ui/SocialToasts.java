@@ -33,6 +33,9 @@ public final class SocialToasts {
     ) {}
 
     private static final List<Toast> toasts = new ArrayList<>();
+    /** Body lines each toast was last drawn with (render), so clicks hit the same, taller card. */
+    private static final java.util.Map<Toast, Integer> bodyLines = new java.util.IdentityHashMap<>();
+    private static final int BODY_MAX_LINES = 4, LINE_H = 10;
     private static LongSupplier timeSupplier = System::currentTimeMillis;
     private static int reservedTop;
     private static long reservedAt = Long.MIN_VALUE / 2;
@@ -80,6 +83,15 @@ public final class SocialToasts {
                 : acceptAction.startsWith("dm:") ? "Reply" : "Accept";
         show(acceptAction != null ? acceptAction : denyAction, title, body, acceptLabel, denyAction == null ? null : denyAction.startsWith("party_warp_ignore:") ? "Ignore" : "Decline",
                 action(acceptAction), action(denyAction), SocialState.get().actionSender(acceptAction != null ? acceptAction : denyAction));
+    }
+
+    /** Drops the button-less toast with this title (a "Joining..." note once the join went on or failed). */
+    public static synchronized void dismiss(String title) {
+        toasts.removeIf(t -> t.title().equals(title) && t.acceptAction() == null && t.denyAction() == null);
+    }
+
+    private static int height(Toast t) {
+        return TOAST_HEIGHT + (bodyLines.getOrDefault(t, 1) - 1) * LINE_H;
     }
 
     private static Runnable action(String id) {
@@ -155,13 +167,19 @@ public final class SocialToasts {
         int right = screenWidth - 10;
         int top = top();
 
+        bodyLines.keySet().removeIf(k -> toasts.stream().noneMatch(t -> t == k));
+        int ty = top;
         for (int i = 0; i < count; i++) {
             Toast t = toasts.get(i);
             int tx = right - TOAST_WIDTH;
-            int ty = top + i * (TOAST_HEIGHT + 6);
+            int textW0 = TOAST_WIDTH - 16 - (t.headUuid() != null ? HEAD_GAP : 0);
+            // The whole message, wrapped (at most BODY_MAX_LINES lines): the card grows with it
+            List<String> body = t.body().isEmpty() ? List.of() : MenuGraphics.lines(g, t.body(), textW0, BODY_MAX_LINES);
+            bodyLines.put(t, Math.max(1, body.size()));
+            int h = height(t);
 
             // Toast background card
-            MenuGraphics.round(g, tx, ty, TOAST_WIDTH, TOAST_HEIGHT, LadsPalette.PANEL);
+            MenuGraphics.round(g, tx, ty, TOAST_WIDTH, h, LadsPalette.PANEL);
             // Accent top border
             g.fill(tx + 4, ty, tx + TOAST_WIDTH - 4, ty + 1, LadsPalette.ACCENT);
 
@@ -173,13 +191,14 @@ public final class SocialToasts {
                 textW -= HEAD_GAP;
             }
             g.drawText(MenuGraphics.fit(g, t.title(), textW), textX, ty + 6, LadsPalette.TEXT, true);
-            g.drawText(MenuGraphics.fit(g, t.body(), textW), textX, ty + 18, LadsPalette.MUTED, false);
+            for (int l = 0; l < body.size(); l++) g.drawText(body.get(l), textX, ty + 18 + l * LINE_H, LadsPalette.MUTED, false);
 
             // Action buttons
             boolean hasAccept = t.acceptAction() != null && !t.acceptAction().isEmpty();
             boolean hasDeny = t.denyAction() != null && !t.denyAction().isEmpty();
 
-            int btnY = ty + 30;
+            int btnY = ty + h - 20;
+            ty += h + 6;
             int btnH = 15;
 
             if (hasAccept && hasDeny) {
@@ -214,15 +233,18 @@ public final class SocialToasts {
         int right = screenWidth - 10;
         int top = top();
 
+        int ty = top;
         for (int i = 0; i < count; i++) {
             Toast t = toasts.get(i);
             int tx = right - TOAST_WIDTH;
-            int ty = top + i * (TOAST_HEIGHT + 6);
+            int h = height(t);
+            int cardY = ty;
+            ty += h + 6;
 
-            if (x >= tx && x < tx + TOAST_WIDTH && y >= ty && y < ty + TOAST_HEIGHT) {
+            if (x >= tx && x < tx + TOAST_WIDTH && y >= cardY && y < cardY + h) {
                 boolean hasAccept = t.acceptAction() != null && !t.acceptAction().isEmpty();
                 boolean hasDeny = t.denyAction() != null && !t.denyAction().isEmpty();
-                int btnY = ty + 30;
+                int btnY = cardY + h - 20;
                 int btnH = 15;
 
                 if (hasAccept && hasDeny) {

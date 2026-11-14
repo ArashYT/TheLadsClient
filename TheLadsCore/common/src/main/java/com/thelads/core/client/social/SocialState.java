@@ -715,8 +715,22 @@ public class SocialState {
             return;
         }
 
-        if (invite != null && invite.from() != null) joinIntents.put(invite.from(), new Intent(System.currentTimeMillis(), here()));
+        if (invite != null && invite.from() != null) {
+            joinIntents.put(invite.from(), new Intent(System.currentTimeMillis(), here()));
+            // Until the host's p2p_start (or an error) arrives the player sees the join is on its way
+            bridge().toast(JOINING, "Waiting for " + nameOf(invite.from()) + " to let you in...", null, null);
+        }
         send(SocialProtocol.INVITE_ACCEPT, "inviteId", inviteId);
+    }
+
+    /** The button-less toast an accepted invite shows until the join goes on or fails. */
+    static final String JOINING = "Joining";
+
+    /** A soft, short chime for an invite (UI sound, follows the master volume). */
+    private void inviteSound() {
+        bridge().runOnGameThread(() -> {
+            try { LadsGameBridge.get().playComboSound(1.4f, 0.25f); } catch (Throwable ignored) {}
+        });
     }
 
     public void declineInvite(String inviteId) {
@@ -1160,6 +1174,7 @@ public class SocialState {
         partyInvites.put(from, new PartyInvite(from, name, System.currentTimeMillis()));
         while (partyInvites.size() > 20) partyInvites.remove(partyInvites.keySet().iterator().next());
         bridge().toast("Party Invite", name + " invited you to a party", "party_accept:" + from, "party_decline:" + from);
+        inviteSound();
         chatAction(name + " invited you to a party [Accept]", "party_accept:" + from);
         notifyListeners();
     }
@@ -1371,6 +1386,7 @@ public class SocialState {
                     activeInvites.put(inviteId, new Invite(inviteId, from, server, true, server));
                     bridge().toast("Server Invite", name + " invited you to " + server,
                             "invite_accept:" + inviteId, "invite_decline:" + inviteId);
+                    inviteSound();
                     chatAction(name + " invited you to " + server + " [Accept]",
                             "invite_accept:" + inviteId);
                 } else if (from.equals(rejoinHost) && System.currentTimeMillis() - startedAt < RELAUNCH_MS) {
@@ -1382,6 +1398,7 @@ public class SocialState {
                     activeInvites.put(inviteId, new Invite(inviteId, from, worldName, false, null));
                     bridge().toast("Game Invite", name + " invited you to " + worldName,
                             "invite_accept:" + inviteId, "invite_decline:" + inviteId);
+                    inviteSound();
                     chatAction(name + " invited you to " + worldName + " [Accept]",
                             "invite_accept:" + inviteId);
                 }
@@ -1454,6 +1471,7 @@ public class SocialState {
                 // B4: the player sees why (ref: the name typed in Add Friend, a player's UUID, or an invite/request id)
                 UUID refId = parseUuid(ref);
                 if (refId != null) joinIntents.remove(refId); // a join request that failed: no p2p_start follows
+                com.thelads.core.client.social.ui.SocialToasts.dismiss(JOINING); // a failed join: its "Joining" note goes
                 boolean adding = ref != null && ref.equalsIgnoreCase(addingName);
                 String text = SocialProtocol.E_NOT_FOUND.equals(code) && !adding ? null // an id already answered or gone
                         : errorText(code, ref, adding ? ref : refId != null ? nameOf(refId) : null);
@@ -1530,6 +1548,7 @@ public class SocialState {
         } else {
             // F9: only for a host we asked to join or whose invite we accepted; never "leave your world now" on the backend's word alone
             Intent intent = joinIntents.remove(peer);
+            com.thelads.core.client.social.ui.SocialToasts.dismiss(JOINING);
             long now = System.currentTimeMillis();
             if (intent == null || now - intent.at() > INTENT_MS) {
                 LOGGER.warn("SocialState: ignored p2p_start from {}: no join request or accepted invite", peer);
