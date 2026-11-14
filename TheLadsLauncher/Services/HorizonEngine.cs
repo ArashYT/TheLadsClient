@@ -27,9 +27,11 @@ public static class HorizonEngine
     const string ZipUrl = "https://bot.arashyt.ca/packs/lads-horizon-0.1.1-windows-x64.zip";
     // research-lock.json of Horizon v0.2.97: the 26.3 server jar its preparation accepts.
     public const string ServerJarSha1 = "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c";
-    // Mojang's original 26.3.json: the launcher rewrites its own copy, and horizon-prepare only accepts this one (.local/minecraft/26.3/manifest.json).
+    // Mojang's original 26.3.json and asset index 34: the launcher rewrites its own copies, and horizon-prepare only accepts these.
     const string ManifestUrl = "https://piston-meta.mojang.com/v1/packages/11f1aefe473eefba0af62e3286c33b692807b2eb/26.3.json";
     public const string ManifestSha1 = "11f1aefe473eefba0af62e3286c33b692807b2eb";
+    const string AssetIndexUrl = "https://piston-meta.mojang.com/v1/packages/e787e8afd149a4cefa89d341b91f5aed8f5d93a0/34.json";
+    public const string AssetIndexSha1 = "e787e8afd149a4cefa89d341b91f5aed8f5d93a0";
     public const long MaxZipBytes = 250L * 1024 * 1024; // 250 MB max for Horizon zip
     public const long MaxServerJarBytes = 100L * 1024 * 1024; // 100 MB max for 26.3 server jar
 
@@ -128,29 +130,56 @@ public static class HorizonEngine
             }
             File.Move(serverJar + ".part", serverJar, true);
         }
-        string manifest = Path.Combine(game, ".local", "minecraft", MinecraftVersion, "manifest.json");
-        if (!File.Exists(manifest) || !string.Equals(await Sha1Async(manifest, token), ManifestSha1, StringComparison.OrdinalIgnoreCase))
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(manifest)!);
-            await DownloadAsync(ManifestUrl, manifest + ".part", token, 5L * 1024 * 1024);
-            if (!string.Equals(await Sha1Async(manifest + ".part", token), ManifestSha1, StringComparison.OrdinalIgnoreCase))
-            {
-                File.Delete(manifest + ".part");
-                throw new InvalidOperationException("The Minecraft 26.3 version file Horizon needs does not match its pinned checksum.");
-            }
-            File.Move(manifest + ".part", manifest, true);
-        }
+        string vanilla = await PrepareVanillaAsync(game, minecraftDirectory, token);
         string javaHome = Path.GetDirectoryName(Path.GetDirectoryName(javaPath))!;
         string log = Path.Combine(game, "lads-prepare.log");
         File.Delete(log);
         status("Preparing Horizon from your Minecraft 26.3 (first time only, a few minutes)...");
-        await RunAsync(game, javaHome, log, status, token, "--prepare", "--server-jar", serverJar, "--minecraft-dir", minecraftDirectory);
+        await RunAsync(game, javaHome, log, status, token, "--prepare", "--server-jar", serverJar, "--minecraft-dir", vanilla);
         status("Copying sounds for Horizon...");
-        await RunAsync(game, javaHome, log, status, token, "sounds", "--minecraft-dir", minecraftDirectory);
+        await RunAsync(game, javaHome, log, status, token, "sounds", "--minecraft-dir", vanilla);
         if (!Directory.Exists(resources))
             throw new InvalidOperationException($"Horizon's preparation finished without its resources. See {log}");
         File.WriteAllText(PreparedMarker(game), Tag);
         return resources;
+    }
+
+    /// <summary>A private Minecraft folder for Horizon: Mojang's original version json and asset index, plus the launcher's
+    /// jar and sound objects (hash-named, so shared by a junction). The launcher's own files stay untouched.</summary>
+    static async Task<string> PrepareVanillaAsync(string game, string minecraftDirectory, CancellationToken token)
+    {
+        string mc = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(game))!, "minecraft-" + MinecraftVersion);
+        string versionDir = Path.Combine(mc, "versions", MinecraftVersion);
+        Directory.CreateDirectory(versionDir);
+        Directory.CreateDirectory(Path.Combine(mc, "assets", "indexes"));
+        await EnsureOriginalAsync(ManifestUrl, ManifestSha1, Path.Combine(versionDir, MinecraftVersion + ".json"), token);
+        await EnsureOriginalAsync(AssetIndexUrl, AssetIndexSha1, Path.Combine(mc, "assets", "indexes", "34.json"), token);
+        string jar = Path.Combine(versionDir, MinecraftVersion + ".jar");
+        string jarSource = Path.Combine(minecraftDirectory, "versions", MinecraftVersion, MinecraftVersion + ".jar");
+        if (!File.Exists(jar) || new FileInfo(jar).Length != new FileInfo(jarSource).Length) File.Copy(jarSource, jar, true);
+        string objects = Path.Combine(mc, "assets", "objects");
+        if (!Directory.Exists(objects))
+        {
+            var psi = new ProcessStartInfo("cmd.exe") { UseShellExecute = false, CreateNoWindow = true };
+            psi.ArgumentList.Add("/c"); psi.ArgumentList.Add("mklink"); psi.ArgumentList.Add("/J");
+            psi.ArgumentList.Add(objects); psi.ArgumentList.Add(Path.Combine(minecraftDirectory, "assets", "objects"));
+            using var link = Process.Start(psi)!;
+            await link.WaitForExitAsync(token);
+            if (!Directory.Exists(objects)) throw new InvalidOperationException("Could not link Minecraft's sound files for Horizon.");
+        }
+        return mc;
+    }
+
+    static async Task EnsureOriginalAsync(string url, string sha1, string file, CancellationToken token)
+    {
+        if (File.Exists(file) && string.Equals(await Sha1Async(file, token), sha1, StringComparison.OrdinalIgnoreCase)) return;
+        await DownloadAsync(url, file + ".part", token, 5L * 1024 * 1024);
+        if (!string.Equals(await Sha1Async(file + ".part", token), sha1, StringComparison.OrdinalIgnoreCase))
+        {
+            File.Delete(file + ".part");
+            throw new InvalidOperationException($"The Minecraft file Horizon needs ({Path.GetFileName(file)}) does not match its pinned checksum.");
+        }
+        File.Move(file + ".part", file, true);
     }
 
     static async Task RunAsync(string game, string javaHome, string log, Action<string> status, CancellationToken token, params string[] args)
