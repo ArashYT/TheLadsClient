@@ -422,6 +422,7 @@ public partial class MainWindow : Window
             _updateCheckTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
             _updateCheckTimer.Tick += async (_, _) => await PollForUpdatesAsync();
             _updateCheckTimer.Start();
+            StartFriends();
             if (InGameUpdate.PlayProfile(args) is { } playProfile)
             {
                 // The game's own Update button restarted the launcher: the player waits for the game, so it starts at once and the
@@ -952,6 +953,8 @@ public partial class MainWindow : Window
         NavWorlds.Classes.Set("active", page == "Worlds");
         ServersPage.IsVisible = page == "Servers";
         NavServers.Classes.Set("active", page == "Servers");
+        FriendsPage.IsVisible = page == "Friends";
+        NavFriends.Classes.Set("active", page == "Friends");
         ModpacksPage.IsVisible = page == "Modpacks";
         NavModpacks.Classes.Set("active", page == "Modpacks");
         ProfilesPage.IsVisible = page == "Profiles";
@@ -5452,6 +5455,7 @@ public partial class MainWindow : Window
             if (!LaunchService.IsValidLoadingScreenColor(launchSettings.LoadingScreenGlowColor)) launchSettings.LoadingScreenGlowColor = "";
             LaunchService.EnsureLoadingScreenColors(launchOpt, launchSettings);
             LaunchService.EnsureSecurityJvmArguments(launchOpt, requiredJava, gameDirectory, activeProfile.MinecraftVersion);
+            AddSocialLaunchArgument(launchOpt);
             if (settings.QuickLaunch && File.Exists(installedMarker))
             {
                 GameLaunchStatusText.Text = "Quick launching (skipping verification)...";

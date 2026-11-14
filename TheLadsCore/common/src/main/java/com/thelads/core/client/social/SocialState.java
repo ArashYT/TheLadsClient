@@ -128,6 +128,8 @@ public class SocialState {
     private boolean leavingServer; // game thread only
     private TrustQuestion trustShown; // game thread only
     private volatile PendingJoin pendingJoin;
+    /** The launcher's Friends page while this game runs (game thread only). */
+    private final LauncherLink launcherLink = new LauncherLink();
     /** The last Add Friend: its name and the backend's answer for the Friends screen (null while waiting). */
     private volatile String addingName, addResult;
     /** Backend invite / join request ids. */
@@ -454,6 +456,7 @@ public class SocialState {
         }
         client.start();
         ModSyncQa.second(this, bridge, activeInvites.values());
+        launcherLink.second(this, bridge.gameDir(), client.isConnected());
         if (hostSession.isHosting() && bridge.worldId() == null) stopHosting();
         refreshPresence();
     }
@@ -698,6 +701,21 @@ public class SocialState {
                 send(SocialProtocol.INVITE, "to", friendUuid.toString(), "server", addr);
             }
         }
+    }
+
+    /** Whether {@link #invite} has something to invite to: a world hosted for friends, or a server we share. */
+    public boolean canInvite() {
+        if (hostSession.isHosting()) return currentPresence().world() != null;
+        String addr = bridge().inWorldOrServer() && showServer && !guestSession.isActive() ? LadsGameBridge.get().getServerAddress() : null;
+        return addr != null && !addr.isEmpty() && !"Singleplayer".equalsIgnoreCase(addr);
+    }
+
+    /** An invite the launcher's Friends page accepted before this game started (it is not in our list): as {@link #acceptInvite}. */
+    public void acceptLauncherInvite(String inviteId, UUID host) {
+        if (inviteId == null || host == null) return;
+        joinIntents.put(host, new Intent(System.currentTimeMillis(), here()));
+        bridge().toast(JOINING, "Waiting for " + nameOf(host) + " to let you in...", null, null);
+        send(SocialProtocol.INVITE_ACCEPT, "inviteId", inviteId);
     }
 
     /** Invites received and not yet answered (Friends screen, Invites tab). */

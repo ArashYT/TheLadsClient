@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="TheLadsLauncher.Views.FriendsView">
+  <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="28,24">
+    <StackPanel Spacing="4">
+      <TextBlock Classes="pageTitle" Text="Friends" />
+      <TextBlock Classes="pageSubtitle" HorizontalAlignment="Left"
+                 Text="Your Lads friends and what they are playing. Join a friend's world or server, or invite them to yours, straight from the launcher." />
+    </StackPanel>
+
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*" Margin="2,16,0,0">
+      <Ellipse x:Name="StatusDot" Width="8" Height="8" Fill="#4A4B55" VerticalAlignment="Center" />
+      <TextBlock x:Name="StatusText" Grid.Column="1" Classes="muted" Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+    </Grid>
+
+    <StackPanel Grid.Row="2" x:Name="InvitesPanel" Spacing="8" Margin="0,14,0,0" IsVisible="False">
+      <TextBlock Classes="muted" FontWeight="SemiBold" Text="Invites" />
+      <StackPanel x:Name="InvitesList" Spacing="8" />
+    </StackPanel>
+
+    <Panel Grid.Row="3" Margin="0,14,0,0">
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <StackPanel x:Name="FriendsList" Spacing="8" />
+      </ScrollViewer>
+      <StackPanel x:Name="Empty" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,60" IsVisible="False">
+        <TextBlock x:Name="EmptyTitle" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
+        <TextBlock x:Name="EmptyHint" Classes="muted" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="440" />
+      </StackPanel>
+    </Panel>
+  </Grid>
+</UserControl>
