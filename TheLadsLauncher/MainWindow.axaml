@@ -117,6 +117,15 @@
                                         <TextBlock Text="Servers" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
+                                <Button x:Name="NavFriends" AutomationProperties.Name="Friends" Classes="nav" Click="NavFriends_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="13">
+                                        <c:Glyph Kind="friends" Size="17" VerticalAlignment="Center" />
+                                        <TextBlock Text="Friends" VerticalAlignment="Center" />
+                                        <Border x:Name="FriendsBadge" IsVisible="False" Background="#E5484D" CornerRadius="8" MinWidth="16" Height="16" Padding="4,0" VerticalAlignment="Center">
+                                            <TextBlock x:Name="FriendsBadgeText" FontSize="10" FontWeight="SemiBold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                    </StackPanel>
+                                </Button>
                                 <Button x:Name="NavMods" AutomationProperties.Name="Mods" Classes="nav" Click="NavMods_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
                                         <c:Glyph Kind="puzzle-piece" Size="17" VerticalAlignment="Center" />
@@ -342,6 +351,7 @@
                     </Grid>
                     <views:WorldsView x:Name="WorldsPage" IsVisible="False" />
                     <views:ServersView x:Name="ServersPage" IsVisible="False" />
+                    <views:FriendsView x:Name="FriendsPage" IsVisible="False" />
                     <views:ModpacksView x:Name="ModpacksPage" IsVisible="False" />
                     <views:SkinsView x:Name="SkinsPage" IsVisible="False" />
                     <Grid x:Name="ProfilesPage" IsVisible="False" Margin="28,24,28,24" RowDefinitions="Auto,Auto,*">

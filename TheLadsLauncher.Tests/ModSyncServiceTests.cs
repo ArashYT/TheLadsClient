@@ -25,7 +25,7 @@ public sealed class ModSyncServiceTests : IDisposable
             Array.Empty<ModInventoryEntry>());
     }
 
-    [Fact] public async Task ListHoldsOnlyTheEnabledJarsThePlayerAdded()
+    [Fact] public async Task ListHoldsTheEnabledJarsOfThePlayerAndThePack()
     {
         byte[] own = { 1, 2, 3, 4, 5 };
         var inventory = new ModInventory("26.3", game, false, new[]
@@ -37,7 +37,8 @@ public sealed class ModSyncServiceTests : IDisposable
         }, new ModInventoryCounts(0, 0, 0, 0, 0, 0));
 
         var mods = await ModSyncService.WriteListAsync(inventory, null, log.Add);
-        var mod = Assert.Single(mods);
+        Assert.Equal(new[] { "own", "sodium" }, mods.Select(m => m.Id));
+        var mod = mods[0];
         Assert.Equal(("own", "own mod.jar", 5L, Sha1(own), Sha512(own), "", ""), (mod.Id, mod.File, mod.Size, mod.Sha1, mod.Sha512, mod.Source, mod.Url));
 
         // The mod's parser (ModSyncList) reads these exact lower-case keys.
