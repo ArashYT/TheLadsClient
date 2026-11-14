@@ -64,7 +64,9 @@ public static class ModSyncService
     private sealed record Request(string? Host, string? World, string? Owner, List<RequestMod>? Mods, List<string>? All = null);
     private sealed record RequestMod(string? File, long Size, string? Sha512);
 
-    /// <summary>Writes <see cref="ListFile"/> for this launch: the enabled jars the player added themselves. With a
+    /// <summary>Writes <see cref="ListFile"/> for this launch: the enabled jars the player added themselves and the Lads pack's (a
+    /// modpack can hold another version of one, Sodium 0.9.3 where the pack pins 0.9.2, that its other mods need; a guest who loads
+    /// the same version skips it). With a
     /// <paramref name="catalog"/>, jars not asked about yet are looked up by hash (at most 8 s; a failure only means friends get
     /// those jars from this PC, and they are asked about again at the next launch).</summary>
     public static async Task<IReadOnlyList<Mod>> WriteListAsync(ModInventory inventory, ContentCatalog? catalog, Action<string> log, CancellationToken token = default)
@@ -76,7 +78,7 @@ public static class ModSyncService
         var rows = new List<(ModInventoryEntry Entry, string Key, FileInfo File)>();
         foreach (var entry in inventory.Entries)
         {
-            if (entry.Ownership != ModOwnership.User || entry.Status != ModEntryStatus.Installed || !entry.EnabledOnDisk || entry.FilePath == null) continue;
+            if (entry.Ownership is not (ModOwnership.User or ModOwnership.Pack) || entry.Status != ModEntryStatus.Installed || !entry.EnabledOnDisk || entry.FilePath == null) continue;
             var file = new FileInfo(entry.FilePath);
             if (rows.Count >= MaxMods || !file.Exists || file.Length <= 0 || file.Length > MaxJar || file.Name.Length > 160
                 || !file.Name.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)) continue;
