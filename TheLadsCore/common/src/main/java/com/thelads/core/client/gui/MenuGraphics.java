@@ -90,7 +90,7 @@ public final class MenuGraphics {
         return lines.size() * 12;
     }
     /** Word-wrapped lines (12 px apart when drawn), each fitted to the width. */
-    static List<String> lines(LadsGraphics g, String text, int width, int maxLines) {
+    public static List<String> lines(LadsGraphics g, String text, int width, int maxLines) {
         List<String> lines = new ArrayList<>(); String line = "";
         for (String word : text.split(" ")) {
             String candidate = line.isEmpty() ? word : line + " " + word;

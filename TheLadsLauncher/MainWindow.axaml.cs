@@ -1486,6 +1486,19 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void SendLogsToLads_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button button) button.IsEnabled = false;
+        try
+        {
+            var profile = _profileService.GetActiveProfile();
+            StatusText.Text = "Sending logs to the Lads team...";
+            string? error = await TheLadsLauncher.Services.CrashReporter.SendLogsAsync(_pathService.GetProfileDirectory(profile), profile.MinecraftVersion ?? "", RecentLauncherLog());
+            StatusText.Text = error == null ? "Logs sent to the Lads team. Tell them in Discord what went wrong." : $"Could not send logs: {error}";
+        }
+        finally { if (sender is Button b) b.IsEnabled = true; }
+    }
+
     private async void ShareLogs_Click(object? sender, RoutedEventArgs e)
     {
         try
@@ -5943,10 +5956,15 @@ public partial class MainWindow : Window
         {
             try
             {
+                string changes = "";
                 var instance = await Task.Run(() => ModSyncService.BuildInstance(_pathService.BaseDirectory, modSync, gameDirectory,
-                    profile.MinecraftVersion, profile.FabricVersion!, message => Log("[Launcher] " + message)));
-                StatusText.Text = $"Starting {instance.Name}...";
-                splash.SetDetail($"Starting {instance.Name}...");
+                    profile.MinecraftVersion, profile.FabricVersion!, message =>
+                    {
+                        if (message.StartsWith("ModSync: " + ModSyncService.SummaryPrefix)) changes = " (" + message["ModSync: ".Length..].TrimEnd('.') + ")";
+                        Log("[Launcher] " + message);
+                    }));
+                StatusText.Text = $"Starting {instance.Name}...{changes}";
+                splash.SetDetail($"Starting {instance.Name}...{changes}");
                 NavigateTo("Modpacks");
                 bool ok = await ModpacksPage.PlayModSyncAsync(instance, modSync.Host);
                 // The profile's game hid the launcher and its exit left it hidden for this launch: back when this game closes, as after

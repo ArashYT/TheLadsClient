@@ -326,11 +326,12 @@
 
           <!-- 3. Logs Tab -->
           <Grid x:Name="LogsPanel" IsVisible="False" RowDefinitions="Auto,*" Margin="0,8,0,0">
-            <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,0,0,10">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" Margin="0,0,0,10">
               <TextBlock Text="latest.log" FontWeight="SemiBold" FontSize="13" Foreground="#C5C7D0" VerticalAlignment="Center" />
               <TextBox x:Name="LogsFilterBox" Grid.Column="1" Width="200" Height="30" PlaceholderText="Filter log..." Margin="8,0,0,0" TextChanged="LogsFilter_Changed" />
               <Button c:Ico.Name="copy" Grid.Column="2" Classes="action" Content="Copy all" Height="30" Margin="8,0,0,0" Click="CopyLog_Click" />
               <Button c:Ico.Name="edit" Grid.Column="3" Classes="action" Content="Open in Editor" Height="30" Margin="8,0,0,0" Click="OpenLogFile_Click" />
+              <Button c:Ico.Name="send" Grid.Column="4" Classes="action" Content="Send to Lads" Height="30" Margin="8,0,0,0" Click="SendLogs_Click" ToolTip.Tip="Send this modpack's game log and the launcher log to the Lads team" />
             </Grid>
             <Border Grid.Row="1" Background="#111215" BorderBrush="#26272E" BorderThickness="1" CornerRadius="6" Padding="12">
               <ScrollViewer x:Name="LogsScroll">

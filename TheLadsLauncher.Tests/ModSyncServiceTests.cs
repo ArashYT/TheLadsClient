@@ -265,6 +265,51 @@ public sealed class ModSyncServiceTests : IDisposable
         Assert.False(File.Exists(Path.Combine(forge.GameDirectory, ModSyncService.RelaunchFile)));
         Assert.False(File.Exists(Path.Combine(forge.GameDirectory, ".lads-mod-cache", ModSyncService.ListFile)));
     }
+    private static byte[] FabricJar(string id, string version, string extra = "")
+    {
+        using var ms = new MemoryStream();
+        using (var zip = new System.IO.Compression.ZipArchive(ms, System.IO.Compression.ZipArchiveMode.Create, true))
+        using (var w = new StreamWriter(zip.CreateEntry("fabric.mod.json").Open()))
+            w.Write($"{{\"id\":\"{id}\",\"name\":\"{id}\",\"version\":\"{version}\"{extra}}}");
+        return ms.ToArray();
+    }
+
+    [Fact] public void TheHostsVersionOfAModWinsAndModsMadeForTheOldOneStayOut()
+    {
+        // The guest's Sodium 0.9.2 and Better Render Distance (hooks Sodium through an entrypoint); the host runs Sodium 0.9.3-beta.5
+        string data = Path.Combine(game, "data");
+        File.WriteAllBytes(Path.Combine(Mods, "sodium-fabric-0.9.2.jar"), FabricJar("sodium", "0.9.2"));
+        File.WriteAllBytes(Path.Combine(Mods, "brd-1.2.2.jar"), FabricJar("betterrenderdistance", "1.2.2", ",\"entrypoints\":{\"sodium:config_api_user\":[\"x\"]}"));
+        File.WriteAllBytes(Path.Combine(Mods, "minimap.jar"), FabricJar("minimap", "1.0", ",\"depends\":{\"minecraft\":\"*\"}"));
+        File.WriteAllBytes(Path.Combine(Mods, "lithium-0.26.jar"), FabricJar("lithium", "0.26.0"));
+        var pack = ModSyncService.BuildInstance(data, HostFolder("Survival", "Alice",
+            ("aaaaaaaaaaaa-sodium-fabric-0.9.3-beta.5.jar", FabricJar("sodium", "0.9.3-beta.5")),
+            ("bbbbbbbbbbbb-lithium-0.25.jar", FabricJar("lithium", "0.25.0")),
+            ("cccccccccccc-waystones.jar", FabricJar("waystones", "2.0"))), game, "26.3", "0.19.5", log.Add);
+
+        Assert.Equal(new[] { "aaaaaaaaaaaa-sodium-fabric-0.9.3-beta.5.jar", "bbbbbbbbbbbb-lithium-0.25.jar", "cccccccccccc-waystones.jar", "minimap.jar" },
+            Modpacks.Mods(pack).Select(m => m.FileName).OrderBy(n => n, StringComparer.Ordinal));
+        Assert.Contains(log, l => l.Contains("left out: betterrenderdistance 1.2.2 (made for sodium 0.9.2, the host uses 0.9.3-beta.5)"));
+
+        // The pack's own game syncs again after the host updated Lithium and dropped Waystones: upgrade, removal and a count are reported
+        log.Clear();
+        var drop = HostFolder("Survival", "Alice",
+            ("aaaaaaaaaaaa-sodium-fabric-0.9.3-beta.5.jar", FabricJar("sodium", "0.9.3-beta.5")),
+            ("dddddddddddd-lithium-0.27.jar", FabricJar("lithium", "0.27.0"))) with { HostFiles = new[] { "aaaaaaaaaaaa-sodium-fabric-0.9.3-beta.5.jar", "dddddddddddd-lithium-0.27.jar" } };
+        ModSyncService.BuildInstance(data, drop, pack.GameDirectory, "26.3", "0.19.5", log.Add);
+        Assert.Contains("ModSync: upgraded: lithium 0.25.0 -> 0.27.0", log);
+        Assert.Contains("ModSync: removed: waystones 2.0", log);
+        Assert.Contains(log, l => l.StartsWith("ModSync: " + ModSyncService.SummaryPrefix + "1 upgraded, 0 downgraded, 0 new, 1 removed"));
+    }
+
+    [Theory]
+    [InlineData("0.9.3", "0.9.2", 1)]
+    [InlineData("0.9.3-beta.5", "0.9.3", -1)]
+    [InlineData("0.9.3-beta.10", "0.9.3-beta.5", 1)]
+    [InlineData("1.10.0+mc26.3", "1.9.9+mc26.3", 1)]
+    [InlineData("2.0", "2.0.0", 0)]
+    public void VersionsCompareByNumbers(string a, string b, int expected) => Assert.Equal(expected, ModSyncService.CompareVersions(a, b));
+
     [Fact] public void RequiredLoaderIsTheHighestVersionTheHostsJarsAskFor()
     {
         string dir = Path.Combine(Path.GetTempPath(), "lads-reqloader-" + Guid.NewGuid().ToString("N"));

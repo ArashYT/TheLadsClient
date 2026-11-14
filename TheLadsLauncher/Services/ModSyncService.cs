@@ -265,12 +265,36 @@ public static class ModSyncService
             : (Read<List<string>>(Path.Combine(instance.Directory, ManagedFile)) ?? new()).Where(n => System.Text.RegularExpressions.Regex.IsMatch(n, "^[0-9a-f]{12}-.*[.]jar$")).ToList();
         var origin = recorded ?? legacy;
         var stale = relaunch.HostFiles == null ? new HashSet<string>() : origin.Where(n => !relaunch.HostFiles.Contains(n, StringComparer.OrdinalIgnoreCase)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (Directory.Exists(profileMods))
-            foreach (var jar in Directory.EnumerateFiles(profileMods, "*.jar").Where(f => !SafeFileOps.IsLink(f) && !IsCore(f) && !stale.Contains(Path.GetFileName(f))))
-                wanted[Path.GetFileName(jar)] = jar;
         var hostJars = Directory.EnumerateFiles(relaunch.Folder, "*.jar").Where(f => !IsCore(f)).ToList();
+        // The host's mods by id: the host's file of a mod wins over the player's own, whatever its name (two jars of one mod break the game)
+        var hostMods = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var jar in hostJars) if (ReadInfo(jar) is { } info) hostMods[info.Id] = info.Version;
+        var ownJars = Directory.Exists(profileMods)
+            ? Directory.EnumerateFiles(profileMods, "*.jar").Where(f => !SafeFileOps.IsLink(f) && !IsCore(f) && !stale.Contains(Path.GetFileName(f))).ToList()
+            : new List<string>();
+        var ownInfo = ownJars.ToDictionary(j => j, ReadInfo);
+        // The player's version of each mod the host has in another version (Sodium 0.9.2 where the host has 0.9.3)
+        var swapped = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var info in ownInfo.Values)
+            if (info != null && hostMods.TryGetValue(info.Id, out var hv) && hv != info.Version) swapped[info.Id] = info.Version;
+        var turnedOff = new List<string>();
+        foreach (var jar in ownJars)
+        {
+            var info = ownInfo[jar];
+            if (info != null && hostMods.ContainsKey(info.Id)) continue; // the host's file of this mod is used
+            // A mod of the player's that hooks into a mod the host has in another version (Better Render Distance into Sodium) was made
+            // for the player's version: it crashes the game in the host's world, so it stays out of this pack
+            string? tie = info?.Ties.FirstOrDefault(swapped.ContainsKey);
+            if (tie != null)
+            {
+                turnedOff.Add($"{info!.Name} {info.Version} (made for {tie} {swapped[tie]}, the host uses {hostMods[tie]})");
+                continue;
+            }
+            wanted[Path.GetFileName(jar)] = jar;
+        }
         foreach (var jar in hostJars) wanted[Path.GetFileName(jar)] = jar;
         int host = hostJars.Count, own = wanted.Count - host;
+        var before = Installed(mods);
 
         // Ours from before: the recorded names; a modpack made before the record existed counts all its jars as ours.
         string record = Path.Combine(instance.Directory, ManagedFile);
@@ -288,6 +312,14 @@ public static class ModSyncService
         foreach (var gone in managed.Where(m => !wanted.ContainsKey(m) && SafeFileOps.IsPlainFileName(m) && !IsCore(m)))
             foreach (var path in new[] { Path.Combine(mods, gone), Path.Combine(mods, gone) + ".disabled" })
                 if (File.Exists(path)) { File.Delete(path); removed++; }
+        // A jar the player put in the pack by hand that holds a mod the host's file now brings: switched off, not deleted
+        foreach (var jar in Directory.EnumerateFiles(mods, "*.jar").Where(f => !wanted.ContainsKey(Path.GetFileName(f)) && !IsCore(f)).ToList())
+            if (ReadInfo(jar) is { } info && hostMods.ContainsKey(info.Id))
+            {
+                File.Move(jar, jar + ".disabled", overwrite: true);
+                turnedOff.Add($"{info.Name} {info.Version} (the host's {info.Id} {hostMods[info.Id]} is used)");
+            }
+        foreach (var line in Changes(before, Installed(mods), turnedOff)) log("ModSync: " + line);
         Directory.CreateDirectory(Path.GetDirectoryName(originFile)!);
         File.WriteAllText(originFile, JsonSerializer.Serialize((recorded ?? new()).Where(n => !stale.Contains(n)).Concat(hostJars.Select(Path.GetFileName)).Distinct(StringComparer.OrdinalIgnoreCase)));
         File.WriteAllText(record, JsonSerializer.Serialize(wanted.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase)));
@@ -295,6 +327,98 @@ public static class ModSyncService
         log(made ? $"ModSync: '{name}' has your {own} mod(s) and {host} from the host."
             : $"ModSync: '{name}' updated in place: {added} added, {updated} updated, {removed} removed ({own} of yours, {host} from the host).");
         return instance;
+    }
+
+    /// <summary>A jar's Fabric mod: id, name, version, and the mods it hooks into (depends/recommends/suggests/breaks keys and
+    /// "&lt;mod&gt;:" entrypoints, such as "sodium:config_api_user").</summary>
+    internal sealed record ModInfo(string Id, string Name, string Version, IReadOnlyList<string> Ties);
+
+    internal static ModInfo? ReadInfo(string jar)
+    {
+        try
+        {
+            using var zip = System.IO.Compression.ZipFile.OpenRead(jar);
+            var entry = zip.GetEntry("fabric.mod.json");
+            if (entry == null) return null;
+            using var doc = JsonDocument.Parse(entry.Open(), new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip });
+            var root = doc.RootElement;
+            string? id = root.TryGetProperty("id", out var i) && i.ValueKind == JsonValueKind.String ? i.GetString() : null;
+            if (string.IsNullOrEmpty(id)) return null;
+            string version = root.TryGetProperty("version", out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
+            string name = root.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(n.GetString()) ? n.GetString()! : id;
+            var ties = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var key in new[] { "depends", "recommends", "suggests", "breaks" })
+                if (root.TryGetProperty(key, out var deps) && deps.ValueKind == JsonValueKind.Object)
+                    foreach (var d in deps.EnumerateObject()) ties.Add(d.Name);
+            if (root.TryGetProperty("entrypoints", out var eps) && eps.ValueKind == JsonValueKind.Object)
+                foreach (var ep in eps.EnumerateObject()) if (ep.Name.IndexOf(':') > 0) ties.Add(ep.Name[..ep.Name.IndexOf(':')]);
+            foreach (var basic in new[] { "minecraft", "java", "fabricloader", "fabric-api", "fabric", id }) ties.Remove(basic);
+            return new ModInfo(id, name, version, ties.ToList());
+        }
+        catch { return null; } // not a Fabric mod jar: compared by file only
+    }
+
+    /// <summary>The switched-on mods in a mods folder by id: (name, version).</summary>
+    private static Dictionary<string, (string Name, string Version)> Installed(string mods)
+    {
+        var map = new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var jar in Directory.EnumerateFiles(mods, "*.jar").Where(f => !IsCore(f)))
+            if (ReadInfo(jar) is { } info) map[info.Id] = (info.Name, info.Version);
+        return map;
+    }
+
+    /// <summary>What a sync changed, one line each, ending with a count: upgraded, downgraded, new, removed and left-out mods.</summary>
+    internal static List<string> Changes(Dictionary<string, (string Name, string Version)> before, Dictionary<string, (string Name, string Version)> after, IReadOnlyList<string> turnedOff)
+    {
+        var lines = new List<string>();
+        int up = 0, down = 0, added = 0, gone = 0;
+        foreach (var (id, now) in after.OrderBy(p => p.Value.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!before.TryGetValue(id, out var was)) { lines.Add($"new: {now.Name} {now.Version}"); added++; }
+            else if (was.Version != now.Version)
+            {
+                bool newer = CompareVersions(now.Version, was.Version) > 0;
+                lines.Add($"{(newer ? "upgraded" : "downgraded")}: {now.Name} {was.Version} -> {now.Version}");
+                if (newer) up++; else down++;
+            }
+        }
+        foreach (var (id, was) in before.OrderBy(p => p.Value.Name, StringComparer.OrdinalIgnoreCase))
+            if (!after.ContainsKey(id)) { lines.Add($"removed: {was.Name} {was.Version}"); gone++; }
+        foreach (var off in turnedOff) lines.Add("left out: " + off);
+        lines.Add($"{SummaryPrefix}{up} upgraded, {down} downgraded, {added} new, {gone} removed, {turnedOff.Count} left out.");
+        return lines;
+    }
+
+    /// <summary>Starts the last line of <see cref="Changes"/> (the launcher shows that line in the status bar).</summary>
+    public const string SummaryPrefix = "mod changes: ";
+
+    /// <summary>Compares dotted versions part by part (numbers as numbers, "0.9.3-beta.5" &lt; "0.9.3"); text parts by ordinal.</summary>
+    internal static int CompareVersions(string a, string b)
+    {
+        static (string Core, string Pre) Split(string v)
+        {
+            v = v.Split('+')[0];
+            int dash = v.IndexOf('-');
+            return dash < 0 ? (v, "") : (v[..dash], v[(dash + 1)..]);
+        }
+        static int Parts(string x, string y)
+        {
+            var xs = x.Split('.'); var ys = y.Split('.');
+            for (int k = 0; k < Math.Max(xs.Length, ys.Length); k++)
+            {
+                string p = k < xs.Length ? xs[k] : "0", q = k < ys.Length ? ys[k] : "0";
+                int c = long.TryParse(p, out var pn) && long.TryParse(q, out var qn) ? pn.CompareTo(qn) : string.CompareOrdinal(p, q);
+                if (c != 0) return Math.Sign(c);
+            }
+            return 0;
+        }
+        var (ac, ap) = Split(a); var (bc, bp) = Split(b);
+        int core = Parts(ac, bc);
+        if (core != 0) return core;
+        if (ap == bp) return 0;
+        if (ap.Length == 0) return 1; // a release is newer than its pre-release
+        if (bp.Length == 0) return -1;
+        return Parts(ap, bp);
     }
 
     /// <summary>The highest Fabric Loader version (">=x.y.z") the jars in <paramref name="folder"/> ask for, or null. A host on a newer loader

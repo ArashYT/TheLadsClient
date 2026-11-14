@@ -245,10 +245,11 @@ class ModSyncWiringTest {
 
         guest.onMessage(SocialProtocol.msg(SocialProtocol.INVITE, "inviteId", "back1", "from", HOST.toString(), "world", world));
         assertTrue(sent(sentMessages, SocialProtocol.INVITE_ACCEPT, "inviteId", "back1"));
-        assertEquals(1, bridge.toasts.size(), "no question for the join the player already accepted");
+        assertEquals(2, bridge.toasts.size(), "no question for the join the player already accepted");
+        assertTrue(bridge.toasts.get(1).startsWith("Joining: Waiting for "), "only the note that the join is on its way: " + bridge.toasts.get(1));
 
         guest.onMessage(SocialProtocol.msg(SocialProtocol.INVITE, "inviteId", "back2", "from", HOST.toString(), "world", world));
         assertFalse(sent(sentMessages, SocialProtocol.INVITE_ACCEPT, "inviteId", "back2"), "only the first one");
-        assertEquals(2, bridge.toasts.size());
+        assertEquals(3, bridge.toasts.size());
     }
 }
