@@ -70,6 +70,7 @@
     "TesrBatchMixin189",
     "EntityPassLightingMixin189",
     "MinecraftMixin",
+    "WindowIconMixin189",
     "MinecraftGlErrorsAccessor",
     "BooleanStateMixin",
     "MovementInputFromOptionsMixin",

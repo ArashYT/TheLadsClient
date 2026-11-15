@@ -54,8 +54,8 @@ public static class ExperiencesService
         ServerAddress: "",
         IconAsset: "avares://TheLadsLauncher/Assets/lads_smp_reborn_icon.png",
         RecommendedRamMb: 8192,
-        PackArchiveUrl: "https://bot.arashyt.ca/packs/lads-smp-reborn-26.3-0.5.0.zip",
-        PackArchiveSha256: "036D53D4B710F834058F34938842C8C71488DB3D838789D2501495B6ECDDE8B8",
+        PackArchiveUrl: "https://bot.arashyt.ca/packs/lads-smp-reborn-26.3-0.5.1.zip",
+        PackArchiveSha256: "67D1C84D846AD74F20B06E7FE4F290E470A01440F10166F8897F3DA148FC7A1A",
         InviteOnly: true
     );
 

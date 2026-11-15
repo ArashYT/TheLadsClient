@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace TheLadsLauncher.Services;
 
@@ -313,14 +314,14 @@ public static class GameOptionsService
     /// key names the launcher wrote, fails to load the file and plays with every option at its default. A line the file has stays;
     /// 1.8.9 has no data version and never gets one.
     /// </summary>
-    public static void EnsureDataVersion(string gameDirectory, string mcVersion)
+    public static void EnsureDataVersion(string gameDirectory, string mcVersion, string? clientJar = null)
     {
         var file = Path.Combine(gameDirectory, "options.txt");
         if (IsLegacy18(mcVersion) || !File.Exists(file)) return;
         var bytes = File.ReadAllBytes(file);
         var text = Encoding.Latin1.GetString(bytes);
         if (ParseOptions(text).ContainsKey("version")
-            || DataVersion(Path.Combine(gameDirectory, "versions", mcVersion, mcVersion + ".jar")) is not { } version) return;
+            || DataVersion(clientJar ?? Path.Combine(gameDirectory, "versions", mcVersion, mcVersion + ".jar")) is not { } version) return;
         // The old-file fixes this line now skips also switched the first-start accessibility screen off: keep it off, as before.
         string newline = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
         var line = Encoding.ASCII.GetBytes("version:" + version + newline
@@ -390,6 +391,135 @@ public static class GameOptionsService
             };
             WriteAtomically(optiFineFile, SerializeOptions(ofMap));
         }
+    }
+
+    // ── Lads defaults (1.13.24): inherited .minecraft options, Vignette and Chunk Fade off ───────────────────────────────
+
+    /// <summary>In a game folder: which one-time default passes already ran there. A pass that is listed never runs again, so a player who
+    /// turns Vignette or Chunk Fade back on keeps that. (Minecraft rewrites options.txt and drops lines it does not know, so the marker
+    /// lives in its own file.)</summary>
+    public const string DefaultsMarkerFile = "lads-defaults-applied.txt";
+    public const string VideoDefaultsStep = "options-vignette-chunkfade-1";
+    public const string LegacyVignetteStep = "of189-vignette-1";
+
+    /// <summary>The video defaults the launcher puts in options.txt: Vignette and Chunk Fade off (0 seconds).</summary>
+    public static readonly IReadOnlyDictionary<string, string> VideoDefaults = new Dictionary<string, string>
+    {
+        ["vignette"] = "false",
+        ["chunkSectionFadeInTime"] = "0.0"
+    };
+
+    /// <summary>Whether the game's own options.txt has Vignette and Chunk Fade: the vanilla settings of 1.21.11 and 26.x (checked in the
+    /// client jars: 1.20.1 has neither, and 1.8.9 only has the Lads module option, see <see cref="LegacyVignetteStep"/>).</summary>
+    public static bool HasVideoDefaults(string mcVersion) =>
+        Version.TryParse(mcVersion, out var version) && version >= new Version(1, 21, 11);
+
+    /// <summary>Right before a game starts, in every game folder (profiles, modpacks, Experiences): first a folder with no options.txt
+    /// of its own takes the player's .minecraft one (<see cref="InheritMinecraftOptions"/>), then the passes of <see cref="VideoDefaultsStep"/>
+    /// and <see cref="LegacyVignetteStep"/> that this folder has not had yet run once. Never throws: a file it cannot write is skipped
+    /// and tried again at the next launch.</summary>
+    public static void ApplyLadsDefaults(string gameDirectory, string mcVersion, string? minecraftRoot, string? clientJar = null)
+    {
+        try
+        {
+            if (!Directory.Exists(gameDirectory)) return;
+            clientJar ??= Path.Combine(gameDirectory, "versions", mcVersion, mcVersion + ".jar");
+            InheritMinecraftOptions(gameDirectory, mcVersion, minecraftRoot, clientJar);
+            var markerFile = Path.Combine(gameDirectory, DefaultsMarkerFile);
+            var done = File.Exists(markerFile) ? File.ReadAllLines(markerFile).Select(l => l.Trim()).Where(l => l.Length > 0).ToList() : new List<string>();
+            bool changed = false;
+            var optionsFile = Path.Combine(gameDirectory, "options.txt");
+            bool existed = File.Exists(optionsFile);
+            // A file made here needs the game's data version (else Minecraft takes it for a pre-1.13 one): with no jar to read it from, wait
+            // for the game's own options.txt.
+            if (HasVideoDefaults(mcVersion) && !done.Contains(VideoDefaultsStep) && (existed || DataVersion(clientJar) != null))
+            {
+                SetOptions(optionsFile, VideoDefaults);
+                if (!existed) EnsureDataVersion(gameDirectory, mcVersion, clientJar);
+                done.Add(VideoDefaultsStep);
+                changed = true;
+            }
+            if (IsLegacy18(mcVersion) && !done.Contains(LegacyVignetteStep) && SetLegacyVignetteOff(gameDirectory))
+            {
+                done.Add(LegacyVignetteStep);
+                changed = true;
+            }
+            if (changed) WriteAtomically(markerFile, string.Join('\n', done) + "\n");
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { }
+    }
+
+    /// <summary>The only lines the launcher itself puts in a game folder's options.txt before the game has ever run there (the data
+    /// version, the first-start screen switch, the renderer choice, fullscreen on launch): a file with nothing else is not the player's own.</summary>
+    private static readonly HashSet<string> LauncherOnlyKeys = new(StringComparer.OrdinalIgnoreCase)
+        { "version", "onboardAccessibility", "preferredGraphicsBackend", "fullscreen" };
+
+    /// <summary>A game folder with no options.txt of its own (none, or only what the launcher wrote, <see cref="LauncherOnlyKeys"/>) starts
+    /// from the player's .minecraft one: keybinds, video, sound and the rest; the launcher's own lines stay as they are. Only the same kind of
+    /// file is taken (a 1.13+ file has a "version:" line, a 1.8 one none), the resource pack lists and the last server stay behind (the Lads
+    /// packs and server list are set up by the launcher), and a data version newer than this game's own is dropped so Minecraft does not
+    /// take the file for one from the future. An options.txt with any other line is never touched.</summary>
+    public static bool InheritMinecraftOptions(string gameDirectory, string mcVersion, string? minecraftRoot, string? clientJar = null)
+    {
+        if (string.IsNullOrWhiteSpace(minecraftRoot)) return false;
+        var target = Path.Combine(gameDirectory, "options.txt");
+        var source = Path.Combine(minecraftRoot, "options.txt");
+        if (Directory.Exists(target) || !File.Exists(source) || new FileInfo(source).Length > 1 << 20) return false;
+        var own = File.Exists(target) ? ParseOptions(File.ReadAllText(target)) : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (own.Keys.Any(key => !LauncherOnlyKeys.Contains(key))) return false;
+        if (SafeFileOps.PathsEqual(SafeFileOps.GetFinalPath(gameDirectory), SafeFileOps.GetFinalPath(minecraftRoot))) return false;
+        var text = Encoding.UTF8.GetString(File.ReadAllBytes(source));
+        var map = ParseOptions(text);
+        if (map.Count == 0 || map.ContainsKey("version") == IsLegacy18(mcVersion)) return false;
+        int? targetData = IsLegacy18(mcVersion) ? null : DataVersion(clientJar ?? Path.Combine(gameDirectory, "versions", mcVersion, mcVersion + ".jar"));
+        string newline = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        var kept = new List<string>();
+        foreach (var line in text.Split('\n').Select(l => l.TrimEnd('\r')))
+        {
+            int colon = line.IndexOf(':');
+            string key = colon > 0 ? line[..colon].Trim() : "";
+            if (key is "resourcePacks" or "incompatibleResourcePacks" or "lastServer") continue;
+            if (own.ContainsKey(key)) continue; // the launcher's own line (below) wins
+            if (key == "version" && targetData is { } ownData && int.TryParse(line[(colon + 1)..].Trim(), out int theirs) && theirs > ownData) continue;
+            if (line.Length > 0) kept.Add(line);
+        }
+        // The launcher's lines first: "version:" stays the file's first line.
+        kept.InsertRange(0, own.Select(kvp => kvp.Key + ":" + kvp.Value));
+        Directory.CreateDirectory(gameDirectory);
+        WriteAtomically(target, string.Join(newline, kept) + newline);
+        return true;
+    }
+
+    /// <summary>Sets these keys in an options.txt, in place (the other lines and the line ending stay); a missing key is appended and a
+    /// missing file created.</summary>
+    public static void SetOptions(string optionsFile, IReadOnlyDictionary<string, string> values)
+    {
+        var text = File.Exists(optionsFile) ? File.ReadAllText(optionsFile) : "";
+        string newline = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        var lines = text.Split('\n').Select(l => l.TrimEnd('\r')).ToList();
+        if (lines.Count > 0 && lines[^1].Length == 0) lines.RemoveAt(lines.Count - 1);
+        foreach (var (key, value) in values)
+        {
+            int at = lines.FindIndex(l => l.StartsWith(key + ":", StringComparison.Ordinal));
+            if (at >= 0) lines[at] = key + ":" + value; else lines.Add(key + ":" + value);
+        }
+        WriteAtomically(optionsFile, string.Join(newline, lines) + newline);
+    }
+
+    /// <summary>1.8.9's Vignette is a Lads module option (OptiFine189, "Vignette": 0 default, 1 Fast = off) in thelads_config.json. Only an
+    /// existing config is changed: a partial file where none exists would send the first start down the existing-config path. False when
+    /// there is none yet (the pass then runs at a later launch).</summary>
+    private static bool SetLegacyVignetteOff(string gameDirectory)
+    {
+        var file = Path.Combine(gameDirectory, "thelads_config.json");
+        if (!File.Exists(file)) return false;
+        if (JsonNode.Parse(File.ReadAllText(file)) is not JsonObject root) return false;
+        if (root["modules"] is not JsonObject modules) root["modules"] = modules = new JsonObject();
+        if (modules["OptiFine189"] is not JsonObject module) modules["OptiFine189"] = module = new JsonObject();
+        if (module["options"] is not JsonObject options) module["options"] = options = new JsonObject();
+        options["Vignette"] = 1;
+        WriteAtomically(file, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        return true;
     }
 
     // A crash or a closed launcher mid-write leaves the old file whole, never a cut-off one. An unchanged file is not rewritten.

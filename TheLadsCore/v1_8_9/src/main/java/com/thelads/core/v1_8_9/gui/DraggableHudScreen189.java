@@ -74,7 +74,7 @@ public class DraggableHudScreen189 extends GuiScreen {
     public void handleMouseInput() throws IOException {
         super.handleMouseInput();
         int wheel = Mouse.getEventDWheel();
-        if (wheel != 0) ui.mouseScrolled(pointerX(), pointerY(), Integer.signum(wheel));
+        if (wheel != 0) ui.mouseScrolled(pointerX(), pointerY(), Integer.signum(wheel), modifiers());
     }
 
     @Override

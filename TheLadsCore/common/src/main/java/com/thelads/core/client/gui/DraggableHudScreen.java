@@ -6,10 +6,13 @@ import com.thelads.core.client.hud.HudElement;
 import com.thelads.core.client.hud.HudGroupLayout;
 import com.thelads.core.client.hud.HudGroupLayout.Rect;
 import com.thelads.core.client.hud.HudManager;
+import com.thelads.core.client.hud.HudResize;
 import com.thelads.core.client.hud.HudScale;
 import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.HudSettings;
+import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.ModuleSupport;
+import com.thelads.core.config.SliderOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -69,6 +72,11 @@ public class DraggableHudScreen {
     private Integer guideX,guideY;
     private HudElement reveal;
     private String notice="",search="";
+    /** The HUD the wheel resized last, its percent, and until when the preview shows that percent beside it. */
+    private HudElement sizedElement;
+    private int sizedPercent;
+    private long sizedUntil;
+    private static final long SIZED_SHOWN_MS=4000;
     private static final int GRID=10,SNAP=4,TOP=26,STATUS=14,GAP=6,ROW=18;
 
     public DraggableHudScreen(){this(ConfigManager::save);}
@@ -92,6 +100,10 @@ public class DraggableHudScreen {
     /** Names in the element list, top to bottom (including rows scrolled out of view). */
     public List<String> listedNames(){return listed().stream().map(HudElement::getModuleName).toList();}
     public Rect previewBounds(){return preview;}
+    /** The Lads HUD's whole viewport in its units (0, 0, width, height): the edges a HUD can be dragged to. */
+    public Rect hudViewport(){return new Rect(0,0,hudWidth,hudHeight);}
+    /** The screen the editor is drawn on, in the screen's own units (QA keeps the pointer inside it, as a window does). */
+    public Rect screenViewport(){return new Rect(0,0,viewportWidth,viewportHeight);}
     /** The vanilla hotbar's box in the HUD's coordinates (a snap target). */
     public Rect hotbarBounds(){return hotbar;}
     public double previewScale(){return scale;}
@@ -122,14 +134,7 @@ public class DraggableHudScreen {
         measuredBounds.clear();renderedBounds.clear();controls.clear();rows.clear();
         graphics.fill(0,0,width,height,LadsPalette.BACKGROUND);
         graphics.fill(0,0,width,2,LadsPalette.ACCENT);
-        List<HudElement> elements=HudManager.getInstance().getElements();
-        // Hidden members are measured too: enabling a grouped HUD later must not reveal a split group.
-        for(var element:elements)if(element.isAvailable())measuredBounds.put(element,element.measureBounds(hud,true));
-        // Laid out as in game (HudManager): saved anchors, blocks kept on screen, and positions saved before 1.9.0 anchored where they show.
-        HudAnchors.place(measuredBounds,hudWidth,hudHeight,hotbar);
-        HudGroupLayout.matchDockedWidths(measuredBounds);
-        HudAnchors.clamp(measuredBounds,hudWidth,hudHeight);
-        HudAnchors.adopt(measuredBounds,HudElement::isEnabled,hud);
+        measureAll();
         drawToolbar(graphics,mouseX,mouseY);
         drawPanel(graphics,mouseX,mouseY);
         drawPreview(graphics,mouseX,mouseY);
@@ -142,13 +147,26 @@ public class DraggableHudScreen {
         graphics.overlay(()->profilesDialog.render(graphics,pointerX,pointerY));
     }
 
+    /** Every HUD's bounds this frame, laid out as in game. */
+    private void measureAll(){
+        List<HudElement> elements=HudManager.getInstance().getElements();
+        // Hidden members are measured too: enabling a grouped HUD later must not reveal a split group.
+        for(var element:elements)if(element.isAvailable())measuredBounds.put(element,element.measureBounds(hud,true));
+        // Laid out as in game (HudManager): saved anchors, blocks kept on screen, and positions saved before 1.9.0 anchored where they show.
+        HudAnchors.place(measuredBounds,hudWidth,hudHeight,hotbar);
+        HudGroupLayout.matchDockedWidths(measuredBounds);
+        HudAnchors.clamp(measuredBounds,hudWidth,hudHeight);
+        HudAnchors.adopt(measuredBounds,HudElement::isEnabled,hud);
+    }
+
     /** Toolbar across the top, element list on the left, and the largest preview with the game's aspect ratio in the rest. */
     private void layout(){
         int side=viewportWidth>=560?150:viewportWidth>=400?132:112;
         panel=new Rect(GAP,TOP,side,Math.max(40,viewportHeight-TOP-STATUS));
         int ax=panel.right()+GAP+3,ay=TOP+3,aw=Math.max(16,viewportWidth-ax-GAP-3),ah=Math.max(16,viewportHeight-TOP-STATUS-6);
         scale=Math.min(aw/(double)Math.max(1,hudWidth),ah/(double)Math.max(1,hudHeight));
-        int pw=(int)Math.round(hudWidth*scale),ph=(int)Math.round(hudHeight*scale);
+        // Rounded up: the frame always covers the whole viewport, so a HUD on its last row or column can still be picked up.
+        int pw=(int)Math.ceil(hudWidth*scale-1e-6),ph=(int)Math.ceil(hudHeight*scale-1e-6);
         preview=new Rect(ax+(aw-pw)/2,ay+(ah-ph)/2,pw,ph);
     }
 
@@ -186,6 +204,7 @@ public class DraggableHudScreen {
                 border(g,box,chosen?LadsPalette.ACCENT:locked?LadsPalette.MUTED:hover?LadsPalette.PRIMARY_HOVER:0x66FFFFFF);
             }
             drawGroupOutlines(g);
+            drawSizeLabel(g);
             if(isDragging()&&showGrid){
                 if(guideX!=null){int sx=(int)Math.round(screenX(guideX));g.fill(sx,p.y(),sx+1,p.bottom(),LadsPalette.ACCENT);}
                 if(guideY!=null){int sy=(int)Math.round(screenY(guideY));g.fill(p.x(),sy,p.right(),sy+1,LadsPalette.ACCENT);}
@@ -202,6 +221,18 @@ public class DraggableHudScreen {
             g.drawText(label,lx+3,ly+3,LadsPalette.TEXT,false);
             return;
         }
+    }
+
+    /** The size the wheel just set, on a plate above the HUD (below it at the top of the screen), in the tooltip's style. */
+    private void drawSizeLabel(LadsGraphics g){
+        if(sizedElement==null||System.currentTimeMillis()>sizedUntil||!selected.contains(sizedElement))return;
+        Rect bounds=renderedBounds.get(sizedElement);if(bounds==null)return;
+        Rect box=toScreen(bounds);String label=sizedPercent+"%";
+        int w=g.textWidth(label)+8,h=g.fontHeight()+6;
+        int lx=Math.max(preview.x(),Math.min(box.x()+(box.width()-w)/2,preview.right()-w));
+        int ly=box.y()-h-2>=preview.y()?box.y()-h-2:Math.min(box.bottom()+2,preview.bottom()-h);
+        MenuGraphics.round(g,lx,ly,w,h,LadsPalette.PANEL);
+        g.drawText(label,lx+4,ly+3,LadsPalette.ACCENT,false);
     }
 
     private void drawToolbar(LadsGraphics g,int mx,int my){
@@ -450,12 +481,46 @@ public class DraggableHudScreen {
         if(marquee){marqueeX=gameX(x);marqueeY=gameY(y);Rect box=marqueeBounds();marquee=false;if(box.width()>3||box.height()>3){if(!marqueeAdditive)selected.clear();for(var entry:renderedBounds.entrySet())if(box.intersects(entry.getValue()))selected.addAll(groupElements(entry.getKey()));}return true;}
         if(isDragging()){finishDrag((modifiers&1)!=0);return true;}return false;
     }
-    public boolean mouseScrolled(double x,double y,double amount){
+    public boolean mouseScrolled(double x,double y,double amount){return mouseScrolled(x,y,amount,0);}
+    /** The wheel resizes the selected HUDs (25% a notch, 5% with Control: modifier bit 2); with none selected it scrolls the list. */
+    public boolean mouseScrolled(double x,double y,double amount,int modifiers){
         if(confirm.isOpen())return true;
         if(colorPicker.isOpen())return true;
         if(profilesDialog.isOpen())return profilesDialog.scroll(x,y,amount);
+        if(amount!=0&&!selected.isEmpty()&&!marquee&&resizeSelected(amount>0,(modifiers&2)!=0))return true;
         if(!list.contains(x,y))return false;
         listScroll=Math.max(0,Math.min(maxListScroll,listScroll-(int)Math.round(amount*ROW)));return true;
+    }
+    private static SliderOption sizeOf(HudElement element){
+        var module=element.getModuleName()==null?null:ModuleManager.getInstance().getModule(element.getModuleName());
+        return module!=null&&module.getOption("Size") instanceof SliderOption slider?slider:null;
+    }
+    /**
+     * One wheel notch of size for every selected HUD that has a Size (the first one's size sets the step, so a selection stays
+     * one size). The layout keeps each HUD's anchor point where it was (HudAnchors), so it grows and shrinks around it, and its
+     * place is saved where it shows now, on screen. False when nothing selected can be resized.
+     */
+    private boolean resizeSelected(boolean up,boolean fine){
+        if(hud==null)return false;
+        var sized=new ArrayList<HudElement>();for(var element:selected)if(element.isAvailable()&&sizeOf(element)!=null)sized.add(element);
+        if(sized.isEmpty())return false;
+        finishDrag(false);notice="";
+        SliderOption lead=sizeOf(sized.get(0));
+        // The editor's scale range (HudElement.getScale: 50..200%), inside the module's own.
+        int percent=HudResize.next(lead.getValue(),up,fine,Math.max(50,lead.getMin()),Math.min(200,lead.getMax()));
+        for(var element:sized)sizeOf(element).setValue(percent);
+        measuredBounds.clear();measureAll();
+        var saved=new ArrayList<HudElement>();
+        for(var element:sized)if(element.usesSavedPosition()&&HudSettings.getInstance().getPosition(element.getModuleName())!=null&&measuredBounds.get(element)!=null)saved.add(element);
+        for(var element:saved)element.beginPositionEdit();
+        try{
+            for(var element:saved){Rect bounds=measuredBounds.get(element);element.setDisplayPosition(bounds.x(),bounds.y());HudSettings.getInstance().setPosition(element.getModuleName(),element.getX(),element.getY());}
+            if(!saved.isEmpty())anchorAround(saved);
+            saveConfig.run();
+        }finally{for(var element:saved)element.endPositionEdit();}
+        sizedElement=sized.get(0);sizedPercent=(int)Math.round(lead.getValue());sizedUntil=System.currentTimeMillis()+SIZED_SHOWN_MS;
+        notice=(sized.size()==1?sized.get(0).getModuleName():sized.size()+" HUDs")+" size "+sizedPercent+"% · wheel 25%, Control+wheel 5%";
+        return true;
     }
     private Rect marqueeBounds(){return new Rect((int)Math.floor(Math.min(downX,marqueeX)),(int)Math.floor(Math.min(downY,marqueeY)),(int)Math.ceil(Math.abs(marqueeX-downX)),(int)Math.ceil(Math.abs(marqueeY-downY)));}
 

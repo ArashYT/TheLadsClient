@@ -20,7 +20,7 @@ public final class QaProbe12111 {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     private static final List<String> steps = new ArrayList<>();
     private static int index, waitTicks, readyTicks, passed, failed;
-    private static boolean done;
+    private static boolean done, hudEdit;
 
     private QaProbe12111() {}
 
@@ -41,6 +41,18 @@ public final class QaProbe12111 {
         // Any screen will do once the game is up: a mod's prompt can sit over the title (Xaero's update screen), so scripts start with "screen title".
         boolean ready = mc.getOverlay() == null && mc.screen != null || mc.level != null && mc.player != null && mc.player.tickCount >= 20;
         if (index == 0 && (!ready || ++readyTicks < 65)) return;
+        if (hudEdit) { // the HUD editor sequence (HudEditorQa) steps every tick until it ends
+            try {
+                if (!com.thelads.core.client.hud.HudEditorQa.tick(HudLayoutQa12111.DRIVER)) return;
+            } catch (RuntimeException e) {
+                LOGGER.error("Lads qa step FAILED: hudedit: {}", e.toString(), e);
+                failed++;
+            }
+            hudEdit = false;
+            if (com.thelads.core.client.hud.HudEditorQa.failed() > 0) { failed++; LOGGER.error("Lads qa step FAILED: {} HUD editor checks failed (Lads hud layout FAILED)", com.thelads.core.client.hud.HudEditorQa.failed()); }
+            waitTicks = 10;
+            return;
+        }
         if (waitTicks > 0) { waitTicks--; return; }
         if (index >= steps.size()) { end(); return; }
         String step = steps.get(index);
@@ -101,6 +113,7 @@ public final class QaProbe12111 {
                 .map(c -> (Button) c).findFirst().orElseThrow(() -> new IllegalArgumentException("press: no button " + arg))
                 .onPress(new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN, 0, 0));
             case "world" -> {} // tick() held the script until the QA world was up
+            case "hudedit" -> hudEdit = true; // the HUD editor's wheel and drags at several window sizes (HudEditorQa); needs the QA world
             case "textui" -> { // sidebar friends|messages, best <uuid>, pin <world folder>, party ...
                 String[] words = step.split("\\s+");
                 if (!com.thelads.core.client.qa.SocialQa.step(words, 1)) throw new IllegalArgumentException("textui: " + arg);
@@ -176,7 +189,7 @@ public final class QaProbe12111 {
                 LOGGER.info("Lads 1.21.11 qa newest-first: {}", names);
             }
             case "spworld" -> {
-                String w = "qa_b1_sp";
+                String w = arg.isBlank() ? "qa_b1_sp" : arg; // spworld [folder]: an existing world of this version opens, else a flat one is made
                 if (Files.exists(FabricLoader.getInstance().getGameDir().resolve("saves").resolve(w).resolve("level.dat"))) {
                     mc.createWorldOpenFlows().openWorld(w, () -> {});
                 } else {

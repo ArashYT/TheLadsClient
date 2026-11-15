@@ -33,6 +33,12 @@ final class HudLayoutProbe189 implements HudLayoutQa.Driver {
     private HudLayoutProbe189() {}
 
     static boolean run(Minecraft mc) {
+        // LADS_QA_HUDEDIT=1: the HUD editor's wheel and drags at several window sizes instead (HudEditorQa).
+        if (com.thelads.core.client.hud.HudEditorQa.wanted()) {
+            if (!com.thelads.core.client.hud.HudEditorQa.tick(DRIVER)) return false;
+            CoreProbe.check(com.thelads.core.client.hud.HudEditorQa.failed() == 0, "every HUD editor check passed (Lads hud layout END)");
+            return true;
+        }
         // LADS_QA_BGSHADOW=1: the 1.9.11 Backgrounds / Text Shadow buttons instead (BgShadowQa).
         if (com.thelads.core.client.hud.BgShadowQa.wanted()) {
             if (!com.thelads.core.client.hud.BgShadowQa.tick(DRIVER)) return false;

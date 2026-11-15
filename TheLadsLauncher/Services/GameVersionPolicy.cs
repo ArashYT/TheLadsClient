@@ -76,6 +76,12 @@ public static class GameVersionPolicy
     /// profiles.json, and their game folders untouched, but they are not listed or launched (see ProfileService).</summary>
     public static bool IsDropped(string minecraftVersion) => minecraftVersion == "1.21.1";
 
+    /// <summary>The built-in "Lads Client 26.2" and "Lads Client 1.21.11" entries (their default ids, no own game folder) are retired in
+    /// 1.13.24: saved ones move to profiles.json's dropped list like a dropped version's, so nothing is listed or deleted. A profile the
+    /// player made for those versions, or pointed at a game folder of their own, stays.</summary>
+    public static bool IsRetiredBuiltIn(Models.LauncherProfile profile) =>
+        profile.Id == profile.MinecraftVersion && profile.MinecraftVersion is "26.2" or "1.21.11" && string.IsNullOrWhiteSpace(profile.CustomGameDir);
+
     /// <summary>26.2 support is paused (2026-10-08): its profile stays and is listed greyed out, but it is never launched, made
     /// active at startup or created anew. Its game folder and settings are left alone.</summary>
     public const string PausedMessage = "26.2 support is paused — use 26.3";

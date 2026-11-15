@@ -84,3 +84,34 @@ Bugs found and fixed:
 
 Known, not fixed: the first Eye of Ender per world takes ~13 s (stronghold rings); D&T Illager Manor / Toxic Lair charts can still take
 25–33 s (one far chunk generation); 2 Better End music discs no longer exist after the update.
+
+
+---
+
+## 5. Pack 0.5.1 (Lads SMP 0.3.2): freezes when creating and joining a world, loading screen (2026-11-15, arash-legion)
+
+Setup: fresh instance assembled from `lads-smp-reborn-26.3-0.5.0.zip` exactly as the launcher unpacks it, the Lads Core 26.3 jar built from the committed code (1.13.19), no old
+save: the test mod `LadsSMP/qa-smoke` (`-Dladsqa.world=true`, test only, never shipped) waits for the title screen, opens Create New World, presses Create with the pack's default settings
+(world type BetterX), flies the player, and records every presented frame with the render thread's stack (`ladsqa/frames.txt`), plus an external window-message sampler.
+
+Root causes of "the world freezes after the first chunk loads" (stacks in `PERFORMANCE.md` section 6): the client render thread stands still for 20-73 s right when it joins, and 54-88 s when it creates the world,
+because Bits and Balance's step recipes (regex per slab per block), Fabric API's creative tab `insertAfter` on a LinkedList (O(n^2), 5,700 variants), JEI starting inside the login packet and
+Villager API / Xaero work all run on the render thread; the window shows the first chunk and nothing else and the client handles no packet meanwhile.
+
+| Run | Result |
+| :--- | :--- |
+| Create new world, 0.5.0 | window frozen 58 s while creating (Bits and Balance), 73 s after joining (creative tabs), click to player in world 179.7 s |
+| Create new world, 0.5.1, 2 clean runs | longest frozen gap 2.2 s in the whole load, creating 0.7 s, title to create screen 0.6 s, click to player in world 58-64 s |
+| Fresh world 2 (fixed pack: Lads SMP 0.3.2, AntiXray config off), 17 min | joined at +168 s, flew 4 Overworld legs of 998-999 blocks east, west (a 1,996-block pass), south and north at 20 blocks/s: every leg finished (49-99 s), the client kept 386-850 chunks loaded around the player, a chunk was loaded under the player at each leg end, 0 packets held (`antiXrayHeld=0` in every report); End: 4 legs of 331 blocks done; Nether: first leg (498 blocks) done, the other three stop at terrain walls at the test's fixed height y=100 (chunks still loaded: client 52 to 504); mobs (zombie, cow) tick (age 20 to 180 in 8 s) |
+| Server thread in that run | longest stall 25.2 s right after the teleport into the not yet generated Nether (Bits and Balance's per-tick ladder check reads the player's block and waits for that chunk; BetterX Nether generation on this CPU) and 4.0 s once during the Overworld flight; no other stall over 3 s |
+| Fresh worlds with the final build (AntiXray on or off in its config) | 6 of 6 healthy (4 short worlds with block break/place and mob checks, 2 long flights); before the fix 9 of 19 fresh worlds stopped receiving chunks. Block break (`startDestroyBlock`, client and server air), place (`useItemOn`, client and server cobblestone) and mobs ticking passed in 3 of 3 worlds where the item reached the hand in time (2 runs had the test's `item replace` arrive late: not a game fault) |
+| Dedicated server boot (274 server mods, final jar sha1 c63823cb...) | `Done (16.294s)!`, clean `stop`, exit 0 (also 16.860 s on the previous build) |
+
+**The "no more chunks load" freeze itself** (seen in 9 of 19 fresh worlds, with and without the other fixes): the integrated server stops delivering packets to the client after the second chunk batch.
+Evidence at the stuck moment (test mod `qa-smoke` reads both ends): the server's `PlayerChunkSender` holds 5/5 unacknowledged batches and 366-470 chunks pending, the client's channel is empty and
+connected (`inboundBuf=0`, no open bundle, 0 queued packets, renders at 60 fps and moves locally), and the server's `Connection` has **8,122 packets waiting in AntiXray's `antiXray$isActionReady` / `pendingActions` queue**.
+AntiXray 1.4.17 (`me.drex.antixray.common.mixin.ConnectionMixin.flushQueue`) sends a connection's packets strictly in order and only when the head packet reports ready (`Util.isReady`); a
+chunk packet that never becomes ready stops the connection for good (no thread busy, no log line). It happens with AntiXray switched off in its config too (stuck run with `enabled = false`: 20,722 packets held),
+so the config alone does not help. Connectivity and Packet Fixer remove the keep-alive timeouts, so the client is not even kicked: the player sees the first chunks, can still walk, and nothing else ever
+arrives (no chunks, no teleports, no game mode). Fix in Lads SMP 0.3.2: `MixinAntiXrayNeverHolds` makes `Util.isReady` true on a game client (its own server has nothing to hide from its only player; a dedicated
+server is untouched), and the pack's `config/antixray.toml` (config patch in `update-0.5.1.json` for installed packs) leaves the obfuscation itself off in the pack's own worlds so no half-processed chunk is ever sent.

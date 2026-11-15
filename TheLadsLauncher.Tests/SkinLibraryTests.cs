@@ -99,4 +99,30 @@ public sealed class SkinLibraryTests : IDisposable
         Assert.Equal("Preset_1", Assert.Single(new SkinLibrary(_root).Skins).Name);
         Assert.Single(new SkinLibrary(_root).Skins); // skins.json now exists: no second import
     }
+
+    [Fact]
+    public void AnActiveSkinIsSavedOnceByHashAndKnownOnesAreNotAddedAgain()
+    {
+        var library = new SkinLibrary(_root);
+        var first = library.AddIfNew(Png(64, 64, 7), "Me (active skin)", "slim");
+        Assert.True(first.Added);
+        var again = library.AddIfNew(Png(64, 64, 7), "Me (active skin)", "slim");
+        Assert.False(again.Added);
+        Assert.Equal(first.Skin.Id, again.Skin.Id);
+        Assert.True(library.AddIfNew(Png(64, 64, 8), "Other", "classic").Added);
+        Assert.Equal(2, new SkinLibrary(_root).Skins.Count);
+        Assert.Single(Directory.GetFiles(Path.Combine(_root, "skins"), "*.png"), f => File.ReadAllBytes(f).SequenceEqual(Png(64, 64, 7)));
+    }
+
+    [Fact]
+    public void ACustomHashLetsADifferentlyEncodedSkinMatchTheSavedOne()
+    {
+        var library = new SkinLibrary(_root);
+        var saved = library.Add(Png(64, 64, 1), "Mine", "classic");
+        // Mojang may re-encode an uploaded skin: the view compares decoded pixels, here stood in for by the first 62 bytes.
+        string Pixels(byte[] png) => Convert.ToHexString(png.AsSpan(0, 62));
+        var (skin, added) = library.AddIfNew(Png(64, 64, 2), "Same pixels", "classic", Pixels);
+        Assert.False(added);
+        Assert.Equal(saved.Id, skin.Id);
+    }
 }

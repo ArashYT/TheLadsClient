@@ -5,8 +5,23 @@
   "name": "Lads QA Smoke (test only, never ship)",
   "environment": "*",
   "entrypoints": {
-    "main": ["com.thelads.smp.qa.SmokeMod"],
-    "client": ["com.thelads.smp.qa.SmokeClient"]
+    "main": [
+      "com.thelads.smp.qa.SmokeMod"
+    ],
+    "client": [
+      "com.thelads.smp.qa.SmokeClient",
+      "com.thelads.smp.qa.WorldDriver"
+    ],
+    "preLaunch": [
+      "com.thelads.smp.qa.FrameWatch"
+    ]
   },
-  "depends": { "fabricloader": ">=0.19.0", "minecraft": "~26.3", "fabric-api": "*" }
+  "depends": {
+    "fabricloader": ">=0.19.0",
+    "minecraft": "~26.3",
+    "fabric-api": "*"
+  },
+  "mixins": [
+    "ladsqa.mixins.json"
+  ]
 }

@@ -1,0 +1,32 @@
+{
+  "packId": "lads-smp-reborn-26.3",
+  "version": "0.5.1",
+  "description": "New worlds no longer freeze after the first chunks (AntiXray is off in your own worlds), creating and joining a world freezes the window far less and the loading screen keeps painting (Lads SMP 0.3.2)",
+  "mods": {
+    "add": [
+      {
+        "fileName": "ladssmp-0.3.2.jar",
+        "url": "https://bot.arashyt.ca/packs/ladssmp-0.3.2.jar.zip",
+        "sha1": "c63823cb1c31c3939c670a164b8b8ab9da60eac2",
+        "sha512": "c5c595cc67325af3abea33f90f07a8a796bbbdadc706bbd12f218781be389aa7426d9ee29e950d2adcd2c6f0c64a60d5b1f74ed5877eb2d4331ef38adc23865f"
+      }
+    ],
+    "remove": [
+      "ladssmp-0.3.1.jar"
+    ]
+  },
+  "keybinds": {
+    "defaults": {},
+    "force": {}
+  },
+  "configPatches": [
+    {
+      "file": "config/antixray.toml",
+      "format": "toml",
+      "keyValues": {
+        "overworld.enabled": "false",
+        "the_nether.enabled": "false"
+      }
+    }
+  ]
+}

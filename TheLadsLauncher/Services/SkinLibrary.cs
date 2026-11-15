@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace TheLadsLauncher.Services;
@@ -54,6 +55,27 @@ public sealed class SkinLibrary
         Save();
         return skin;
     }
+
+    /// <summary>Hex SHA-256 of a skin file: what two library entries are compared by.</summary>
+    public static string Sha256(byte[] png) => Convert.ToHexString(SHA256.HashData(png));
+
+    /// <summary>The library entry whose file hashes like <paramref name="png"/> (<paramref name="hash"/>, SHA-256 of the bytes unless the
+    /// caller compares decoded pixels), or null.</summary>
+    public SavedSkin? FindByHash(byte[] png, Func<byte[], string>? hash = null)
+    {
+        hash ??= Sha256;
+        string want = hash(png);
+        foreach (var skin in _index.Skins)
+        {
+            try { if (hash(File.ReadAllBytes(PathOf(skin))) == want) return skin; }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        }
+        return null;
+    }
+
+    /// <summary>Adds the skin unless the library already holds the same one (by hash): then that entry comes back and nothing is written.</summary>
+    public (SavedSkin Skin, bool Added) AddIfNew(byte[] png, string name, string model, Func<byte[], string>? hash = null) =>
+        FindByHash(png, hash) is { } known ? (known, false) : (Add(png, name, model), true);
 
     public SavedSkin Update(string id, string name, string model)
     {

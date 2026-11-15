@@ -341,6 +341,10 @@ public static class ModpackLauncher
         GameSession.RemoveJavaOptionVariables(process.StartInfo);
         LaunchToken.Hide(process, instance.GameDirectory, session.AccessToken, MaySwitchAccounts(instance)); // the caller sends it after Start
         if (!own) return process;
+        // As for a profile: no options.txt yet = the player's .minecraft one; Vignette and Chunk Fade off once per instance.
+        try { GameOptionsService.ApplyLadsDefaults(instance.GameDirectory, instance.McVersion, SharedContentService.ResolveDefaultRoot(),
+            Path.Combine(CacheRoot(dataDirectory), "versions", instance.McVersion, instance.McVersion + ".jar")); }
+        catch (InvalidOperationException) { } // an unusable LADS_GLOBAL_MINECRAFT_DIR: the launcher refuses to start with one
         if (instance.Loader == "forge" && instance.McVersion == "1.20.1")
             UseEarlyWindow(process, dataDirectory, instance.GameDirectory,
                 Environment.GetEnvironmentVariable(SkipEarlyWindowVariable) == "1" ? null : ModpackCoreSync.FindBundledJar("1.20.1", fileName: EarlyWindowJar), status);
