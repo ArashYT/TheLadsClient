@@ -22,11 +22,11 @@ public static class HorizonEngine
 {
     public const string MinecraftVersion = "26.3";
     public const string InviteId = "experimental";
-    // ponytail: one pinned Lads Horizon build (lads-horizon tools/lads/build-windows.ps1, on Horizon v0.2.97); bump Tag + ZipSha256 together.
-    public const string Tag = "lads-0.1.1";
-    public const string ZipSha256 = "da78f497e0007180b9af98404512869668a2e251c9b4a1bfa121296bb7a5d26e";
-    const string ZipUrl = "https://bot.arashyt.ca/packs/lads-horizon-0.1.1-windows-x64.zip";
-    // research-lock.json of Horizon v0.2.97: the 26.3 server jar its preparation accepts.
+    // ponytail: one pinned Lads Horizon build (lads-horizon tools/lads/build-windows.ps1, on Horizon Nightly 2026-11-13 9f42064); bump Tag + ZipSha256 together.
+    public const string Tag = "lads-0.2.0";
+    public const string ZipSha256 = "d521bb603cf7a350939473735e3cab5c14de513196c390752b72b12811a33b79";
+    const string ZipUrl = "https://bot.arashyt.ca/packs/lads-horizon-0.2.0-windows-x64.zip";
+    // research-lock.json of that Horizon: the 26.3 server jar its preparation accepts.
     public const string ServerJarSha1 = "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c";
     // Mojang's original 26.3.json and asset index 34: the launcher rewrites its own copies, and horizon-prepare only accepts these.
     const string ManifestUrl = "https://piston-meta.mojang.com/v1/packages/11f1aefe473eefba0af62e3286c33b692807b2eb/26.3.json";
@@ -97,6 +97,10 @@ public static class HorizonEngine
         ReplaceInstall(staging, targetDir);
         if (!File.Exists(Path.Combine(game, "horizon-client.exe")))
             throw new InvalidOperationException($"Horizon installation completed but horizon-client.exe was not found in {game}.");
+        // Earlier pinned builds (lads-0.1.1 and its prepared resources) are dead weight once this one is in.
+        foreach (string old in Directory.GetDirectories(root, "lads-0.*"))
+            if (!string.Equals(old, targetDir, StringComparison.OrdinalIgnoreCase))
+                try { Directory.Delete(old, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
         return game;
     }
 
@@ -146,7 +150,7 @@ public static class HorizonEngine
     }
 
     /// <summary>A private Minecraft folder for Horizon: Mojang's original version json and asset index, plus the launcher's
-    /// jar and sound objects (hash-named, so shared by a junction). The launcher's own files stay untouched.</summary>
+    /// jar, sound objects and libraries (shared by junctions). The launcher's own files stay untouched.</summary>
     static async Task<string> PrepareVanillaAsync(string game, string minecraftDirectory, CancellationToken token)
     {
         string mc = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(game))!, "minecraft-" + MinecraftVersion);
@@ -158,17 +162,21 @@ public static class HorizonEngine
         string jar = Path.Combine(versionDir, MinecraftVersion + ".jar");
         string jarSource = Path.Combine(minecraftDirectory, "versions", MinecraftVersion, MinecraftVersion + ".jar");
         if (!File.Exists(jar) || new FileInfo(jar).Length != new FileInfo(jarSource).Length) File.Copy(jarSource, jar, true);
-        string objects = Path.Combine(mc, "assets", "objects");
-        if (!Directory.Exists(objects))
-        {
-            var psi = new ProcessStartInfo("cmd.exe") { UseShellExecute = false, CreateNoWindow = true };
-            psi.ArgumentList.Add("/c"); psi.ArgumentList.Add("mklink"); psi.ArgumentList.Add("/J");
-            psi.ArgumentList.Add(objects); psi.ArgumentList.Add(Path.Combine(minecraftDirectory, "assets", "objects"));
-            using var link = Process.Start(psi)!;
-            await link.WaitForExitAsync(token);
-            if (!Directory.Exists(objects)) throw new InvalidOperationException("Could not link Minecraft's sound files for Horizon.");
-        }
+        await LinkAsync(Path.Combine(mc, "assets", "objects"), Path.Combine(minecraftDirectory, "assets", "objects"), "sound files", token);
+        // Horizon Nightly's preparation also reads the vanilla libraries (lz4-java and others).
+        await LinkAsync(Path.Combine(mc, "libraries"), Path.Combine(minecraftDirectory, "libraries"), "libraries", token);
         return mc;
+    }
+
+    static async Task LinkAsync(string link, string target, string what, CancellationToken token)
+    {
+        if (Directory.Exists(link)) return;
+        var psi = new ProcessStartInfo("cmd.exe") { UseShellExecute = false, CreateNoWindow = true };
+        psi.ArgumentList.Add("/c"); psi.ArgumentList.Add("mklink"); psi.ArgumentList.Add("/J");
+        psi.ArgumentList.Add(link); psi.ArgumentList.Add(target);
+        using var process = Process.Start(psi)!;
+        await process.WaitForExitAsync(token);
+        if (!Directory.Exists(link)) throw new InvalidOperationException($"Could not link Minecraft's {what} for Horizon.");
     }
 
     static async Task EnsureOriginalAsync(string url, string sha1, string file, CancellationToken token)
