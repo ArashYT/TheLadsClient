@@ -24,7 +24,7 @@ class OptiFine189ModuleTest {
         assertEquals(1, module.ofFogType.getIndex(), "Fog default is Fancy (1)");
         assertEquals(0.8, module.ofFogStart.getValue(), 1e-4, "Fog Start default is 0.8");
         assertEquals(0, module.ofDroppedItems.getIndex(), "Dropped Items default is Default (0)");
-        assertEquals(0, module.ofVignette.getIndex(), "Vignette default is Default (0)");
+        assertEquals(1, module.ofVignette.getIndex(), "Vignette default is Fast (1, off)");
 
         assertTrue(module.animWater.get(), "Water animation is ON by default");
         assertTrue(module.animLava.get(), "Lava animation is ON by default");

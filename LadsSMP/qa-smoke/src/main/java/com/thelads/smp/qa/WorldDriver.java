@@ -117,7 +117,8 @@ public class WorldDriver implements ClientModInitializer {
                 if (mc.player != null && mc.level != null && mc.getSingleplayerServer() != null && mc.gui.screen() == null) {
                     if (joinedAt == 0) { joinedAt = System.nanoTime(); log("JOINED: player in world, no screen: " + mc.player.blockPosition()); }
                     if (tick % 20 == 0) ackWatch(mc);
-                    if (Boolean.getBoolean("ladsqa.stuckonly")) {
+                    if (Boolean.getBoolean("ladsqa.dimtest")) { dimTest(mc); }
+                    else if (Boolean.getBoolean("ladsqa.stuckonly")) {
                         // no flight: after 12 s test blocks and mobs at spawn for DWELL seconds, then finish
                         if (!dwellStarted && System.nanoTime() - joinedAt > 12_000_000_000L) {
                             dwellStarted = true; var srv = mc.getSingleplayerServer();
@@ -131,6 +132,33 @@ public class WorldDriver implements ClientModInitializer {
             default -> { }
         }
     }
+
+    int dimStep; long dimAt; 
+    /** Teleport like a portal trip: into the Nether, into the End, back to the Overworld; each time wait until the client is there and the world ticks quietly. */
+    void dimTest(Minecraft mc) {
+        var srv = mc.getSingleplayerServer(); long now = System.nanoTime();
+        if (dimStep == 0) {
+            if (now - joinedAt < 12_000_000_000L) return;
+            startServerWatch(srv); srv.execute(() -> cmd(srv, "gamemode creative @a")); dimAt = now; dimStep = 1; log("DIMTEST begin (server stall tracking on)"); return;
+        }
+        String[] dims = {"minecraft:the_nether", "minecraft:the_end", "minecraft:overworld", "minecraft:the_nether", "minecraft:overworld"};
+        int[] ys = {100, 120, 120, 100, 150};
+        int i = (dimStep - 1) / 2;
+        if (i >= dims.length) { finish(mc); return; }
+        if ((dimStep & 1) == 1) { // issue the teleport
+            if (now - dimAt < 8_000_000_000L) return;
+            String d = dims[i]; int y = ys[i]; int x = 40 + 300 * i; // a different, not yet generated spot each time
+            log("DIMTEST tp into " + d + " at (" + x + "," + y + "," + x + ")");
+            srv.execute(() -> cmd(srv, "execute in " + d + " run tp @a " + x + " " + y + " " + x));
+            dimAt = now; dimStep++;
+        } else { // wait until the client is in the dimension, then 20 s of play-like time
+            String d = dims[i];
+            if (!mc.level.dimension().identifier().toString().equals(d)) { if (now - dimAt > 180_000_000_000L) { log("FAIL DIMTEST client never arrived in " + d); fails++; dimStep++; dimAt = now; } return; }
+            if (dimAt != 0 && !dimArrived) { dimArrived = true; log("DIMTEST client arrived in " + d + " after " + (now - dimAt) / 1_000_000L + " ms; chunks under player=" + (mc.level.getChunk((int) Math.floor(mc.player.getX()) >> 4, (int) Math.floor(mc.player.getZ()) >> 4, ChunkStatus.FULL, false) != null)); dimAt = now; }
+            if (now - dimAt > 25_000_000_000L) { report(mc, srv, "dimtest-" + d); shot(mc, "dim-" + d); dimStep++; dimAt = now; dimArrived = false; }
+        }
+    }
+    boolean dimArrived, homeDone;
 
     int lastUnacked = -1, lastClientChunks = -1; long unackedSince;
 
@@ -154,6 +182,7 @@ public class WorldDriver implements ClientModInitializer {
     }
     boolean ackStuckLogged, dwellStarted;
     int shotAt; String shotWhy = "";
+    static volatile long maxStallMs, maxStallAt;
 
     void startFlight(Minecraft mc) {
         IntegratedServer srv = mc.getSingleplayerServer();
@@ -180,6 +209,7 @@ public class WorldDriver implements ClientModInitializer {
 
     void nextLeg(Minecraft mc) {
         legIdx++;
+        if (legIdx >= legs.size() && Boolean.getBoolean("ladsqa.backhome") && !homeDone) { homeDone = true; log("== back home: Overworld again"); legs.add(new Leg(Level.OVERWORLD, 300, 0)); legs.add(new Leg(Level.OVERWORLD, 0, 300)); }
         if (legIdx >= legs.size()) { finish(mc); return; }
         Leg l = legs.get(legIdx);
         IntegratedServer srv = mc.getSingleplayerServer();
@@ -216,8 +246,8 @@ public class WorldDriver implements ClientModInitializer {
         }
         long now = System.nanoTime();
         if (Math.hypot(px - lastProgX, pz - lastProgZ) > 8) { lastProgX = px; lastProgZ = pz; lastProgressAt = now; }
-        else if (now - lastProgressAt > 90_000_000_000L) {
-            log("FAIL STUCK: player did not move 8 blocks in 90 s at (" + (int) px + "," + (int) pz + "), chunk loaded under player: " + (mc.level.getChunk((int) Math.floor(px) >> 4, (int) Math.floor(pz) >> 4, ChunkStatus.FULL, false) != null));
+        else if (now - lastProgressAt > Long.getLong("ladsqa.stuckms", 90000L) * 1_000_000L) {
+            log("FAIL STUCK: player did not move 8 blocks in " + Long.getLong("ladsqa.stuckms", 90000L) / 1000 + " s at (" + (int) px + "," + (int) pz + "), chunk loaded under player: " + (mc.level.getChunk((int) Math.floor(px) >> 4, (int) Math.floor(pz) >> 4, ChunkStatus.FULL, false) != null));
             report(mc, srv, "STUCK"); shot(mc, "stuck"); fails++; lastProgressAt = now; nextLeg(mc); return;
         }
         if (legTick % 100 == 0) report(mc, srv, "fly");
@@ -373,6 +403,9 @@ public class WorldDriver implements ClientModInitializer {
                 try { Thread.sleep(250); } catch (InterruptedException e) { return; }
                 int tc = srv.getTickCount(); long now = System.nanoTime();
                 if (tc != lastTick) {
+                    long gapMs = (now - lastChange) / 1_000_000L;
+                    if (gapMs > maxStallMs) { maxStallMs = gapMs; maxStallAt = FrameWatch.ms(now); }
+                    if (gapMs > 1500 && !stalled) log("STALL " + gapMs + " ms (server tick count did not advance)");
                     if (stalled) { log("SRVSTALL ended after " + (now - lastChange) / 1_000_000L + " ms"); stalled = false; }
                     lastTick = tc; lastChange = now; lastDump = 0; continue;
                 }
@@ -400,7 +433,7 @@ public class WorldDriver implements ClientModInitializer {
 
     void finish(Minecraft mc) {
         state = 5; watchRun = false;
-        log("DONE flight legs=" + legs.size() + " fails=" + fails);
+        log("DONE flight legs=" + legs.size() + " fails=" + fails + " longestServerStall=" + maxStallMs + " ms at +" + maxStallAt);
         try { Files.writeString(DIR.resolve("world-summary.txt"), "DONE fails=" + fails + "\n"); } catch (Exception ignored) { }
         if (Boolean.getBoolean("ladsqa.halt")) mc.stop();
     }

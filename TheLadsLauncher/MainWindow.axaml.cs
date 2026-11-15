@@ -169,7 +169,6 @@ public partial class MainWindow : Window
 
         settings = LauncherSettings.Load();
         InitializeProductivity();
-        ApplyPlayTabLayout();
         TheLadsLauncher.Services.NotificationService.Initialize(new TheLadsLauncher.Services.AvaloniaWindowNotifier(new Avalonia.Controls.Notifications.WindowNotificationManager(this)));
         InitializeDeepLinking();
         if (settings.LauncherVersion != Program.Version)

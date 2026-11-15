@@ -482,12 +482,12 @@ public class DraggableHudScreen {
         if(isDragging()){finishDrag((modifiers&1)!=0);return true;}return false;
     }
     public boolean mouseScrolled(double x,double y,double amount){return mouseScrolled(x,y,amount,0);}
-    /** The wheel resizes the selected HUDs (25% a notch, 5% with Control: modifier bit 2); with none selected it scrolls the list. */
+    /** The wheel resizes the selected HUDs (25% a notch, 5% with Control: modifier bit 2); over the list, or with none selected, it scrolls the list. */
     public boolean mouseScrolled(double x,double y,double amount,int modifiers){
         if(confirm.isOpen())return true;
         if(colorPicker.isOpen())return true;
         if(profilesDialog.isOpen())return profilesDialog.scroll(x,y,amount);
-        if(amount!=0&&!selected.isEmpty()&&!marquee&&resizeSelected(amount>0,(modifiers&2)!=0))return true;
+        if(amount!=0&&!selected.isEmpty()&&!marquee&&!list.contains(x,y)&&resizeSelected(amount>0,(modifiers&2)!=0))return true;
         if(!list.contains(x,y))return false;
         listScroll=Math.max(0,Math.min(maxListScroll,listScroll-(int)Math.round(amount*ROW)));return true;
     }
