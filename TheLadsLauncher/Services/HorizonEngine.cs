@@ -5,6 +5,7 @@ using System.Linq;
 using System.IO.Compression;
 using System.Net.Http;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,17 +16,17 @@ namespace TheLadsLauncher.Services;
 /// <summary>
 /// Experimental: Lads Horizon, our fork (ArashYT/lads-horizon) of Horizon (github.com/ludovic111/horizon, MIT), Minecraft 26.3
 /// rewritten in Rust, started instead of the Lads Client for a 26.3 profile. Off by default; Dev Launcher builds or accounts
-/// invited with /experimental_invite only. It has the Lads HUD essentials and its own server rules (lads_rules); LadsCore does not run in it.
+/// invited with /experimental_invite only. It has the Lads title screen and its own server rules (lads_rules), no Lads modules; LadsCore does not run in it.
 /// </summary>
 public static class HorizonEngine
 {
     public const string MinecraftVersion = "26.3";
     public const string InviteId = "experimental";
-    // ponytail: one pinned Lads Horizon build (lads-horizon tools/lads/build-windows.ps1, on Horizon v0.2.97); bump Tag + ZipSha256 together.
-    public const string Tag = "lads-0.1.1";
-    public const string ZipSha256 = "da78f497e0007180b9af98404512869668a2e251c9b4a1bfa121296bb7a5d26e";
-    const string ZipUrl = "https://bot.arashyt.ca/packs/lads-horizon-0.1.1-windows-x64.zip";
-    // research-lock.json of Horizon v0.2.97: the 26.3 server jar its preparation accepts.
+    // ponytail: one pinned Lads Horizon build (lads-horizon tools/lads/build-windows.ps1, on Horizon Nightly 2026-11-13 9f42064); bump Tag + ZipSha256 together.
+    public const string Tag = "lads-0.2.0";
+    public const string ZipSha256 = "d521bb603cf7a350939473735e3cab5c14de513196c390752b72b12811a33b79";
+    const string ZipUrl = "https://bot.arashyt.ca/packs/lads-horizon-0.2.0-windows-x64.zip";
+    // research-lock.json of that Horizon: the 26.3 server jar its preparation accepts.
     public const string ServerJarSha1 = "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c";
     // Mojang's original 26.3.json and asset index 34: the launcher rewrites its own copies, and horizon-prepare only accepts these.
     const string ManifestUrl = "https://piston-meta.mojang.com/v1/packages/11f1aefe473eefba0af62e3286c33b692807b2eb/26.3.json";
@@ -38,7 +39,7 @@ public static class HorizonEngine
     public const string RiskWarning =
         "Lads Horizon is an early, experimental Lads Client built on Horizon, an unofficial Minecraft 26.3 rewritten in Rust " +
         "(github.com/ludovic111/horizon).\n\n" +
-        "• Only a few Lads modules work yet (HUD essentials, Lads Zoom); the rest are greyed out. No cosmetics, emotes or friends.\n" +
+        "• It is plain Horizon with the Lads title screen: no Lads modules, cosmetics, emotes or friends.\n" +
         "• Servers can see it is not the normal game. Joining servers with it CAN GET YOUR ACCOUNT BANNED, even with its " +
         "server rules turning risky features off.\n" +
         "• It gets your Minecraft login so it can join servers.\n" +
@@ -96,6 +97,10 @@ public static class HorizonEngine
         ReplaceInstall(staging, targetDir);
         if (!File.Exists(Path.Combine(game, "horizon-client.exe")))
             throw new InvalidOperationException($"Horizon installation completed but horizon-client.exe was not found in {game}.");
+        // Earlier pinned builds (lads-0.1.1 and its prepared resources) are dead weight once this one is in.
+        foreach (string old in Directory.GetDirectories(root, "lads-0.*"))
+            if (!string.Equals(old, targetDir, StringComparison.OrdinalIgnoreCase))
+                try { Directory.Delete(old, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
         return game;
     }
 
@@ -145,7 +150,7 @@ public static class HorizonEngine
     }
 
     /// <summary>A private Minecraft folder for Horizon: Mojang's original version json and asset index, plus the launcher's
-    /// jar and sound objects (hash-named, so shared by a junction). The launcher's own files stay untouched.</summary>
+    /// jar, sound objects and libraries (shared by junctions). The launcher's own files stay untouched.</summary>
     static async Task<string> PrepareVanillaAsync(string game, string minecraftDirectory, CancellationToken token)
     {
         string mc = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(game))!, "minecraft-" + MinecraftVersion);
@@ -157,17 +162,21 @@ public static class HorizonEngine
         string jar = Path.Combine(versionDir, MinecraftVersion + ".jar");
         string jarSource = Path.Combine(minecraftDirectory, "versions", MinecraftVersion, MinecraftVersion + ".jar");
         if (!File.Exists(jar) || new FileInfo(jar).Length != new FileInfo(jarSource).Length) File.Copy(jarSource, jar, true);
-        string objects = Path.Combine(mc, "assets", "objects");
-        if (!Directory.Exists(objects))
-        {
-            var psi = new ProcessStartInfo("cmd.exe") { UseShellExecute = false, CreateNoWindow = true };
-            psi.ArgumentList.Add("/c"); psi.ArgumentList.Add("mklink"); psi.ArgumentList.Add("/J");
-            psi.ArgumentList.Add(objects); psi.ArgumentList.Add(Path.Combine(minecraftDirectory, "assets", "objects"));
-            using var link = Process.Start(psi)!;
-            await link.WaitForExitAsync(token);
-            if (!Directory.Exists(objects)) throw new InvalidOperationException("Could not link Minecraft's sound files for Horizon.");
-        }
+        await LinkAsync(Path.Combine(mc, "assets", "objects"), Path.Combine(minecraftDirectory, "assets", "objects"), "sound files", token);
+        // Horizon Nightly's preparation also reads the vanilla libraries (lz4-java and others).
+        await LinkAsync(Path.Combine(mc, "libraries"), Path.Combine(minecraftDirectory, "libraries"), "libraries", token);
         return mc;
+    }
+
+    static async Task LinkAsync(string link, string target, string what, CancellationToken token)
+    {
+        if (Directory.Exists(link)) return;
+        var psi = new ProcessStartInfo("cmd.exe") { UseShellExecute = false, CreateNoWindow = true };
+        psi.ArgumentList.Add("/c"); psi.ArgumentList.Add("mklink"); psi.ArgumentList.Add("/J");
+        psi.ArgumentList.Add(link); psi.ArgumentList.Add(target);
+        using var process = Process.Start(psi)!;
+        await process.WaitForExitAsync(token);
+        if (!Directory.Exists(link)) throw new InvalidOperationException($"Could not link Minecraft's {what} for Horizon.");
     }
 
     static async Task EnsureOriginalAsync(string url, string sha1, string file, CancellationToken token)
@@ -225,7 +234,7 @@ public static class HorizonEngine
     {
         string home = Home(baseDirectory);
         Directory.CreateDirectory(home);
-        InstallLadsMods(home, Path.Combine(AppContext.BaseDirectory, "Assets", "horizon", "lads_hud.hmod"));
+        RemoveLadsMods(home);
         var psi = new ProcessStartInfo(ClientExe(baseDirectory, game, AuthService.IsDevOfflineAllowed))
         {
             WorkingDirectory = home,
@@ -340,25 +349,34 @@ public static class HorizonEngine
     }
 
     /// <summary>
-    /// Copies the bundled Lads HUD mod into Horizon's mod folder when missing or changed, and turns it on in horizon-mods.txt the
-    /// first time only: a mod.lads_hud line (true or false) already there is the player's choice and stays.
+    /// Earlier builds installed the Lads HUD mod, a native mod for the old Horizon that the new build must not load: deletes it and
+    /// drops its mod.lads_hud line from horizon-mods.txt. Every other line stays exactly as it was; nothing is created or rewritten
+    /// when there is nothing to remove, and a locked file is skipped.
     /// </summary>
-    public static void InstallLadsMods(string home, string bundledHmod)
+    public static void RemoveLadsMods(string home)
     {
-        if (!File.Exists(bundledHmod)) return;
         string dir = Path.Combine(home, "horizon-mods");
-        string target = Path.Combine(dir, "lads_hud.hmod");
-        byte[] bytes = File.ReadAllBytes(bundledHmod);
-        if (!File.Exists(target) || !SHA256.HashData(File.ReadAllBytes(target)).AsSpan().SequenceEqual(SHA256.HashData(bytes)))
+        foreach (string file in new[] { Path.Combine(dir, "lads_hud.hmod"), Path.Combine(dir, "lads_hud.hmod.part") })
         {
-            Directory.CreateDirectory(dir);
-            File.WriteAllBytes(target + ".part", bytes);
-            File.Move(target + ".part", target, true);
+            try { File.Delete(file); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
         }
         string settings = Path.Combine(home, "horizon-mods.txt");
-        string text = File.Exists(settings) ? File.ReadAllText(settings) : "";
-        if (!Array.Exists(text.Split('\n'), line => line.TrimStart().StartsWith("mod.lads_hud:", StringComparison.Ordinal)))
-            File.AppendAllText(settings, (text.Length == 0 || text.EndsWith('\n') ? "" : "\n") + "mod.lads_hud:true\n");
+        try
+        {
+            if (!File.Exists(settings)) return;
+            // Latin-1 maps every byte to one char and back, so the lines we keep are written out byte for byte.
+            string[] lines = File.ReadAllText(settings, Encoding.Latin1).Split('\n');
+            var kept = new StringBuilder();
+            bool removed = false;
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (lines[i].TrimStart().StartsWith("mod.lads_hud:", StringComparison.Ordinal)) { removed = true; continue; }
+                kept.Append(lines[i]);
+                if (i < lines.Length - 1) kept.Append('\n');
+            }
+            if (removed) File.WriteAllText(settings, kept.ToString(), Encoding.Latin1);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
     }
 
     public static void ScrubSessionFiles(string home)
