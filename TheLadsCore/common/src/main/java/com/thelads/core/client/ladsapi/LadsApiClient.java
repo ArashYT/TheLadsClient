@@ -58,6 +58,9 @@ public final class LadsApiClient {
     private static int connectionHelloReplies = 0;
     static final int MAX_HELLO_REPLIES = 2;
     static final int MAX_CONNECTION_HELLO_REPLIES = 10;
+    /** A multi-world server's resync hellos used the connection's replies up, so a plugin reload was never answered again: one reply comes back every 30 s. */
+    static final long CONNECTION_REPLY_REFILL_MS = 30_000;
+    private static long connectionRefillAt = 0;
     /** Incoming messages: 8 a second on average, bursts of 16 (a plugin's join-time overrides arrive together, the newest last). */
     static final int RATE_PER_SECOND = 8, RATE_BURST = 16;
     static LongSupplier clock = System::currentTimeMillis;
@@ -179,7 +182,14 @@ public final class LadsApiClient {
         if (json.has("game") && json.get("game").isJsonPrimitive()) networkGame = cap(json.get("game").getAsString().trim(), 32);
         if (json.has("hub") && json.get("hub").isJsonPrimitive()) networkHub = hubCommand(json.get("hub").getAsString());
 
+        long helloNow = clock.getAsLong();
+        if (connectionHelloReplies > 0 && helloNow - connectionRefillAt >= CONNECTION_REPLY_REFILL_MS) {
+            long back = (helloNow - connectionRefillAt) / CONNECTION_REPLY_REFILL_MS;
+            connectionHelloReplies = (int) Math.max(0, connectionHelloReplies - back);
+            connectionRefillAt = helloNow;
+        }
         if (helloReplies < MAX_HELLO_REPLIES && connectionHelloReplies < MAX_CONNECTION_HELLO_REPLIES) {
+            if (connectionHelloReplies == 0) connectionRefillAt = helloNow;
             helloReplies++;
             connectionHelloReplies++;
             sendPayload(helloReply().toString().getBytes(StandardCharsets.UTF_8));

@@ -469,6 +469,11 @@ class LadsApiClientTest {
             }
         }
 
+        // The cap refills over time: a plugin reload long after many world changes must still be answered
+        testTime.addAndGet(31_000L);
+        LadsApiClient.receive("{\"t\":\"reset\"}".getBytes(StandardCharsets.UTF_8));
+        assertNotNull(sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"ServerAfterRefill\"}"), "reply comes back after 30 s");
+
         // A backend switch (JoinGame, 26.3 configuration start) clears it too: world changes ask again, the next backend must be answered
         testTime.addAndGet(500L);
         LadsApiClient.serverSwitch();
