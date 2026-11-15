@@ -5,6 +5,7 @@ using System.Linq;
 using System.IO.Compression;
 using System.Net.Http;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,7 +16,7 @@ namespace TheLadsLauncher.Services;
 /// <summary>
 /// Experimental: Lads Horizon, our fork (ArashYT/lads-horizon) of Horizon (github.com/ludovic111/horizon, MIT), Minecraft 26.3
 /// rewritten in Rust, started instead of the Lads Client for a 26.3 profile. Off by default; Dev Launcher builds or accounts
-/// invited with /experimental_invite only. It has the Lads HUD essentials and its own server rules (lads_rules); LadsCore does not run in it.
+/// invited with /experimental_invite only. It has the Lads title screen and its own server rules (lads_rules), no Lads modules; LadsCore does not run in it.
 /// </summary>
 public static class HorizonEngine
 {
@@ -38,7 +39,7 @@ public static class HorizonEngine
     public const string RiskWarning =
         "Lads Horizon is an early, experimental Lads Client built on Horizon, an unofficial Minecraft 26.3 rewritten in Rust " +
         "(github.com/ludovic111/horizon).\n\n" +
-        "• Only a few Lads modules work yet (HUD essentials, Lads Zoom); the rest are greyed out. No cosmetics, emotes or friends.\n" +
+        "• It is plain Horizon with the Lads title screen: no Lads modules, cosmetics, emotes or friends.\n" +
         "• Servers can see it is not the normal game. Joining servers with it CAN GET YOUR ACCOUNT BANNED, even with its " +
         "server rules turning risky features off.\n" +
         "• It gets your Minecraft login so it can join servers.\n" +
@@ -225,7 +226,7 @@ public static class HorizonEngine
     {
         string home = Home(baseDirectory);
         Directory.CreateDirectory(home);
-        InstallLadsMods(home, Path.Combine(AppContext.BaseDirectory, "Assets", "horizon", "lads_hud.hmod"));
+        RemoveLadsMods(home);
         var psi = new ProcessStartInfo(ClientExe(baseDirectory, game, AuthService.IsDevOfflineAllowed))
         {
             WorkingDirectory = home,
@@ -340,25 +341,34 @@ public static class HorizonEngine
     }
 
     /// <summary>
-    /// Copies the bundled Lads HUD mod into Horizon's mod folder when missing or changed, and turns it on in horizon-mods.txt the
-    /// first time only: a mod.lads_hud line (true or false) already there is the player's choice and stays.
+    /// Earlier builds installed the Lads HUD mod, a native mod for the old Horizon that the new build must not load: deletes it and
+    /// drops its mod.lads_hud line from horizon-mods.txt. Every other line stays exactly as it was; nothing is created or rewritten
+    /// when there is nothing to remove, and a locked file is skipped.
     /// </summary>
-    public static void InstallLadsMods(string home, string bundledHmod)
+    public static void RemoveLadsMods(string home)
     {
-        if (!File.Exists(bundledHmod)) return;
         string dir = Path.Combine(home, "horizon-mods");
-        string target = Path.Combine(dir, "lads_hud.hmod");
-        byte[] bytes = File.ReadAllBytes(bundledHmod);
-        if (!File.Exists(target) || !SHA256.HashData(File.ReadAllBytes(target)).AsSpan().SequenceEqual(SHA256.HashData(bytes)))
+        foreach (string file in new[] { Path.Combine(dir, "lads_hud.hmod"), Path.Combine(dir, "lads_hud.hmod.part") })
         {
-            Directory.CreateDirectory(dir);
-            File.WriteAllBytes(target + ".part", bytes);
-            File.Move(target + ".part", target, true);
+            try { File.Delete(file); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
         }
         string settings = Path.Combine(home, "horizon-mods.txt");
-        string text = File.Exists(settings) ? File.ReadAllText(settings) : "";
-        if (!Array.Exists(text.Split('\n'), line => line.TrimStart().StartsWith("mod.lads_hud:", StringComparison.Ordinal)))
-            File.AppendAllText(settings, (text.Length == 0 || text.EndsWith('\n') ? "" : "\n") + "mod.lads_hud:true\n");
+        try
+        {
+            if (!File.Exists(settings)) return;
+            // Latin-1 maps every byte to one char and back, so the lines we keep are written out byte for byte.
+            string[] lines = File.ReadAllText(settings, Encoding.Latin1).Split('\n');
+            var kept = new StringBuilder();
+            bool removed = false;
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (lines[i].TrimStart().StartsWith("mod.lads_hud:", StringComparison.Ordinal)) { removed = true; continue; }
+                kept.Append(lines[i]);
+                if (i < lines.Length - 1) kept.Append('\n');
+            }
+            if (removed) File.WriteAllText(settings, kept.ToString(), Encoding.Latin1);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
     }
 
     public static void ScrubSessionFiles(string home)

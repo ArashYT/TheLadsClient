@@ -476,7 +476,7 @@
                                             <StackPanel Spacing="12">
                                                 <TextBlock Text="EXPERIMENTAL — USE AT YOUR OWN RISK" Foreground="#FF4D4D" FontSize="12" FontWeight="Bold" LetterSpacing="1" />
                                                 <CheckBox x:Name="HorizonCheckbox" Content="Lads Horizon for 26.3 (Minecraft rewritten in Rust)" IsChecked="False" />
-                                                <TextBlock Text="When on, Play on a 26.3 profile starts Lads Horizon instead of the Lads Client: only a few Lads modules yet, no cosmetics or friends, and its own separate worlds. Joining servers with it can get your account banned. Off by default." TextWrapping="Wrap" Foreground="#A0A1AA" FontSize="12" />
+                                                <TextBlock Text="When on, Play on a 26.3 profile starts Lads Horizon instead of the Lads Client: plain Horizon with the Lads title screen: no Lads modules, cosmetics or friends, and its own separate worlds. Joining servers with it can get your account banned. Off by default." TextWrapping="Wrap" Foreground="#A0A1AA" FontSize="12" />
                                             </StackPanel>
                                         </Border>
                                     </StackPanel>

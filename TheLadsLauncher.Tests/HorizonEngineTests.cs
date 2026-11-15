@@ -73,54 +73,79 @@ public class HorizonEngineTests : IDisposable
         Assert.Equal("2535", root.GetProperty("xuid").GetString());
     }
 
-    string Bundled(string content)
+    string DropHud(string settingsContent)
     {
-        string file = Path.Combine(_home, "bundle", "lads_hud.hmod");
-        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
-        File.WriteAllText(file, content);
-        return file;
-    }
-
-    [Fact]
-    public void InstallLadsMods_FirstCall_CopiesTheModAndTurnsItOn()
-    {
-        HorizonEngine.InstallLadsMods(_home, Bundled("hmod-v1"));
-
-        Assert.Equal("hmod-v1", File.ReadAllText(Path.Combine(_home, "horizon-mods", "lads_hud.hmod")));
-        Assert.Equal("mod.lads_hud:true\n", File.ReadAllText(Path.Combine(_home, "horizon-mods.txt")));
-    }
-
-    [Fact]
-    public void InstallLadsMods_KeepsThePlayersChoiceAndOtherLines()
-    {
+        string mods = Path.Combine(_home, "horizon-mods");
+        Directory.CreateDirectory(mods);
+        File.WriteAllText(Path.Combine(mods, "lads_hud.hmod"), "hmod");
+        File.WriteAllText(Path.Combine(mods, "lads_hud.hmod.part"), "half");
         string settings = Path.Combine(_home, "horizon-mods.txt");
-        Directory.CreateDirectory(_home);
-        File.WriteAllText(settings, "mod.other:true\nmod.lads_hud:false");
-        string bundled = Bundled("hmod-v1");
-
-        HorizonEngine.InstallLadsMods(_home, bundled);
-        HorizonEngine.InstallLadsMods(_home, bundled);
-
-        Assert.Equal("mod.other:true\nmod.lads_hud:false", File.ReadAllText(settings));
+        File.WriteAllBytes(settings, System.Text.Encoding.UTF8.GetBytes(settingsContent));
+        return settings;
     }
 
     [Fact]
-    public void InstallLadsMods_ReplacesAChangedCopy()
+    public void RemoveLadsMods_DeletesTheModAndItsLine()
     {
-        HorizonEngine.InstallLadsMods(_home, Bundled("hmod-v1"));
-        HorizonEngine.InstallLadsMods(_home, Bundled("hmod-v2"));
+        string settings = DropHud("mod.lads_hud:true\n");
 
-        string installed = Path.Combine(_home, "horizon-mods", "lads_hud.hmod");
-        Assert.Equal("hmod-v2", File.ReadAllText(installed));
-        Assert.False(File.Exists(installed + ".part"));
+        HorizonEngine.RemoveLadsMods(_home);
+
+        Assert.False(File.Exists(Path.Combine(_home, "horizon-mods", "lads_hud.hmod")));
+        Assert.False(File.Exists(Path.Combine(_home, "horizon-mods", "lads_hud.hmod.part")));
+        Assert.Equal("", File.ReadAllText(settings));
     }
 
     [Fact]
-    public void InstallLadsMods_MissingBundledFile_DoesNothing()
+    public void RemoveLadsMods_KeepsOtherLinesAndTheirOrder()
     {
-        HorizonEngine.InstallLadsMods(_home, Path.Combine(_home, "nope", "lads_hud.hmod"));
+        string settings = DropHud("mod.a:true\n  mod.lads_hud:false\nmod.b:false\n\nmod.c:true\n");
+
+        HorizonEngine.RemoveLadsMods(_home);
+
+        Assert.Equal("mod.a:true\nmod.b:false\n\nmod.c:true\n", File.ReadAllText(settings));
+    }
+
+    [Fact]
+    public void RemoveLadsMods_KeepsCrlfLineEndings()
+    {
+        string settings = DropHud("mod.a:true\r\nmod.lads_hud:true\r\nmod.b:false\r\n");
+
+        HorizonEngine.RemoveLadsMods(_home);
+
+        Assert.Equal("mod.a:true\r\nmod.b:false\r\n", File.ReadAllText(settings));
+    }
+
+    [Fact]
+    public void RemoveLadsMods_FileWithoutTrailingNewline_KeepsItThatWay()
+    {
+        string settings = DropHud("mod.lads_hud:true\nmod.a:true");
+
+        HorizonEngine.RemoveLadsMods(_home);
+
+        Assert.Equal("mod.a:true", File.ReadAllText(settings));
+    }
+
+    [Fact]
+    public void RemoveLadsMods_NoFileAndNoFolder_DoesNothing()
+    {
+        HorizonEngine.RemoveLadsMods(_home);
 
         Assert.False(Directory.Exists(_home));
+    }
+
+    [Fact]
+    public void RemoveLadsMods_NothingToRemove_LeavesTheSettingsFileUntouched()
+    {
+        string settings = DropHud("mod.a:true\r\nmod.lads_hud_other:true");
+        File.Delete(Path.Combine(_home, "horizon-mods", "lads_hud.hmod"));
+        DateTime stamp = new DateTime(2020, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+        File.SetLastWriteTimeUtc(settings, stamp);
+
+        HorizonEngine.RemoveLadsMods(_home);
+
+        Assert.Equal("mod.a:true\r\nmod.lads_hud_other:true", File.ReadAllText(settings));
+        Assert.Equal(stamp, File.GetLastWriteTimeUtc(settings));
     }
 
     [Fact]
