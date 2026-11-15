@@ -511,7 +511,11 @@ public final class SessionManager implements LadsClientAPI {
             sessions.clear();
         }
         for (LadsSession s : ladsSessions) {
-            s.sendReset();
+            try {
+                s.sendReset();
+            } catch (RuntimeException e) {
+                // Paper refuses plugin messages once the plugin is disabled: one player must not stop the rest, or the plugin's disable
+            }
         }
     }
 }
