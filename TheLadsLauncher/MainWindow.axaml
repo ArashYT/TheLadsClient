@@ -200,7 +200,7 @@
                                 <!-- Compact banner at the top (1.13.25): hero title on the left, fixed-width artwork, then the network card (zero overlap). The middle of the page stays empty for now; the launch row sits at the bottom. -->
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" MinWidth="290" />
+                                        <ColumnDefinition Width="*" MinWidth="250" />
                                         <ColumnDefinition Width="196" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
