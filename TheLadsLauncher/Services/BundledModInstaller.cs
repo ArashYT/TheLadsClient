@@ -66,7 +66,7 @@ public static class BundledModInstaller
                 || !depends.TryGetProperty("minecraft", out var mc) || !MatchesExactVersion(mc, minecraftVersion))
                 throw new InvalidDataException($"Bundled core '{source}' must declare the exact Minecraft dependency '{minecraftVersion}'. Rebuild/deploy this version's core.");
         }
-        var sourceHash = await GetSha256Async(source, input, cancellationToken);
+        var sourceHash = await GetSha256Async(game, source, input, cancellationToken);
 
         var legacyCores = new List<string>();
         var destinationIsCore = false;
@@ -95,9 +95,10 @@ public static class BundledModInstaller
         var contentChanged = true;
         if (destinationIsCore)
         {
-            var currentHash = await GetSha256Async(destination, null, cancellationToken);
+            var currentHash = await GetSha256Async(game, destination, null, cancellationToken);
             contentChanged = !sourceHash.AsSpan().SequenceEqual(currentHash);
         }
+        FileHashCache.Save(game);
         if (!contentChanged && legacyCores.Count == 0)
             return false;
         if (contentChanged && destinationIsCore)
@@ -157,7 +158,7 @@ public static class BundledModInstaller
         }
     }
 
-    private static async Task<byte[]> GetSha256Async(string path, FileStream? openStream, CancellationToken cancellationToken)
+    private static async Task<byte[]> GetSha256Async(string game, string path, FileStream? openStream, CancellationToken cancellationToken)
     {
         var fullPath = Path.GetFullPath(path);
         var fi = new FileInfo(fullPath);
@@ -167,7 +168,10 @@ public static class BundledModInstaller
             return cached.Hash;
         }
         byte[] hash;
-        if (openStream != null)
+        var stored = fi.Exists ? FileHashCache.Get(game, "sha256", fi) : null;
+        if (stored != null)
+            hash = Convert.FromHexString(stored);
+        else if (openStream != null)
         {
             openStream.Position = 0;
             hash = await SHA256.HashDataAsync(openStream, cancellationToken);
@@ -181,6 +185,7 @@ public static class BundledModInstaller
         if (fi.Exists)
         {
             _sha256Cache[fullPath] = (fi.Length, fi.LastWriteTimeUtc.Ticks, hash);
+            if (stored == null) FileHashCache.Put(game, "sha256", fi, Convert.ToHexString(hash));
         }
         return hash;
     }

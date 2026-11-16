@@ -733,6 +733,7 @@ public static class ClientModInstaller
             }
             result.Add(new(path, hash, path.EndsWith(DisabledSuffix, StringComparison.OrdinalIgnoreCase), info));
         }
+        FileHashCache.Save(game);
         return result;
     }
 
@@ -790,8 +791,12 @@ public static class ClientModInstaller
                 {
                     return cached.Hash;
                 }
-                await using var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, true);
-                var hash = Convert.ToHexString(await SHA512.HashDataAsync(stream, token)).ToLowerInvariant();
+                if (FileHashCache.Get(game, "sha512", info) is not { } hash)
+                {
+                    await using var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, true);
+                    hash = Convert.ToHexString(await SHA512.HashDataAsync(stream, token)).ToLowerInvariant();
+                    FileHashCache.Put(game, "sha512", info, hash);
+                }
                 _hashCache[fullPath] = (length, mtime, hash);
                 return hash;
             }
