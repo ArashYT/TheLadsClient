@@ -19,7 +19,7 @@ public class GameSessionPriorityTests
     }
 
     [Fact]
-    public Task GameRunsAtNormalPriorityWhileLoadingAndPlaying() => WithNormalPriority(async () =>
+    public Task GameRunsAboveNormalWhileLoadingThenNormal() => WithNormalPriority(async () =>
     {
         Assert.False(GameSession.StartupFinished(null));
         Assert.True(GameSession.StartupFinished("[12:00:00] [Sound Library Loader/INFO]: Sound engine started"));
@@ -32,15 +32,38 @@ public class GameSessionPriorityTests
             { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true })!;
         GameSession.Attach(process, game, Array.Empty<string>(), _ => { }, shared);
         process.BeginOutputReadLine();
+        // Owner, 2026-11-16: AboveNormal while loading, Normal once loaded (never High: that froze Discord on 2026-10-10).
         process.Refresh();
-        // Owner, 2026-10-10: "just make it normal priority" (Realtime/High while loading froze Discord). The launcher never changes it, so
-        // the game keeps the priority it inherits during both loading and play.
-        var inherited = Process.GetCurrentProcess().PriorityClass;
-        Assert.Equal(inherited, process.PriorityClass);
+        Assert.Equal(ProcessPriorityClass.AboveNormal, process.PriorityClass);
         await Task.Delay(4500);
         process.Refresh();
-        Assert.Equal(inherited, process.PriorityClass);
+        Assert.Equal(ProcessPriorityClass.Normal, process.PriorityClass);
         await process.WaitForExitAsync();
+    });
+
+    [Fact]
+    public Task AGameThatNeverReportsLoadedDropsToNormalAfterTheLimit() => WithNormalPriority(async () =>
+    {
+        using var dir = new TestDirectory();
+        var game = Path.Combine(dir.Path, "profile");
+        Directory.CreateDirectory(game);
+        var shared = new SharedContentService(Path.Combine(dir.Path, "global"), Path.Combine(dir.Path, "backups"));
+        var limit = GameSession.LoadingBoostLimit;
+        GameSession.LoadingBoostLimit = TimeSpan.FromSeconds(2);
+        try
+        {
+            using var process = Process.Start(new ProcessStartInfo("cmd.exe", "/c ping -n 6 127.0.0.1 >nul")
+                { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true })!;
+            GameSession.Attach(process, game, Array.Empty<string>(), _ => { }, shared);
+            process.BeginOutputReadLine();
+            process.Refresh();
+            Assert.Equal(ProcessPriorityClass.AboveNormal, process.PriorityClass);
+            await Task.Delay(3500);
+            process.Refresh();
+            Assert.Equal(ProcessPriorityClass.Normal, process.PriorityClass);
+            await process.WaitForExitAsync();
+        }
+        finally { GameSession.LoadingBoostLimit = limit; }
     });
 
     [Fact]
@@ -58,7 +81,7 @@ public class GameSessionPriorityTests
             Assert.Equal(ProcessPriorityClass.BelowNormal, process.PriorityClass);   // Windows hands a child the lowered class
             GameSession.Attach(process, game, Array.Empty<string>(), _ => { }, shared);
             process.Refresh();
-            Assert.Equal(ProcessPriorityClass.Normal, process.PriorityClass);
+            Assert.Equal(ProcessPriorityClass.AboveNormal, process.PriorityClass);   // Normal again, plus the loading boost
         }
         Assert.Null(ProcessPriority.ScopedFrom);
         using (process) await process.WaitForExitAsync();
