@@ -29,6 +29,33 @@ public static class GameSession
     /// <summary>The game log line every supported version prints once its startup resources are loaded.</summary>
     public static bool StartupFinished(string? line) => line != null && line.Contains("Sound engine started", StringComparison.Ordinal);
 
+    /// <summary>How long a game stays AboveNormal when it never prints <see cref="StartupFinished"/> (no sound device, old loader).</summary>
+    internal static TimeSpan LoadingBoostLimit = TimeSpan.FromSeconds(120);
+
+    // Owner, 2026-11-16: AboveNormal while loading, Normal once loaded. Not High: High/Realtime while loading froze Discord (2026-10-10).
+    // Only a game that would run at Normal is raised; a lower class the user or launcher chose is left alone.
+    private static void BoostWhileLoading(Process process)
+    {
+        try
+        {
+            process.Refresh();
+            if (process.PriorityClass != ProcessPriorityClass.Normal) return;
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { return; }
+        ProcessPriority.TrySet(process, ProcessPriorityClass.AboveNormal);
+        int done = 0;
+        DataReceivedEventHandler? onLine = null;
+        void Lower()
+        {
+            if (System.Threading.Interlocked.Exchange(ref done, 1) != 0) return;
+            process.OutputDataReceived -= onLine;
+            ProcessPriority.TrySet(process, ProcessPriorityClass.Normal);
+        }
+        onLine = (_, e) => { if (StartupFinished(ReadableOutput(e.Data))) Lower(); };
+        process.OutputDataReceived += onLine;
+        _ = Task.Delay(LoadingBoostLimit).ContinueWith(_ => Lower(), TaskScheduler.Default);
+    }
+
     // Games the user stopped while they were starting. Weak: a finished Process is not kept alive.
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Process, object> Cancelled = new();
 
@@ -93,6 +120,7 @@ public static class GameSession
         var shared = sharedContent ?? SharedContentService.Instance;
         // The launcher runs lower while a background update downloads, and a child inherits that; the game keeps the priority it would have had.
         if (ProcessPriority.ScopedFrom is { } original) ProcessPriority.TrySet(process, original);
+        BoostWhileLoading(process);
         var pid = process.Id;
         try
         {

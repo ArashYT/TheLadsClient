@@ -123,21 +123,6 @@
       "projectUrl": "https://modrinth.com/mod/better-render-distance"
     },
     {
-      "projectId": "n6PXGAoM",
-      "projectSlug": "better-stats",
-      "name": "Better Statistics Screen",
-      "modId": "betterstats",
-      "versionId": "99mBkJp1",
-      "version": "5.1.0+fabric-1.21.11",
-      "fileName": "betterstats-5.1.0+fabric-1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/n6PXGAoM/versions/99mBkJp1/betterstats-5.1.0%2Bfabric-1.21.11.jar",
-      "sha512": "54bcb9336ba8088ad4611ffc37d29f7cc4ed3c89465d6cedfe065ea641f5c252aa1ac4b2306a9c033ee6db9f29a916ed6101cb85e1867de09073894b9bcafe34",
-      "size": 293453,
-      "license": "LicenseRef-Better-Statistics-Screen-License",
-      "sourceUrl": "https://github.com/TheCSDev/betterstats",
-      "projectUrl": "https://modrinth.com/mod/better-stats"
-    },
-    {
       "projectId": "VSNURh3q",
       "projectSlug": "c2me-fabric",
       "name": "Concurrent Chunk Management Engine (Fabric)",
@@ -545,7 +530,7 @@
     {
       "projectId": "nvQzSEkH",
       "projectSlug": "jade",
-      "name": "Jade \ud83d\udd0d",
+      "name": "Jade 🔍",
       "modId": "jade",
       "versionId": "swJhAyak",
       "version": "21.1.6+fabric",
@@ -1023,21 +1008,6 @@
       "projectUrl": "https://modrinth.com/mod/tabtweaks"
     },
     {
-      "projectId": "Eldc1g37",
-      "projectSlug": "tcdcommons",
-      "name": "TCDCommons API",
-      "modId": "tcdcommons",
-      "versionId": "X850L9UC",
-      "version": "5.1.0+fabric-1.21.11",
-      "fileName": "tcdcommons-5.1.0+fabric-1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/Eldc1g37/versions/X850L9UC/tcdcommons-5.1.0%2Bfabric-1.21.11.jar",
-      "sha512": "88b248ff84ce52bcb09ef5b8d7169f0de66dfed5f6860fb5799ab63deea2b81968c1af3adabfedbdf80025681c58ef1fd82c3e6a3624b7aaa43276d3133aca9f",
-      "size": 457898,
-      "license": "LicenseRef-TCDCommons-API-License",
-      "sourceUrl": "https://github.com/TheCSDev/tcdcommons",
-      "projectUrl": "https://modrinth.com/mod/tcdcommons"
-    },
-    {
       "projectId": "sBn7rVvc",
       "projectSlug": "tlib",
       "name": "TLib",
@@ -1446,6 +1416,24 @@
         "acf7777baee2b78abf0a4d42b5157a617db2f437f6de2afa6c55f89aa0b549ce2fa2e6c8ca545b4162377cf2a265f29430b0b8b9058c5dba0d3d3c460679d315"
       ],
       "reason": "Removed from The Lads Client pack in 1.9.2."
+    },
+    {
+      "modId": "betterstats",
+      "projectId": "n6PXGAoM",
+      "name": "Better Statistics Screen",
+      "sha512": [
+        "54bcb9336ba8088ad4611ffc37d29f7cc4ed3c89465d6cedfe065ea641f5c252aa1ac4b2306a9c033ee6db9f29a916ed6101cb85e1867de09073894b9bcafe34"
+      ],
+      "reason": "Removed in 1.13.25 to cut startup work; the vanilla statistics screen is used."
+    },
+    {
+      "modId": "tcdcommons",
+      "projectId": "Eldc1g37",
+      "name": "TCDCommons API",
+      "sha512": [
+        "88b248ff84ce52bcb09ef5b8d7169f0de66dfed5f6860fb5799ab63deea2b81968c1af3adabfedbdf80025681c58ef1fd82c3e6a3624b7aaa43276d3133aca9f"
+      ],
+      "reason": "Removed in 1.13.25 with Better Statistics Screen, its only user."
     }
   ]
 }

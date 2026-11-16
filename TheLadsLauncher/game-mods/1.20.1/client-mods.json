@@ -48,21 +48,6 @@
       "projectUrl": "https://modrinth.com/mod/balm"
     },
     {
-      "projectId": "n6PXGAoM",
-      "projectSlug": "better-stats",
-      "name": "Better Statistics Screen",
-      "modId": "betterstats",
-      "versionId": "Ktw36uDC",
-      "version": "3.12.6+fabric-1.20.1",
-      "fileName": "betterstats-3.12.6+fabric-1.20.1.jar",
-      "url": "https://cdn.modrinth.com/data/n6PXGAoM/versions/Ktw36uDC/betterstats-3.12.6%2Bfabric-1.20.1.jar",
-      "sha512": "412824d45c63dec7a629b9efc16ed9fe08c256a8754b54f8052b2a346c7f0febe359757077d5683321b8fffb059707b29a385ae171d6dfaf6e3fb2db26c9a0de",
-      "size": 385358,
-      "license": "LicenseRef-Better-Statistics-Screen-License",
-      "sourceUrl": "https://github.com/TheCSDev/betterstats",
-      "projectUrl": "https://modrinth.com/mod/better-stats"
-    },
-    {
       "projectId": "M08ruV16",
       "projectSlug": "bobby",
       "name": "Bobby",
@@ -483,21 +468,6 @@
       "projectUrl": "https://modrinth.com/mod/sodium-extra"
     },
     {
-      "projectId": "Eldc1g37",
-      "projectSlug": "tcdcommons",
-      "name": "TCDCommons API",
-      "modId": "tcdcommons",
-      "versionId": "BBxTOVSm",
-      "version": "3.12.3.3+fabric-1.20.1",
-      "fileName": "tcdcommons-3.12.3.3+fabric-1.20.1.jar",
-      "url": "https://cdn.modrinth.com/data/Eldc1g37/versions/BBxTOVSm/tcdcommons-3.12.3.3%2Bfabric-1.20.1.jar",
-      "sha512": "5b52f2fa95f01b9a7b50898639d18629717fad45daa3bf0c792c4c9b6d9cc66f5aaf4ae509a9e1dd5aecf781e40b02cee8f77aef3d120a6d3374d0ae25a7c4eb",
-      "size": 913732,
-      "license": "LicenseRef-TCDCommons-API-License",
-      "sourceUrl": "https://github.com/TheCSDev/tcdcommons",
-      "projectUrl": "https://modrinth.com/mod/tcdcommons"
-    },
-    {
       "projectId": "sBn7rVvc",
       "projectSlug": "tlib",
       "name": "TLib",
@@ -678,6 +648,24 @@
         "fc9a525ec4711d9b37b2a8a6739957770e34e87b8a2650c9e241f72e670a582d0c074735fd19775fa4c95fe1efa017aa3f604909c1315abff4c074c201dea763"
       ],
       "reason": "Retired in 1.9.12 (performance): its frame limiter ran next to the Lads input-latency pacer (Reflex) and cost 6-8 % FPS and 11-31 % of the 1 % lows on the Legion bench."
+    },
+    {
+      "modId": "betterstats",
+      "projectId": "n6PXGAoM",
+      "name": "Better Statistics Screen",
+      "sha512": [
+        "412824d45c63dec7a629b9efc16ed9fe08c256a8754b54f8052b2a346c7f0febe359757077d5683321b8fffb059707b29a385ae171d6dfaf6e3fb2db26c9a0de"
+      ],
+      "reason": "Removed in 1.13.25 to cut startup work; the vanilla statistics screen is used."
+    },
+    {
+      "modId": "tcdcommons",
+      "projectId": "Eldc1g37",
+      "name": "TCDCommons API",
+      "sha512": [
+        "5b52f2fa95f01b9a7b50898639d18629717fad45daa3bf0c792c4c9b6d9cc66f5aaf4ae509a9e1dd5aecf781e40b02cee8f77aef3d120a6d3374d0ae25a7c4eb"
+      ],
+      "reason": "Removed in 1.13.25 with Better Statistics Screen, its only user."
     }
   ],
   "published": {
