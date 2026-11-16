@@ -174,7 +174,7 @@ public class ModuleManager {
         registerHidden(new ExordiumModule(), Module.Category.MECHANIC);
 
         TexturePacksModule tp = new TexturePacksModule();
-        tp.addOption(new SliderOption("Size", 100, 50, 200, 25));
+        tp.addOption(new SliderOption("Size", 100, 50, 200, 5));
         tp.addOption(new ColorOption("Background", true, 0x80000000));
         tp.addOption(new DropdownOption("Color mode", 0, "Static", "Chroma", "Chroma Fast", "Fade"));
         tp.addOption(new BoolOption("Show Icons", true));
@@ -335,7 +335,7 @@ public class ModuleManager {
         heightLimit.setEnabled(true);
 
         Module sb = new Module("Scoreboard", "Resize, reposition and restyle the scoreboard sidebar.");
-        sb.addOption(new SliderOption("Size", 100, 50, 150, 25));
+        sb.addOption(new SliderOption("Size", 100, 50, 150, 5));
         sb.addOption(new SliderOption("X Offset", 0, -40, 40, 20));
         sb.addOption(new SliderOption("Y Offset", 0, -40, 40, 20));
         sb.addOption(new DropdownOption("Background", 3, "Default", "Dark", "Light", "Off"));
@@ -796,7 +796,7 @@ public class ModuleManager {
 
     private HudModule hud(String name, String description, ColorOption background) {
         HudModule m = new HudModule(name, description);
-        m.addOption(new SliderOption("Size", 100, 50, 200, 25));
+        m.addOption(new SliderOption("Size", 100, 50, 200, 5));
         m.addOption(background);
         m.addOption(new DropdownOption("Color mode", 0, "Static", "Chroma", "Chroma Fast", "Fade"));
         m.setCategory(Module.Category.HUD);

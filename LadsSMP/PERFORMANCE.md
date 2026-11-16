@@ -81,3 +81,67 @@ Full report + A/B numbers: `artifacts/smp-opt/SMP-OPTIMIZATION-REPORT.md` (gitig
 - Measured (2 runs each): server start -> join 26-27 s -> 12 s; launch WARN lines 755 -> 494.
 - Item disabler caches its verdict per Item; the spawner torch check runs behind vanilla's `isNearPlayer`.
 - Iris removed (pack 0.2.3): Core forces OpenGL whenever Iris is installed; without it the pack runs on Vulkan. Arash-PC (RTX 4060 Ti): 462 -> 645 FPS (OpenGL, no Iris) -> 734 FPS (Vulkan); Legion laptop: no measurable change (CPU-bound). Shaders are no longer supported in the SMP.
+
+
+---
+
+## 6. 2026-11-15 World creation / join freezes and the loading screen (pack 0.5.3 as published, Lads SMP 0.3.4; round 1 called them 0.5.1 / 0.3.2)
+
+Measured on arash-legion (slow CPU, GTX 1660 Ti, Vulkan), a fresh instance built from the 0.5.0 pack archive, "Create New World" with the pack's default
+settings (BetterX world type), every frame the render thread presents recorded by `LadsSMP/qa-smoke` (`-Dladsqa.world=true`): the longest gap between two
+presented frames, with the stack the render thread was in. Before = shipped 0.5.0 (Lads SMP 0.3.1); after = 0.5.1 (Lads SMP 0.3.2).
+
+Where the window stood still (render thread, before):
+- **Creating a world, 54-88 s** (5 s on a fast PC): Bits and Balance builds ~1,100 step recipes while the integrated server is constructed (on the render thread in 26.3).
+  `EnhancedSlabRecipeLookup.slabForStep` walks all 1,500 slabs for each of 20,000 non-step blocks and `StepDynamicRegistry.idForSlab` runs two regexes per slab:
+  ~30 million regex matches. `WoodStonecuttingRecipeGenerator.hasRegisteredItemNamespace` walks the whole item registry per wood family (30 s).
+- **Joining a world, 20 s (fast PC) to 73 s (Legion)**: TCD Commons rebuilds every creative tab inside the login packet; Fabric API's `FabricCreativeModeTabOutput.insertAfter`
+  copies each tab into a LinkedList and searches the anchor with `list.get(i)` (O(n) per step, O(n^2) per call) and Bits and Balance calls it for ~5,700 slab/step/vertical
+  variants. JEI then starts in the next packet (17-20 s): 14,553 synthetic recipes, 23,000 ingredients. The client processes no packet meanwhile, so the first chunk arrives and nothing else.
+- Startup: Xaero's World Map/Minimap check for updates over the network on the render thread (3.5 s); Villager API regenerates its 96 village files on every
+  data pack repository reload (3 times per world creation, 1.7-6 s each); Entity Model Features bakes its models in one 10 s resource-reload task.
+
+- **The world that never finishes loading (every pack version)**: AntiXray holds a connection's packets behind a chunk packet whose async obfuscation never completes (details and evidence in `TEST_RESULTS.md` section 5);
+  fixed by `MixinAntiXrayNeverHolds` (every packet counts as ready on a game client) and AntiXray's obfuscation off in the pack's `config/antixray.toml`.
+
+Fixes (all in Lads SMP 0.3.2, `src/main/java/com/thelads/smp/mixin`):
+`MixinBitsAndBalanceSlabStepIds` / `MixinBitsAndBalanceVariantIds` (remember the step id per slab), `MixinBitsAndBalanceNotAStep` (reverse index instead of the slab scan),
+`MixinBitsAndBalanceNamespaceScan`, `MixinFabricCreativeTabOutput` (ListIterator instead of `get(i)`), `MixinXaeroOnlineChecks` / `MixinXaeroMinimapOnlineChecks`,
+`MixinVillagerApiVillageRebuild`. Loading-screen pump: `client/LoadingPump` renders one normal frame from safe points of long steps (after every client task, JEI stage and
+plugin call, per creative tab, per EMF model part and expression, per Villager API village, every 256th identifier / block-state read) whenever the last frame is older
+than 120 ms and only a loading screen (or the login packet's own handling) is up; any exception switches it off. `-Dladssmp.pump=false` turns it off.
+
+Results (render-thread frame gaps, Legion; `qa-smoke` writes `ladsqa/frames.txt`):
+| Phase (render-thread gap = longest time without a presented frame) | 0.5.0 as shipped | 0.5.1 (2 clean runs of the final build) |
+| :--- | ---: | ---: |
+| Window opens to first frame | 72.2-73.9 s from JVM start (window itself at ~68 s) | unchanged (74.4 / 76.2 s; the constructor draws nothing before) |
+| First frame to title screen: longest gap / gaps >= 250 ms | 10.2 s / 6 | 0.7-0.8 s / 11 |
+| First frame to title screen: duration | 32.4 s | 32.3 / 32.3 s |
+| Title to Create World screen: longest gap | 6.5 s | 0.6 s |
+| Create New World: longest gap (click to loading screen) | 58.1 s (96 s) | 0.7 s (28-32 s) |
+| Loading screen to player in world: longest gap (duration) | 72.9 s (83.6 s) | 2.2 s (30-32 s) |
+| Whole load after the first frame: longest gap | 72.9 s | 2.2 s |
+| Whole load: gaps >= 250 ms (their sum) | 14 (155.8 s) | 37-43 (19-23 s) |
+| Click Create World to player in world | 179.7 s | 63.9 / 58.1 s |
+| JVM start to player in world | 296.8 s | 182.1 / 174.9 s |
+
+Round 2 (pack 0.5.2, Lads SMP 0.3.3; same measurement, 2 clean runs on the final pump): window to first frame 71.3 / 74.4 s, first frame to title 31.7 / 32.9 s (longest gap 0.66 / 0.67 s, 9 / 10 gaps >= 250 ms),
+title to Create World 0.63 / 0.87 s, click to loading screen 0.66 / 0.72 s, loading screen to player in world 1.17 / 1.38 s, whole load: **longest gap 1.57 / 1.58 s**, gaps >= 250 ms **34 / 39** (sum 19.8 / 22.8 s), click to player in world 61.7 / 62.2 s.
+The 10 biggest remaining gaps (run 2, phase / what the render thread was in): 1.58 s in-world first tick (Mixin Constraints `MixinHacks.getMixinsFor`, Sodium `ChunkBuilder.<init>`: class loading and renderer setup),
+1.38 s level loading screen (Knot class loading of mixin-transformed classes), 1.29 s first sky-light read of the new world (`SkyLightSectionStorage`), 1.12 s leaving the world (Xaero `MapProcessor.waitForLoadingToFinish`),
+0.89 s title (`FontSet.selectProviders`), 0.87 s title (BCLib `ToolBlockTransformers`, Fabric `DefaultItemComponentEvents`), 0.84 s loading screen (Twemoji `rebuildSuggestionIndex`, ASM `ClassWriter`),
+0.84 s in-world (ASM `SymbolTable` class transform), 0.80 s in-world (AsyncParticles `BusyWaitEvictingQueue.add`), 0.72 s Create World (`Climate$RTree.sort`). Round 2 pump points added: component map build, JER loot sort, Bits and Balance JEI kiln recipes.
+The largest ones are class loading and one-off native setup inside the first world tick, outside the loading-screen / login-packet scope the pump is allowed to run in, so the < 1 s goal is not reached (1.6 s); gaps >= 250 ms fell only slightly (37-43 to 34-39).
+
+**Server thread after a teleport into a not generated dimension (round 2, Lads SMP 0.3.4)**: right after `/tp` or a portal into the Nether the integrated server thread stood still 17-33 s (Legion, BetterX Nether) because
+everything that reads a block of the player's chunk waits (`Level.getBlockState` -> `ServerChunkCache.getChunkBlocking`) until the chunk is generated. `Level.hasChunkAt` is also true for a chunk that is only being generated, so the first guards
+did nothing; `util/LoadedChunks.isLoaded` asks `getChunkNow` (FULL chunks only). Readers found and guarded, each from the stack of the frozen server thread: Bits and Balance Improved Ladders (`MixinBitsAndBalanceLaddersLoadedOnly`),
+ImmersiveMC's per-tick pick (`MixinImmersiveMcUnloadedChunk`), `ServerPlayer.doTick` itself (`MixinServerPlayerUnloadedChunk`: only requests the chunk ticket while the chunk is missing, max 400 ticks), Bits and Balance's biome titles
+(`StructureManager.startsForStructure`, `MixinStructureManagerUnloadedChunk`) and vanilla's accept-teleportation packet (`MixinServerGamePacketListenerHoldTeleportAck`: held until the chunk is there, max 400 ticks). All only in the integrated server of a game client.
+Result on Legion: Nether 17.8 s (round 1 jar) / 33.0 s / 27.2 s before, **6.9 s + 12.1 s** and **29.4 s + 8.9 s** in two later worlds (not fixed); the 29.4 s one was Smart Backpacks: Smart Backpacks' `LightUpgradeHandler.onPlayerTick` (`findDesiredLightPos`) and Ad Chimneys' `SmokeLocations.onServerTick` read the same chunk,
+and vanilla's `handleMovePlayer` waits when the 20 blocks/s test flight outruns generation. An Overworld stall of 7.3 s once was Incendium's clock function (`execute if entity @e[predicate=...]`: vanilla hashes the nested predicate per entity).
+
+The 250 ms target is not reached: the longest gap fell from 72.9 s to 2.2 s and no gap is longer than that. 37-43 gaps over 250 ms remain, each a single CPU step of a mod
+(JEI stages, registry sync, EMF) with no safe point inside; the pump cannot split a step it cannot enter. The 4-6 s between the window appearing and the first frame (the Minecraft
+constructor builds every manager before it draws) is not addressed either: nothing can be drawn before the renderer exists. Earlier builds of the pump measured 4.3-5.4 s as the longest gap (before the
+wait for the new world's data packs was pumped as well).

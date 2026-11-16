@@ -76,7 +76,7 @@ public class DraggableHudScreen1201 extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
-        if (ui.mouseScrolled(mouseX, mouseY, amount)) {
+        if (ui.mouseScrolled(mouseX, mouseY, amount, modifiers())) {
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, amount);

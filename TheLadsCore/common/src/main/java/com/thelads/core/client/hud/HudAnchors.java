@@ -26,6 +26,8 @@ public final class HudAnchors {
     /** Edges at most this far apart are docked (the editor snaps within 4 px). */
     static final int DOCK = 4;
     private static final int[] NEAR = {0, 1, 2}, FAR = {2, 1, 0};
+    /** QA only (HudEditorQa, LADS_QA_HUDEDIT_LEGACY=1): the clamp as it was before 1.13.20, to show in game what the fix changed. */
+    public static boolean legacyEditingBlocks;
 
     private HudAnchors() {}
 
@@ -119,7 +121,9 @@ public final class HudAnchors {
 
     /**
      * Keeps each connected block on screen as one: a HUD with everything docked to it (the hotbar not included), and each saved
-     * group. Docked HUDs never slide into each other at the screen's edges.
+     * group. Docked HUDs never slide into each other at the screen's edges. HUDs being dragged in the editor are a block of their
+     * own: what is docked to one must not hold it back from an edge (it would lift a HUD dropped at the bottom or top of the
+     * screen off it, by the room the docked HUD takes); the drop then anchors the docked ones where they show.
      */
     public static void clamp(Map<HudElement, Rect> placed, int width, int height) {
         Map<HudElement, HudElement> parent = new IdentityHashMap<>();
@@ -129,9 +133,9 @@ public final class HudAnchors {
         for (HudElement element : placed.keySet()) {
             Anchor anchor = anchorOf(element);
             HudElement holder = anchor == null || anchor.to() == null ? null : byName.get(anchor.to());
-            if (holder != null) join(parent, element, holder);
+            if (holder != null && (legacyEditingBlocks || holder.isEditingPosition() == element.isEditingPosition())) join(parent, element, holder);
             var group = settings.getGroups().isEmpty() ? null : settings.getGroupMembers(element.getModuleName());
-            if (group != null) for (String name : group) if (byName.containsKey(name)) join(parent, element, byName.get(name));
+            if (group != null) for (String name : group) if (byName.containsKey(name) && (legacyEditingBlocks || byName.get(name).isEditingPosition() == element.isEditingPosition())) join(parent, element, byName.get(name));
         }
         Map<HudElement, Rect> blocks = new IdentityHashMap<>();
         for (var entry : placed.entrySet()) blocks.merge(root(parent, entry.getKey()), entry.getValue(), (a, b) -> HudGroupLayout.union(java.util.List.of(a, b)));

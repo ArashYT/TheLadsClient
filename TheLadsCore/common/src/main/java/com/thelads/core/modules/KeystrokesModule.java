@@ -50,7 +50,7 @@ public class KeystrokesModule extends HudModule {
     public final DoubleOption rainbowSpeed = addOption(new DoubleOption("Rainbow Speed", 1.0, 0.1, 20.0));
 
     // Classic options
-    public final SliderOption size = addOption(new SliderOption("Size", 100, 50, 200, 25));
+    public final SliderOption size = addOption(new SliderOption("Size", 100, 50, 200, 5));
     public final ColorOption background = addOption(new ColorOption("Background", true, 0x80000000));
     public final DropdownOption colorMode = addOption(new DropdownOption("Color mode", 0, "Static", "Chroma", "Chroma Fast", "Fade"));
 

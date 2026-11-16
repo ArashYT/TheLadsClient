@@ -449,7 +449,8 @@ public class ProfileService : IProfileService
         _dropped.AddRange(container.DroppedProfiles ?? new());
         // 1.6.0 dropped Minecraft 1.21.1: its profiles stop being offered (an active one falls back to the default
         // below). The entries stay in profiles.json and their game folders, worlds and settings are left alone.
-        var dropped = _profiles.Where(p => GameVersionPolicy.IsDropped(p.MinecraftVersion)).ToList();
+        // The built-in 26.2 and 1.21.11 entries are retired the same way (1.13.24): not listed, game folders and settings untouched.
+        var dropped = _profiles.Where(p => GameVersionPolicy.IsDropped(p.MinecraftVersion) || GameVersionPolicy.IsRetiredBuiltIn(p)).ToList();
         _dropped.AddRange(dropped);
         _profiles.RemoveAll(dropped.Contains);
         _activeProfileId = container.ActiveProfileId ?? _profiles.FirstOrDefault()?.Id ?? "";
@@ -656,17 +657,6 @@ public class ProfileService : IProfileService
             },
             new()
             {
-                Id = "26.2",
-                Name = "The Lads Client 26.2",
-                MinecraftVersion = "26.2",
-                FabricVersion = "0.19.5",
-                JavaMajorVersion = 25,
-                IsIsolated = false,
-                PackwizUrl = null,
-                IconKey = "stable"
-            },
-            new()
-            {
                 Id = "1.20.1",
                 Name = "The Lads Client 1.20.1",
                 MinecraftVersion = "1.20.1",
@@ -675,17 +665,6 @@ public class ProfileService : IProfileService
                 IsIsolated = false,
                 PackwizUrl = null,
                 IconKey = "stable"
-            },
-            new()
-            {
-                Id = "1.21.11",
-                Name = "The Lads Client 1.21.11 (Legacy)",
-                MinecraftVersion = "1.21.11",
-                FabricVersion = "0.19.5",
-                JavaMajorVersion = 21,
-                IsIsolated = false,
-                PackwizUrl = null,
-                IconKey = "nextgen"
             },
             // Forge, on Java 25 through 8to25.
             new()

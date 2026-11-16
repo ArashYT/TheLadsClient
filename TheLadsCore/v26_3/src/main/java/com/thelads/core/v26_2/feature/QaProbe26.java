@@ -38,6 +38,8 @@ public final class QaProbe26 {
     private static List<String[]> steps = new ArrayList<>();
     private static int index, waitTicks, titleTicks, passed, failedSteps;
     private static String pendingShot;
+    /** The "hudedit" script step is running (HudEditorQa, driven every tick). */
+    private static boolean hudEdit;
     private static long nextStopCheck;
 
     private QaProbe26() {}
@@ -119,6 +121,17 @@ public final class QaProbe26 {
             LOGGER.info("Lads 26.3 qa script BEGIN: {} steps", steps.size());
             QaProgress.begin("26.3 script", steps.size());
             QaProgress.slowAfter(600_000);
+        }
+        if (hudEdit) {
+            try {
+                if (!com.thelads.core.client.hud.HudEditorQa.tick(HudLayoutCapture.DRIVER)) return;
+            } catch (RuntimeException e) {
+                stepFailed("hudedit", e);
+            }
+            hudEdit = false;
+            if (com.thelads.core.client.hud.HudEditorQa.failed() > 0) stepFailed("hudedit", new IllegalStateException(com.thelads.core.client.hud.HudEditorQa.failed() + " HUD editor checks failed (Lads hud layout FAILED)"));
+            waitTicks = 10;
+            return;
         }
         if (waitTicks > 0) {
             waitTicks--;
@@ -217,6 +230,7 @@ public final class QaProbe26 {
         switch (verb) {
             case "wait" -> waitTicks = duration(arg(s, 1));
             case "shot" -> { pendingShot = arg(s, 1); waitTicks = 3; }
+            case "hudedit" -> { hudEdit = true; HudLayoutCapture.scriptShots = true; } // the HUD editor's wheel and drags at several window sizes (HudEditorQa); needs the QA world
             case "ladsapi" -> LadsApiQa.recordProbe(s.length > 1 ? rest(s, 1) : ("step-" + index));
             case "import113" -> com.thelads.core.client.gui.ClientImportQa.step(((LadsSettingsScreen26) mc.gui.screen()).ui(), s);
             case "packs113" -> packs113(mc);

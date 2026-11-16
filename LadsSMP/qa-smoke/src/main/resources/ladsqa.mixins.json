@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "package": "com.thelads.smp.qa.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "MixinMinecraftFrame",
+    "MixinChunkAckDebug"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "mixins": [
+    "MixinServerChunkAckDebug"
+  ]
+}

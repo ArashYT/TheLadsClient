@@ -118,7 +118,7 @@ public class OptiFine189Module extends Module {
         ofFogType = addOption(new DropdownOption("Fog", 1, "Fast", "Fancy", "OFF"));
         ofFogStart = addOption(new SliderOption("Fog Start", 0.8, 0.2, 0.8, 0.2));
         ofDroppedItems = addOption(new DropdownOption("Dropped Items", 0, "Default", "Fast", "Fancy"));
-        ofVignette = addOption(new DropdownOption("Vignette", 0, "Default", "Fast", "Fancy"));
+        ofVignette = addOption(new DropdownOption("Vignette", 1, "Default", "Fast", "Fancy")); // Fast = off, the Lads default since 1.13.24
 
         // Animations
         animWater = addOption(new BoolOption("Animated Water", true));
@@ -297,7 +297,7 @@ public class OptiFine189Module extends Module {
         ofFogType.setIndex(1);
         ofFogStart.setValue(0.8);
         ofDroppedItems.setIndex(0);
-        ofVignette.setIndex(0);
+        ofVignette.setIndex(1);
 
         setAllAnimations(true);
 

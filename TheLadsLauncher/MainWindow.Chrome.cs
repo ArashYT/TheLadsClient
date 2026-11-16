@@ -518,8 +518,8 @@ public partial class MainWindow
             FlushSettingsSave();
 
             // A running profile's options.txt is not written (Minecraft rewrites it on exit): it gets the change when the game closes.
-            // A sleeping java process (system java) stands in for 26.2's game.
-            var running = _profileService.GetProfiles().First(p => p.MinecraftVersion == "26.2");
+            // A sleeping java process (system java) stands in for 1.20.1's game.
+            var running = _profileService.GetProfiles().First(p => p.MinecraftVersion == "1.20.1");
             var runningDir = _pathService.GetProfileDirectory(running);
             var runningOptions = Path.Combine(runningDir, "options.txt");
             Directory.CreateDirectory(runningDir);

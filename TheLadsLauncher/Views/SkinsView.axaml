@@ -32,7 +32,7 @@
           <ListBox x:Name="SkinList" Grid.Row="3" Background="Transparent" SelectionChanged="SkinList_SelectionChanged" />
         </Grid>
       </Border>
-      <ScrollViewer Grid.Column="1" Margin="16,0,0,0">
+      <ScrollViewer x:Name="DetailScroll" Grid.Column="1" Margin="16,0,0,0">
         <StackPanel Spacing="14">
           <Border Classes="card">
             <Grid ColumnDefinitions="Auto,*">

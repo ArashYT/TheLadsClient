@@ -68,6 +68,14 @@ public class DraggableHudScreen12111 extends Screen {
     }
 
     @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (ui.mouseScrolled(mouseX, mouseY, verticalAmount, Minecraft.getInstance().hasControlDown() ? 2 : 0)) {
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
+    }
+
+    @Override
     public boolean keyPressed(KeyEvent event) {
         if (ui.keyPressed(event.key(), event.modifiers())) {
             return true;

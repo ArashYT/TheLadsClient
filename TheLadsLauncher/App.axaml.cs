@@ -17,6 +17,7 @@ public partial class App : Application
     {
         // Before any window: every TextBlock remembers its English text for Settings → Language.
         Services.LauncherTranslator.Install();
+        Controls.SmoothScroll.Install(); // eased wheel scrolling in every ScrollViewer
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             // The preview exercises the real splash without loading accounts or starting Java.

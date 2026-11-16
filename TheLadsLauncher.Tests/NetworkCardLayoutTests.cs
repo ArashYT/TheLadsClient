@@ -37,11 +37,16 @@ public class NetworkCardLayoutTests
         Assert.NotNull(bannerGrid);
         Assert.Equal("Grid", bannerGrid!.Name.LocalName);
 
-        var cols = ((string?)bannerGrid.Attribute("ColumnDefinitions") ?? "").Split(',');
-        Assert.Equal(3, cols.Length);
-        Assert.Equal("*", cols[0].Trim());
-        Assert.True(int.TryParse(cols[1].Trim(), out int imageColWidth) && imageColWidth >= 180 && imageColWidth <= 260,
-            $"Expected fixed artwork column width, got '{cols[1]}'");
+        // Title column and artwork column both grow with the banner; each keeps a minimum so nothing overlaps at the smallest window.
+        var cols = bannerGrid.Element(bannerGrid.Name.Namespace + "Grid.ColumnDefinitions")!.Elements().ToList();
+        Assert.Equal(3, cols.Count);
+        Assert.Equal(new[] { "*", "2*", "Auto" }, cols.Select(c => (string?)c.Attribute("Width")).ToArray());
+        int titleMin = int.Parse((string?)cols[0].Attribute("MinWidth")!);
+        int imageColWidth = int.Parse((string?)cols[1].Attribute("MinWidth")!);
+        Assert.InRange(imageColWidth, 180, 260);
+        Assert.InRange(titleMin, 280, 400);
+        Assert.Equal("Center", (string?)artworkBrush.Attribute("AlignmentX"));
+        Assert.Equal("Top", (string?)artworkBrush.Attribute("AlignmentY")); // her face stays in view when the banner is wide or tall
 
         // Nothing else in the banner grid may share Grid.Column="1" or span across it over artwork.jpg.
         var childrenInArtColumn = bannerGrid.Elements()
@@ -69,6 +74,6 @@ public class NetworkCardLayoutTests
         // Verify minimum-window-width budget (960 window - 184 sidebar - 56 page margin - 2 border = 718 inner px).
         int minBtnWidth = int.TryParse((string?)playBtn.Attribute("MinWidth"), out int bw) ? bw : 200;
         int remainingHeroWidth = 718 - imageColWidth - (minBtnWidth + 28);
-        Assert.True(remainingHeroWidth >= 290, $"Remaining hero title width at 960px window too tight: {remainingHeroWidth}px");
+        Assert.True(remainingHeroWidth >= titleMin, $"Remaining hero title width at 960px window too tight: {remainingHeroWidth}px");
     }
 }

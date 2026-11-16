@@ -43,6 +43,13 @@ final class HudLayoutQa1201 implements HudLayoutQa.Driver {
                 if (com.thelads.core.client.hud.BgShadowQa.failed() > 0) throw new IllegalStateException(com.thelads.core.client.hud.BgShadowQa.failed() + " Backgrounds/Text Shadow checks failed (Lads hud layout FAILED)");
                 return true;
             });
+        // "hudedit": the HUD editor's wheel and drags at several window sizes (HudEditorQa).
+        if (Boolean.getBoolean("thelads.verifyAutoWorld") || System.getProperty("thelads.qaScript") != null)
+            QaProbe1201.registerStep("hudedit", args -> {
+                if (!com.thelads.core.client.hud.HudEditorQa.tick(DRIVER)) return false;
+                if (com.thelads.core.client.hud.HudEditorQa.failed() > 0) throw new IllegalStateException(com.thelads.core.client.hud.HudEditorQa.failed() + " HUD editor checks failed (Lads hud layout FAILED)");
+                return true;
+            });
         // "hudcover": the 1.9.0 HUD cover sequence (HudCoverQa).
         if (Boolean.getBoolean("thelads.verifyAutoWorld") || System.getProperty("thelads.qaScript") != null)
             QaProbe1201.registerStep("hudcover", args -> {
@@ -89,6 +96,10 @@ final class HudLayoutQa1201 implements HudLayoutQa.Driver {
                 throw new java.io.UncheckedIOException("shot " + name, failure);
             }
         });
+    }
+
+    @Override public boolean scroll(double x, double y, double amount) {
+        return Minecraft.getInstance().screen instanceof DraggableHudScreen1201 screen && screen.mouseScrolled(x, y, amount);
     }
 
     @Override public void openEditor() { Minecraft.getInstance().setScreen(new DraggableHudScreen1201(null)); }

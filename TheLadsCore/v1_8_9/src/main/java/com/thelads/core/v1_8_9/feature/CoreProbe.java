@@ -179,6 +179,9 @@ public final class CoreProbe {
         } else if ("hudlayout".equals(only)) { // 1.9.0 HUD layout across GUI scales, docked HUDs, the hotbar snap (HudLayoutProbe189)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, HudLayoutProbe189::run));
+        } else if ("hudedit".equals(only)) { // the HUD editor's wheel and drags at several window sizes (HudEditorQa through HudLayoutProbe189), without the title layout checks
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::quickWorld, CoreProbe::worldReady, HudLayoutProbe189::run));
         } else if ("skin".equals(only)) { // 1.9.1 Skin Customization and Skin changer: from the title screen, then from the pause menu (Probe191Skin)
             STEPS.clear();
             STEPS.add(CoreProbe::titleShown);

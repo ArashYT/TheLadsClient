@@ -14,7 +14,8 @@ public partial class MainWindow
         Path.Combine(PathService.Instance.BaseDirectory, "settings.json"));
 
     /// <summary>Called once at start: settings an in-game import left waiting, on every activation (the launcher coming back when the game
-    /// closes); and the offer, once ever, on the first launch that finds another client.</summary>
+    /// closes). The launcher never offers the import by itself (1.13.24): it opens only from the Import button (Settings → General,
+    /// Import) or the command palette.</summary>
     private void InitClientImport(string[] args)
     {
         Activated += (_, _) =>
@@ -23,13 +24,6 @@ public partial class MainWindow
             settings.Save();
             RefreshImportedSettings();
         };
-        if (settings.ClientImportOfferShown || args.Any(a => a.StartsWith("--preview-", StringComparison.Ordinal))) return;
-        Opened += (_, _) => Dispatcher.UIThread.Post(() =>
-        {
-            settings.ClientImportOfferShown = true;
-            settings.Save();
-            if (ClientImport.Detect(ImportEnvironment.Current).Count > 0) OpenClientImport();
-        });
     }
 
     private void ClientImport_Click(object? sender, RoutedEventArgs e) => OpenClientImport();

@@ -43,7 +43,43 @@ public class VersionAndInstallationTests
         Assert.Equal("custom", service.GetActiveProfile().Id);
         Assert.Equal(oldGame, service.GetProfile("custom")!.CustomGameDir);
         Assert.Contains(service.GetProfiles(), p => p.MinecraftVersion == "1.21.11" && p.JavaMajorVersion == 21);
-        Assert.Contains(service.GetProfiles(), p => p.MinecraftVersion == "26.2" && p.JavaMajorVersion == 25);
+        Assert.DoesNotContain(service.GetProfiles(), p => p.MinecraftVersion == "26.2"); // the built-in 26.2 entry is retired
+    }
+
+    [Fact]
+    public void BuiltInProfilesFor262And12111AreNotListedAndAPlayerOnOneLandsOn263()
+    {
+        using var dir = new TestDirectory();
+        var saved = new[] {
+            new LauncherProfile { Id = "26.2", Name = "The Lads Client 26.2", MinecraftVersion = "26.2", FabricVersion = "0.19.5", JavaMajorVersion = 25 },
+            new LauncherProfile { Id = "1.21.11", Name = "The Lads Client 1.21.11 (Legacy)", MinecraftVersion = "1.21.11", FabricVersion = "0.19.5", JavaMajorVersion = 21 },
+            new LauncherProfile { Id = "26.3", MinecraftVersion = "26.3", FabricVersion = "0.19.5", JavaMajorVersion = 25 },
+        };
+        File.WriteAllText(Path.Combine(dir.Path, "profiles.json"), JsonSerializer.Serialize(new { ActiveProfileId = "1.21.11", Profiles = saved }));
+        var paths = new PathService(dir.Path);
+        string gameFolder = paths.GetProfileDirectory(saved[1]);
+        Directory.CreateDirectory(gameFolder);
+        File.WriteAllText(Path.Combine(gameFolder, "options.txt"), "fov:0.5\n");
+
+        var service = new ProfileService(paths, new SharedContentService(Path.Combine(dir.Path, "global")));
+        Assert.DoesNotContain(service.GetProfiles(), p => p.MinecraftVersion is "26.2" or "1.21.11");
+        Assert.Equal("26.3", service.GetActiveProfile().Id);
+        Assert.Equal("fov:0.5\n", File.ReadAllText(Path.Combine(gameFolder, "options.txt"))); // the game folder is left alone
+        // Kept in profiles.json's dropped list, not deleted, and not brought back by a second start.
+        using var json = JsonDocument.Parse(File.ReadAllText(Path.Combine(dir.Path, "profiles.json")));
+        Assert.Equal(2, json.RootElement.GetProperty("DroppedProfiles").GetArrayLength());
+        var again = new ProfileService(paths, new SharedContentService(Path.Combine(dir.Path, "global")));
+        Assert.DoesNotContain(again.GetProfiles(), p => p.MinecraftVersion is "26.2" or "1.21.11");
+        Assert.Equal(2, JsonDocument.Parse(File.ReadAllText(Path.Combine(dir.Path, "profiles.json"))).RootElement.GetProperty("DroppedProfiles").GetArrayLength());
+    }
+
+    [Fact]
+    public void FreshInstallHasNoBuiltInProfilesFor262And12111()
+    {
+        using var dir = new TestDirectory();
+        var service = new ProfileService(new PathService(dir.Path), new SharedContentService(Path.Combine(dir.Path, "global")));
+        Assert.Equal(new[] { "26.3", "1.20.1", "1.8.9" }, service.GetProfiles().Select(p => p.MinecraftVersion).ToArray());
+        Assert.Equal("26.3", service.GetActiveProfile().Id);
     }
 
     [Theory]
@@ -141,7 +177,7 @@ public class VersionAndInstallationTests
         File.WriteAllText(Path.Combine(dir.Path, "profiles.json"),
             JsonSerializer.Serialize(new { ActiveProfileId = "1.21.11", Profiles = saved }));
         var service = new ProfileService(new PathService(dir.Path), new SharedContentService(Path.Combine(dir.Path, "global")));
-        Assert.Equal(5, service.GetProfiles().Count); // the two saved ones plus the 26.3, 1.20.1 and 1.8.9 defaults
+        Assert.Equal(5, service.GetProfiles().Count); // the two saved ones (own game folders, so not retired) plus the 26.3, 1.20.1 and 1.8.9 defaults
         Assert.Equal("existing-world", service.GetProfile("1.21.11")!.CustomGameDir);
         Assert.Equal(saved[0].FabricVersion, service.GetProfile("1.21.11")!.FabricVersion);
         Assert.Equal(saved[1].FabricVersion, service.GetProfile("26.2")!.FabricVersion);

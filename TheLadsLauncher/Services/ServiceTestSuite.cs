@@ -78,17 +78,8 @@ public static class ServiceTestSuite
             if (profiles.Count == 0)
                 throw new Exception("No profiles returned by ProfileService");
 
-            var mc121 = profiles.FirstOrDefault(p => p.MinecraftVersion == "1.21.11");
-            if (mc121 == null)
-                throw new Exception("1.21.11 default profile not found");
-            if (mc121.JavaMajorVersion != 21)
-                throw new Exception($"Expected Java 21 for 1.21.11, got {mc121.JavaMajorVersion}");
-
-            var mc262 = profiles.FirstOrDefault(p => p.MinecraftVersion == "26.2");
-            if (mc262 == null)
-                throw new Exception("26.2 default profile not found");
-            if (mc262.JavaMajorVersion != 25)
-                throw new Exception($"Expected Java 25 for 26.2, got {mc262.JavaMajorVersion}");
+            if (profiles.Any(p => p.MinecraftVersion is "1.21.11" or "26.2"))
+                throw new Exception("the retired 1.21.11 / 26.2 built-in profiles are listed");
 
             // Create custom profile
             string customName = $"Test_Profile_{Guid.NewGuid():N}";
@@ -102,7 +93,7 @@ public static class ServiceTestSuite
                 throw new Exception("SetActiveProfile failed");
 
             // Clean up
-            profileService.SetActiveProfile(mc121.Id);
+            profileService.SetActiveProfile(profiles.First(p => p.MinecraftVersion == "26.3").Id);
             bool deleted = profileService.DeleteProfile(created.Id);
             if (!deleted)
                 throw new Exception("DeleteProfile returned false");

@@ -20,7 +20,9 @@ import org.slf4j.LoggerFactory;
  */
 final class HudLayoutCapture implements HudLayoutQa.Driver {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
-    private static final HudLayoutCapture DRIVER = new HudLayoutCapture();
+    static final HudLayoutCapture DRIVER = new HudLayoutCapture();
+    /** The QA script's "hudedit" step runs the sequence: its shots are taken at once, as the script's own (QaProbe26.shot). */
+    static boolean scriptShots;
     private static boolean started, done;
     private static String pending;
     /** The pending shot is written off the game thread. */
@@ -48,7 +50,9 @@ final class HudLayoutCapture implements HudLayoutQa.Driver {
         // LADS_QA_HUDTEXT=1: the 1.9.1 HUD text sequence (HudTextQa).
         // LADS_QA_F3_1911=1: the 1.9.11 Better F3 sequence (BetterF3Qa).
         // LADS_QA_BGSHADOW=1: the 1.9.11 Backgrounds / Text Shadow buttons (BgShadowQa).
-        done = com.thelads.core.client.hud.BgShadowQa.wanted() ? com.thelads.core.client.hud.BgShadowQa.tick(DRIVER)
+        // LADS_QA_HUDEDIT=1: the HUD editor's wheel and drags at several window sizes (HudEditorQa).
+        done = com.thelads.core.client.hud.HudEditorQa.wanted() ? com.thelads.core.client.hud.HudEditorQa.tick(DRIVER)
+            : com.thelads.core.client.hud.BgShadowQa.wanted() ? com.thelads.core.client.hud.BgShadowQa.tick(DRIVER)
             : com.thelads.core.client.hud.BetterF3Qa.wanted() ? com.thelads.core.client.hud.BetterF3Qa.tick(DRIVER)
             : HudTextQa.wanted() ? HudTextQa.tick(DRIVER) : HudCoverQa.wanted() ? HudCoverQa.tick(DRIVER) : HudLayoutQa.tick(DRIVER);
     }
@@ -98,9 +102,36 @@ final class HudLayoutCapture implements HudLayoutQa.Driver {
 
     @Override public void effect(String name, int id) { command(name == null ? "effect clear @a" : "effect give @a minecraft:" + name + " 300 0 true"); }
 
-    @Override public void shot(String name) { pending = name; }
+    @Override public void shot(String name) {
+        if (!scriptShots) { pending = name; return; }
+        try { QaProbe26.shot(Minecraft.getInstance(), name); } catch (java.io.IOException failure) { throw new IllegalStateException("shot " + name, failure); }
+    }
 
     @Override public void quickShot(String name) { pending = name; quick = true; }
+
+    @Override public boolean scroll(double x, double y, double amount) {
+        return Minecraft.getInstance().gui.screen() instanceof DraggableHudScreen26 screen && screen.mouseScrolled(x, y, 0, amount);
+    }
+
+    /** Left Control pressed through the game's KeyboardHandler; Minecraft.hasControlDown() (what the screen asks) must then say so, else false. */
+    @Override public boolean scrollControl(double x, double y, double amount) {
+        Minecraft mc = Minecraft.getInstance();
+        if (!(mc.gui.screen() instanceof DraggableHudScreen26 screen)) return false;
+        try {
+            var dispatch = net.minecraft.client.KeyboardHandler.class.getDeclaredMethod("keyPress", long.class, int.class, net.minecraft.client.input.KeyEvent.class);
+            dispatch.setAccessible(true);
+            var control = new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_LCONTROL, 224, com.mojang.blaze3d.platform.InputConstants.MOD_CONTROL);
+            dispatch.invoke(mc.keyboardHandler, mc.getWindow().handle(), com.mojang.blaze3d.platform.InputConstants.PRESS, control);
+            try {
+                if (!mc.hasControlDown()) return false;
+                return screen.mouseScrolled(x, y, 0, amount);
+            } finally {
+                dispatch.invoke(mc.keyboardHandler, mc.getWindow().handle(), com.mojang.blaze3d.platform.InputConstants.RELEASE, control);
+            }
+        } catch (ReflectiveOperationException failure) {
+            return false;
+        }
+    }
 
     @Override public void openEditor() {
         editor = new DraggableHudScreen();

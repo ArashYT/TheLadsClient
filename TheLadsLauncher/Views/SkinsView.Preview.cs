@@ -41,10 +41,15 @@ public partial class SkinsView
             Check(_profile?.Capes.Count == 2 && CapeList.ItemCount == 3, "profile read: No cape + 2 owned capes listed");
             Check(fake.Requests[0] == "GET /minecraft/profile" && fake.Requests.All(r => r.StartsWith("GET ")), "opening the tab only reads (nothing uploaded)");
             await Task.Delay(500);
+            Check(Library.Skins.Count(k => k.Name == "PreviewLad (active skin)") == 1 && Library.Skins.Count == 3, "the account's active skin was saved to the library once");
+            Check(Library.Find(_activeSkinId ?? "")?.Name == "PreviewLad (active skin)" && Selected?.Id == _activeSkinId, "the active skin is marked and selected when the tab opens");
+            Check(DetailScroll.Offset.Y == 0, "the tab opens scrolled to the top");
             screenshot(Path.Combine(output, "skins-tab.png"));
 
             Select(red.Id);
             await ApplySkinAsync();
+            await Task.Delay(400);
+            Check(Library.Skins.Count == 3 && _activeSkinId == red.Id, "applying a library skin makes it the active one without a duplicate (same pixels)");
             Check(fake.LastService == $"POST /minecraft/profile/skins variant=classic file=skin.png image/png {File.ReadAllBytes(Library.PathOf(red)).Length} bytes", "Apply skin uploads multipart variant + PNG");
             Check(fake.SkinVariant == "classic" && Status.Text!.Contains("applied"), "skin applied");
 

@@ -32,6 +32,8 @@ public partial class SkinsView : UserControl
     private Func<CancellationToken, Task<string>>? _microsoftToken;
     private MinecraftProfile? _profile;
     private bool _busy, _rendering;
+    private string? _activeSkinId; // the library entry that is the account's skin on Mojang right now
+    private bool _userPicked;      // the player chose a skin since the tab opened: the active skin no longer takes the selection
 
     /// <summary>A skin reached the account (account, skin PNG): the launcher's other player heads show it at once.</summary>
     public event Action<string, byte[]>? SkinApplied;
@@ -65,8 +67,26 @@ public partial class SkinsView : UserControl
         AccountText.Text = account.Length == 0 ? "No account yet: add one in Accounts to apply skins. You can still build your library."
             : microsoftToken != null ? $"Applying to {account} (Microsoft account). Change the main account in Accounts."
             : $"Applying to {account} (local account): Apply saves the launcher's skin.png, which the game shows when you play offline.";
+        _userPicked = false;
         RenderLibrary(Selected?.Id);
+        ScrollToTop();
         if (changed || (_profile == null && microsoftToken != null)) await LoadAccountAsync();
+        else if (microsoftToken != null) await RefreshActiveAsync(); // the skin may have changed elsewhere since the last visit
+        ScrollToTop();
+    }
+
+    /// <summary>The detail column always opens at its top, whatever the last visit or the selected skin left it at.</summary>
+    internal void ScrollToTop()
+    {
+        DetailScroll.Offset = default;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => DetailScroll.Offset = default, Avalonia.Threading.DispatcherPriority.Background);
+    }
+
+    /// <summary>Re-reads the profile without the busy status: a failure (rate limit, no network) keeps what is shown.</summary>
+    private async Task RefreshActiveAsync()
+    {
+        try { SetProfile(await ReadProfileAsync(await TokenAsync())); }
+        catch (Exception e) when (e is MinecraftSkinApiException or HttpRequestException or TaskCanceledException) { }
     }
 
     private async Task LoadAccountAsync()
@@ -98,6 +118,7 @@ public partial class SkinsView : UserControl
             var text = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
             text.Children.Add(new TextBlock { Text = skin.Name, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 170 }.Untranslated());
             text.Children.Add(new TextBlock { Text = skin.Model == "slim" ? "Slim" : "Classic", FontSize = 11, Foreground = Muted });
+            if (skin.Id == _activeSkinId) text.Children.Add(new TextBlock { Text = "ACTIVE ON YOUR ACCOUNT", Classes = { "caption" }, FontSize = 8, Foreground = Brush.Parse("#50C878") });
             var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
             row.Children.Add(Preview(skin, skin.Model, 1.5));
             row.Children.Add(text);
@@ -155,7 +176,7 @@ public partial class SkinsView : UserControl
         }
     }
 
-    private void SkinList_SelectionChanged(object? sender, SelectionChangedEventArgs e) { if (!_rendering) ShowSelected(); }
+    private void SkinList_SelectionChanged(object? sender, SelectionChangedEventArgs e) { if (_rendering) return; _userPicked = true; ShowSelected(); }
 
     private void SkinName_LostFocus(object? sender, RoutedEventArgs e)
     {
@@ -367,6 +388,45 @@ public partial class SkinsView : UserControl
         _profile = profile;
         RenderCapes();
         _ = ShowCurrentAsync(profile);
+        _ = SaveActiveSkinAsync(profile);
+    }
+
+    /// <summary>The skin Mojang has for the account right now goes into the library when no entry has the same pixels (a default skin has
+    /// no file; an HD or odd-sized one is not a library skin). It is marked active and, until the player picks another, selected.</summary>
+    private async Task SaveActiveSkinAsync(MinecraftProfile profile)
+    {
+        if (string.IsNullOrEmpty(profile.SkinUrl)) return;
+        try
+        {
+            byte[] png = await MinecraftSkinApi.DownloadPngAsync(_http, MinecraftSkinApi.Https(profile.SkinUrl), default);
+            if (_profile != profile) return;
+            var (skin, added) = Library.AddIfNew(png, $"{profile.Name} (active skin)", profile.SkinModel, PixelHash);
+            _activeSkinId = skin.Id;
+            RenderLibrary(_userPicked ? Selected?.Id : skin.Id);
+            if (added) Status.Text = $"Saved your active skin to the library as {skin.Name}.";
+        }
+        catch (Exception e) when (e is MinecraftSkinApiException or HttpRequestException or TaskCanceledException or InvalidDataException or IOException or UnauthorizedAccessException) { }
+    }
+
+    /// <summary>Hash of the decoded pixels: Mojang may re-encode an uploaded skin, so the bytes alone would miss a skin that is already saved.</summary>
+    private static string PixelHash(byte[] png)
+    {
+        try
+        {
+            using var bitmap = Decode(png);
+            if (TheLadsLauncher.Controls.SkinModel3D.ReadPixels(bitmap) is { } image)
+            {
+                var bytes = new byte[image.Pixels.Length * 4];
+                for (int i = 0; i < image.Pixels.Length; i++)
+                {
+                    uint p = (image.Pixels[i] >> 24) == 0 ? 0 : image.Pixels[i]; // a fully transparent pixel's colour is noise
+                    BitConverter.TryWriteBytes(bytes.AsSpan(i * 4), p);
+                }
+                return $"{image.Width}x{image.Height}:" + SkinLibrary.Sha256(bytes);
+            }
+        }
+        catch (Exception e) when (e is ArgumentException or InvalidOperationException or IOException) { }
+        return SkinLibrary.Sha256(png);
     }
 
     private async Task ShowCurrentAsync(MinecraftProfile profile)

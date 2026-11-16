@@ -1,0 +1,43 @@
+{
+  "packId": "lads-smp-reborn-26.3",
+  "version": "0.5.3",
+  "description": "New worlds no longer freeze after the first chunks (AntiXray is off in your own worlds), creating and joining a world freezes the window far less and the loading screen keeps painting (Lads SMP 0.3.4)",
+  "mods": {
+    "add": [
+      {
+        "fileName": "ladssmp-0.3.4.jar",
+        "url": "https://bot.arashyt.ca/packs/ladssmp-0.3.4.jar.zip",
+        "sha1": "debaad0638ec725c835740d07083d1c4814b4ea6",
+        "sha512": "d59eddf11eec57f430dffb81cd4833fe8b987fff12c94659341d2fc979cc641aa55da64771cd45cdf6a10accc67212bd54af5f04ba014c1c911070216027b0ab"
+      }
+    ],
+    "remove": [
+      "ladssmp-0.3.1.jar"
+    ]
+  },
+  "keybinds": {
+    "defaults": {},
+    "force": {}
+  },
+  "configPatches": [
+    {
+      "file": "config/antixray.toml",
+      "format": "toml",
+      "keyValues": {
+        "overworld.enabled": "false",
+        "overworld.engineMode": "3",
+        "overworld.maxBlockHeight": "256",
+        "overworld.updateRadius": "2",
+        "overworld.lavaObscures": "false",
+        "overworld.hiddenBlocks": "[\"#c:ores\", \"raw_copper_block\", \"raw_iron_block\", \"raw_gold_block\", \"!#antixray:hidden_only_ores\"]",
+        "overworld.replacementBlocks": "[\"#antixray:hidden_only_ores\", \"stone\", \"deepslate\", \"andesite\", \"calcite\", \"diorite\", \"dirt\", \"granite\", \"gravel\", \"sand\", \"tuff\", \"mossy_cobblestone\", \"obsidian\", \"clay\", \"infested_stone\", \"amethyst_block\", \"budding_amethyst\", \"chest\"]",
+        "the_nether.enabled": "false",
+        "the_nether.engineMode": "1",
+        "the_nether.maxBlockHeight": "128",
+        "the_nether.updateRadius": "2",
+        "the_nether.lavaObscures": "true",
+        "the_nether.hiddenBlocks": "[\"ancient_debris\", \"nether_quartz_ore\", \"nether_gold_ore\", \"gold_block\", \"gilded_blackstone\"]"
+      }
+    }
+  ]
+}
