@@ -37,14 +37,15 @@ public class NetworkCardLayoutTests
         Assert.NotNull(bannerGrid);
         Assert.Equal("Grid", bannerGrid!.Name.LocalName);
 
-        // Title column and artwork column both grow with the banner; each keeps a minimum so nothing overlaps at the smallest window.
+        // Compact banner: title column grows, the artwork column has a fixed width, so nothing overlaps at the smallest window.
         var cols = bannerGrid.Element(bannerGrid.Name.Namespace + "Grid.ColumnDefinitions")!.Elements().ToList();
         Assert.Equal(3, cols.Count);
-        Assert.Equal(new[] { "*", "2*", "Auto" }, cols.Select(c => (string?)c.Attribute("Width")).ToArray());
+        Assert.Equal(new[] { "*", "196", "Auto" }, cols.Select(c => (string?)c.Attribute("Width")).ToArray());
         int titleMin = int.Parse((string?)cols[0].Attribute("MinWidth")!);
-        int imageColWidth = int.Parse((string?)cols[1].Attribute("MinWidth")!);
+        int imageColWidth = int.Parse((string?)cols[1].Attribute("Width")!);
+        Assert.Equal("140", (string?)artworkBorder.Ancestors().First(e => e.Name.LocalName == "Border").Attribute("Height")); // banner stays compact at the top
         Assert.InRange(imageColWidth, 180, 260);
-        Assert.InRange(titleMin, 280, 400);
+        Assert.InRange(titleMin, 240, 400); // "THE LADS CLIENT." at 30 px fits in 250
         Assert.Equal("Center", (string?)artworkBrush.Attribute("AlignmentX"));
         Assert.Equal("Top", (string?)artworkBrush.Attribute("AlignmentY")); // her face stays in view when the banner is wide or tall
 

@@ -195,13 +195,13 @@
                                 <TextBlock x:Name="MinecraftVersionText" Text="Minecraft" Foreground="#B8B9C2" FontSize="11" />
                             </Border>
                         </Grid>
-                        <Grid x:Name="PlayStandardPanel" Grid.Row="1" RowDefinitions="*,Auto">
-                            <Border Grid.Row="0" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" ClipToBounds="True" MinHeight="140">
-                                <!-- Hero title on the left; artwork column that grows with the banner, then the network card (zero overlap). -->
+                        <Grid x:Name="PlayStandardPanel" Grid.Row="1" RowDefinitions="Auto,*,Auto">
+                            <Border Grid.Row="0" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" ClipToBounds="True" Height="140">
+                                <!-- Compact banner at the top (1.13.25): hero title on the left, fixed-width artwork, then the network card (zero overlap). The middle of the page stays empty for now; the launch row sits at the bottom. -->
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" MinWidth="290" />
-                                        <ColumnDefinition Width="2*" MinWidth="196" />
+                                        <ColumnDefinition Width="*" MinWidth="250" />
+                                        <ColumnDefinition Width="196" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <Canvas x:Name="ParticleCanvas" Grid.Column="0" IsHitTestVisible="False" Opacity="0.10" />
@@ -213,7 +213,7 @@
                                         <TextBlock Text="THE LADS CLIENT." FontFamily="Bahnschrift SemiCondensed,Inter" FontSize="30" FontWeight="Bold" LetterSpacing="-0.5" />
                                         <TextBlock Text="Your worlds. Your mods. Your people." Foreground="#999BA5" FontSize="13" />
                                     </StackPanel>
-                                    <!-- Artwork column (grows with the banner) with nothing overlapping the image. -->
+                                    <!-- Fixed-width artwork column with nothing overlapping the image. -->
                                     <Border Grid.Column="1" BorderBrush="#303137" BorderThickness="1,0,1,0" ClipToBounds="True" IsHitTestVisible="False">
                                         <Border.Background>
                                             <ImageBrush Source="avares://TheLadsLauncher/Assets/artwork.jpg" Stretch="UniformToFill" AlignmentX="Center" AlignmentY="Top" />
@@ -233,7 +233,7 @@
                                     </Border>
                                 </Grid>
                             </Border>
-                            <Border Grid.Row="1" Margin="0,14,0,0" BorderBrush="#303137" BorderThickness="0,1,0,1" Padding="0,16,0,14">
+                            <Border Grid.Row="2" Margin="0,14,0,0" BorderBrush="#303137" BorderThickness="0,1,0,1" Padding="0,16,0,14">
                                 <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,*,220">
                                     <TextBlock Text="PROFILE" Classes="caption" Margin="0,0,0,7" />
                                     <TextBlock Grid.Column="1" Text="PLAYING AS" Classes="caption" Margin="0,0,0,7" />

@@ -5146,6 +5146,10 @@ public partial class MainWindow : Window
 
             StatusText.Text = "Initializing...";
             Log("[Launcher] Starting launch sequence...");
+            // Where a launch spends its time before the game process starts (one line per step in launcher_debug.txt).
+            var launchClock = System.Diagnostics.Stopwatch.StartNew();
+            long lastMark = 0;
+            void Mark(string step) { long now = launchClock.ElapsedMilliseconds; Log($"[Launch timing] {step}: {now - lastMark} ms (total {now} ms)"); lastMark = now; }
 
             var activeProfile = _profileService.GetActiveProfile();
             string gameDirectory = _pathService.GetProfileDirectory(activeProfile);
@@ -5157,6 +5161,7 @@ public partial class MainWindow : Window
             if (await PrepareSharedContentForLaunchAsync(activeProfile, gameDirectory, token) is not { } prepared) return;
             // The server list was prepared for this LadsCore state (Core reads the shared list, a profile without it gets a copy).
             bool coreRequested = SharedContentService.IsCoreRequested(gameDirectory, out _);
+            Mark("shared content");
             settings.InstancePath = gameDirectory;
 
             var path = new MinecraftPath(gameDirectory);
@@ -5278,6 +5283,7 @@ public partial class MainWindow : Window
             GameLaunchStatusText.Text = $"Welcome, {session.Username}!";
             Log($"[Auth] Logged in as {session.Username}");
 
+            Mark("account");
             Log($"[Launcher] Building process for {launchVersionId}...");
 
             // QuickLaunch: skip asset verification for a faster startup.
@@ -5329,12 +5335,16 @@ public partial class MainWindow : Window
                 await LaunchHorizonAsync(launcher, gameDirectory, launchOpt.JavaPath, session, isOffline, token);
                 return;
             }
+            Mark("java");
             await RunPackwizInstaller(activeProfile, launchOpt.JavaPath, token);
             await GraphicsRenderer.PrepareAsync(gameDirectory, activeProfile.MinecraftVersion, GraphicsRenderer.Preference(gameDirectory, settings.GraphicsRenderer), message => Dispatcher.UIThread.Post(() => StatusText.Text = message), token);
+            Mark("packwiz + renderer");
             await BundledModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, activeProfile.MinecraftVersion, token);
+            Mark("bundled mods");
             // Without a loader (Fabric, or Forge on 1.8.9) nothing in Mods loads, as in LaunchService: no choices to apply.
             bool forge = GameVersionPolicy.UsesForge(activeProfile.MinecraftVersion);
             if ((forge || !string.IsNullOrWhiteSpace(activeProfile.FabricVersion)) && !await InstallClientModsAsync(gameDirectory, activeProfile.MinecraftVersion, token, settings.OptiFinePackRenderer)) return;
+            Mark("client mods");
             // OptiFine is downloaded from optifine.net and verified; if that fails the game starts without it (warned below).
             string? optiFineWarning = forge ? await Task.Run(() => OptiFineInstaller.InstallAsync(_pathService.BaseDirectory, gameDirectory,
                 status: message => Dispatcher.UIThread.Post(() => GameLaunchStatusText.Text = message), cancellationToken: token)) : null;
@@ -5346,6 +5356,7 @@ public partial class MainWindow : Window
             GameLaunchStatusText.Text = "Checking mods...";
             var launchInventory = await _modInventoryService.BuildAsync(AppContext.BaseDirectory, gameDirectory, activeProfile.MinecraftVersion, token);
             await _modInventoryService.WriteSnapshotAsync(launchInventory, token);
+            Mark("mod inventory");
             // ModSync: the player's own jars, listed for friends who join their world. A request nobody took is dropped.
             ModSyncService.DropRelaunch(gameDirectory);
             if (!forge)
@@ -5354,6 +5365,7 @@ public partial class MainWindow : Window
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Log($"[Launcher] ModSync: the mod list was not written ({ex.Message})."); }
             }
             var loadedMods = ModInventoryView.EnabledJarIds(launchInventory);
+            Mark("modsync list");
 
             // A renderer relaunch goes back where the player was (a world, a server or the title screen) instead.
             if (relaunch?.World is { } world) ModpackLauncher.JoinWorld(launchOpt, world);
@@ -5446,6 +5458,7 @@ public partial class MainWindow : Window
                 await File.WriteAllTextAsync(installedMarker, DateTimeOffset.UtcNow.ToString("O"), token);
             }
 
+            Mark(settings.QuickLaunch ? "quick build" : "verify + build");
             LaunchService.MarkCachedNativesReady(path, launchVersionId);
 
             // The last point a cancel stops the launch (steps without a token, like the Fabric install, end here). Nothing
@@ -5504,6 +5517,7 @@ public partial class MainWindow : Window
             }
 
             GameLaunchStatusText.Text = "Launching game...";
+            Mark("start prep");
             Log("[Launcher] Starting game process...");
             PrepareVersionSwitch(gameDirectory, activeProfile.MinecraftVersion);
             PrepareAccountSwitch(gameDirectory);
