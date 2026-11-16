@@ -113,6 +113,26 @@ final class HudLayoutCapture implements HudLayoutQa.Driver {
         return Minecraft.getInstance().gui.screen() instanceof DraggableHudScreen26 screen && screen.mouseScrolled(x, y, 0, amount);
     }
 
+    /** Left Control pressed through the game's KeyboardHandler; Minecraft.hasControlDown() (what the screen asks) must then say so, else false. */
+    @Override public boolean scrollControl(double x, double y, double amount) {
+        Minecraft mc = Minecraft.getInstance();
+        if (!(mc.gui.screen() instanceof DraggableHudScreen26 screen)) return false;
+        try {
+            var dispatch = net.minecraft.client.KeyboardHandler.class.getDeclaredMethod("keyPress", long.class, int.class, net.minecraft.client.input.KeyEvent.class);
+            dispatch.setAccessible(true);
+            var control = new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_LCONTROL, 224, com.mojang.blaze3d.platform.InputConstants.MOD_CONTROL);
+            dispatch.invoke(mc.keyboardHandler, mc.getWindow().handle(), com.mojang.blaze3d.platform.InputConstants.PRESS, control);
+            try {
+                if (!mc.hasControlDown()) return false;
+                return screen.mouseScrolled(x, y, 0, amount);
+            } finally {
+                dispatch.invoke(mc.keyboardHandler, mc.getWindow().handle(), com.mojang.blaze3d.platform.InputConstants.RELEASE, control);
+            }
+        } catch (ReflectiveOperationException failure) {
+            return false;
+        }
+    }
+
     @Override public void openEditor() {
         editor = new DraggableHudScreen();
         Minecraft.getInstance().setScreenAndShow(new DraggableHudScreen26(null, editor));

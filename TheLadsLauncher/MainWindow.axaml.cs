@@ -344,6 +344,8 @@ public partial class MainWindow : Window
                 Program.InitialDeepLink = null;
                 _ = HandleDeepLinkAsync(initial);
             }
+            int experienceUpdate = Array.IndexOf(args, "--preview-experience-update");
+            if (experienceUpdate >= 0 && experienceUpdate + 1 < args.Length) { await RunExperienceUpdatePreviewAsync(Path.GetFullPath(args[experienceUpdate + 1]), args.Contains("--start-game")); return; }
             int installingPreview = Array.IndexOf(args, "--preview-installing");
             if (installingPreview >= 0) { await RunInstallingPreviewAsync(Path.GetFullPath(args[installingPreview + 1])); return; }
             int pagePreview = Array.IndexOf(args, "--preview-page");

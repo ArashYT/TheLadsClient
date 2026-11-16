@@ -142,12 +142,12 @@ public class WorldDriver implements ClientModInitializer {
             startServerWatch(srv); srv.execute(() -> cmd(srv, "gamemode creative @a")); dimAt = now; dimStep = 1; log("DIMTEST begin (server stall tracking on)"); return;
         }
         String[] dims = {"minecraft:the_nether", "minecraft:the_end", "minecraft:overworld", "minecraft:the_nether", "minecraft:overworld"};
-        int[] ys = {100, 120, 120, 100, 150};
+        int[] ys = {100, 80, 150, 100, 150};
         int i = (dimStep - 1) / 2;
         if (i >= dims.length) { finish(mc); return; }
         if ((dimStep & 1) == 1) { // issue the teleport
             if (now - dimAt < 8_000_000_000L) return;
-            String d = dims[i]; int y = ys[i]; int x = 40 + 300 * i; // a different, not yet generated spot each time
+            String d = dims[i]; int y = ys[i]; int x = 10 + 8 * i; // a different, not yet generated spot each time
             log("DIMTEST tp into " + d + " at (" + x + "," + y + "," + x + ")");
             srv.execute(() -> cmd(srv, "execute in " + d + " run tp @a " + x + " " + y + " " + x));
             dimAt = now; dimStep++;

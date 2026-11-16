@@ -22,14 +22,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Pseudo
 @Mixin(targets = "org.onenonly.bitsandbalance.fabric.tweaks.FabricImprovedLadders", remap = false)
 public class MixinBitsAndBalanceLaddersLoadedOnly {
-    @Inject(method = "applyImprovedClimbingPre", at = @At("HEAD"), cancellable = true, remap = false, require = 0)
+    @Inject(method = {"applyImprovedClimbingPre", "applyImprovedClimbingPost"}, at = @At("HEAD"), cancellable = true, remap = false, require = 0)
     private static void ladssmp$skipUnloaded(ServerPlayer player, CallbackInfo ci) {
-        if (!player.level().hasChunkAt(player.blockPosition())) ci.cancel();
+        if (!com.thelads.smp.util.LoadedChunks.isLoaded(player.level(), player.blockPosition())) ci.cancel();
     }
 
     @WrapOperation(method = {"isNearClimbable", "findAttachmentDirectionFromChain", "getVineStateForPosition"}, at = @At(value = "INVOKE",
         target = "Lnet/minecraft/world/level/Level;getBlockState(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/state/BlockState;"), remap = false, require = 0)
     private static BlockState ladssmp$loadedOnly(Level level, BlockPos pos, Operation<BlockState> original) {
-        return level.hasChunkAt(pos) ? original.call(level, pos) : Blocks.AIR.defaultBlockState();
+        return com.thelads.smp.util.LoadedChunks.isLoaded(level, pos) ? original.call(level, pos) : Blocks.AIR.defaultBlockState();
     }
 }

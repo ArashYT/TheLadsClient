@@ -33,7 +33,7 @@ public final class HudEditorQa {
     private static final String DEFAULT_SIZES = "1280x720@0,854x480@0,640x400@0";
     private static final List<String> SHOWN = List.of("FPS", "Coordinates", "CPS", "Day", "PingHUD");
     private static final String[] TARGETS = {"top", "topleft", "topright", "bottomleft", "bottomright"};
-    private static int step = -1, wait, passed, skipped;
+    private static int step = -1, wait, passed, skipped, ctrlThroughScreen;
     private static final List<String> FAILURES = new ArrayList<>();
     private static final Deque<Runnable> QUEUE = new ArrayDeque<>();
     private static final Map<String, int[]> POSITIONS_WERE = new HashMap<>();
@@ -108,6 +108,12 @@ public final class HudEditorQa {
             int w = Integer.parseInt(parts[0]), h = Integer.parseInt(parts[1]), gui = parts.length > 2 ? Integer.parseInt(parts[2]) : 0;
             queueSize(w, h, gui);
         }
+        for (Module module : ModuleManager.getInstance().getModules())
+            if (module instanceof com.thelads.core.modules.OptiFine189Module of) { // 1.8.9: a config with no saved choice reads Fast (off)
+                // Only a run that starts from no config file (LADS_QA_FRESH_CONFIG=1) says anything about the default.
+                if ("1".equals(System.getenv("LADS_QA_FRESH_CONFIG"))) expect("1.8.9 Vignette option reads Fast (index 1) with no config file", of.ofVignette.getIndex() == 1, "index " + of.ofVignette.getIndex() + " saved " + of.ofVignette.save());
+                LOGGER.info("Lads hud layout hudedit: Vignette option {} (index {})", of.ofVignette.save(), of.ofVignette.getIndex());
+            }
         LOGGER.info("Lads hud layout BEGIN: hud editor sequence{}", HudAnchors.legacyEditingBlocks ? " (clamp as before 1.13.20)" : "");
     }
 
@@ -256,6 +262,7 @@ public final class HudEditorQa {
     private static void addWheel(List<Runnable> actions, String name) {
         SliderOption size = (SliderOption) ModuleManager.getInstance().getModule(name).getOption("Size");
         addSelect(actions, name);
+        addListWheel(actions, name, size);
         for (Object[] row : new Object[][] {{1.0, false, 125.0, "wheel125"}, {1.0, false, 150.0, "wheel150"}, {-1.0, false, 125.0, null}, {-1.0, false, 100.0, null}, {-1.0, false, 75.0, "wheel75"},
             {1.0, true, 80.0, "ctrl80"}, {1.0, true, 85.0, null}, {-1.0, true, 80.0, null}, {-1.0, true, 75.0, null}}) {
             double amount = (Double) row[0];
@@ -265,7 +272,8 @@ public final class HudEditorQa {
             actions.add(() -> {
                 Rect box = ui.boundsFor(name);
                 double[] at = inside(box);
-                boolean routed = !ctrl && d.scroll(at[0], at[1], amount);
+                boolean routed = ctrl ? d.scrollControl(at[0], at[1], amount) : d.scroll(at[0], at[1], amount);
+                if (ctrl) { LOGGER.info("Lads hud layout hudedit {}: Ctrl+wheel {} the screen's own handler with a held Control key", tag, routed ? "went through" : "could not go through"); if (routed) ctrlThroughScreen++; }
                 if (!routed) ui.mouseScrolled(at[0], at[1], amount, ctrl ? 2 : 0);
                 wait = 4;
             });
@@ -288,6 +296,49 @@ public final class HudEditorQa {
             expect(name + " resized in the corner keeps its corner (" + tag + ")", box.right() == hud.width() && box.bottom() == hud.height(), box + " in " + hud);
         });
         actions.add(() -> { size.setValue(100); wait = 3; });
+    }
+
+    /** With the HUD selected: the wheel over the HUD list scrolls the list and leaves the size; over the preview it changes the size. */
+    private static void addListWheel(List<Runnable> actions, String name, SliderOption size) {
+        double[] before = new double[2];
+        actions.add(() -> { // Show disabled: the list holds every HUD, so it can scroll
+            var control = ui.controls().stream().filter(c -> c.id().equals("previews")).findFirst().orElseThrow();
+            Rect b = control.bounds();
+            ui.mouseClicked(b.x() + b.width() / 2.0, b.y() + b.height() / 2.0, 0, 0);
+            ui.mouseReleased(b.x() + b.width() / 2.0, b.y() + b.height() / 2.0, 0, 0);
+            wait = 5;
+        });
+        actions.add(() -> {
+            expect(name + " stays selected with the list showing every HUD (" + tag + ")", ui.selectedNames().equals(Set.of(name)), ui.selectedNames().toString());
+            Rect row = ui.rowBoundsFor(ui.listedNames().get(0));
+            before[0] = size.getValue(); before[1] = ui.listScrolled();
+            if (row == null) { expect("the HUD list has a row to scroll over (" + tag + ")", false, "no row"); return; }
+            boolean handled = d.scroll(row.x() + row.width() / 2.0, row.y() + row.height() / 2.0, -1) || ui.mouseScrolled(row.x() + row.width() / 2.0, row.y() + row.height() / 2.0, -1, 0);
+            wait = 4;
+        });
+        actions.add(() -> {
+            expect("wheel over the list with " + name + " selected scrolls the list (" + tag + ")", ui.listScrolled() > before[1], "scroll " + before[1] + " -> " + ui.listScrolled());
+            expect("wheel over the list with " + name + " selected leaves its size (" + tag + ")", size.getValue() == before[0], "size " + before[0] + " -> " + size.getValue());
+        });
+        actions.add(() -> { // over the preview, on the HUD
+            double[] at = inside(ui.boundsFor(name));
+            if (!d.scroll(at[0], at[1], 1)) ui.mouseScrolled(at[0], at[1], 1, 0);
+            wait = 4;
+        });
+        actions.add(() -> {
+            expect("wheel over the preview with " + name + " selected changes its size (" + tag + ")", size.getValue() == before[0] + 25, "size " + before[0] + " -> " + size.getValue());
+            double[] at = inside(ui.boundsFor(name));
+            if (!d.scroll(at[0], at[1], -1)) ui.mouseScrolled(at[0], at[1], -1, 0);
+            wait = 4;
+        });
+        actions.add(() -> { // Show disabled off again
+            expect(name + " is back to its size (" + tag + ")", size.getValue() == before[0], "size " + size.getValue());
+            var control = ui.controls().stream().filter(c -> c.id().equals("previews")).findFirst().orElseThrow();
+            Rect b = control.bounds();
+            ui.mouseClicked(b.x() + b.width() / 2.0, b.y() + b.height() / 2.0, 0, 0);
+            ui.mouseReleased(b.x() + b.width() / 2.0, b.y() + b.height() / 2.0, 0, 0);
+            wait = 5;
+        });
     }
 
     private static double savedSize(String name) {
@@ -325,6 +376,6 @@ public final class HudEditorQa {
             FAILURES.add("restoring: " + failure);
         }
         if (!FAILURES.isEmpty()) LOGGER.error("Lads hud layout FAILED: {}", String.join(" | ", FAILURES));
-        LOGGER.info("Lads hud layout END: {} passed, {} failed ({} drags skipped: another HUD lies over the grab point)", passed, FAILURES.size(), skipped);
+        LOGGER.info("Lads hud layout END: {} passed, {} failed ({} drags skipped: another HUD lies over the grab point; {} Ctrl+wheel notches through the screen's own handler)", passed, FAILURES.size(), skipped, ctrlThroughScreen);
     }
 }

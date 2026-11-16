@@ -43,6 +43,8 @@ public final class HudLayoutQa {
         default void quickShot(String name) { shot(name); }
         /** The mouse wheel through the open HUD editor screen's own handler (so its Control detection runs); false when it cannot be routed. */
         default boolean scroll(double x, double y, double amount) { return false; }
+        /** As {@link #scroll} with the Control key held as the screen's own check sees it; false when this version cannot hold it. */
+        default boolean scrollControl(double x, double y, double amount) { return false; }
         void openEditor();
         /** The open HUD editor's controller, or null. */
         DraggableHudScreen editor();

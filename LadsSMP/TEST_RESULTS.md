@@ -88,7 +88,7 @@ Known, not fixed: the first Eye of Ender per world takes ~13 s (stronghold rings
 
 ---
 
-## 5. Pack 0.5.1 (Lads SMP 0.3.2): freezes when creating and joining a world, loading screen (2026-11-15, arash-legion)
+## 5. Pack 0.5.3 (Lads SMP 0.3.4; round 1 called them 0.5.1 / 0.3.2): freezes when creating and joining a world, loading screen (2026-11-15, arash-legion)
 
 Setup: fresh instance assembled from `lads-smp-reborn-26.3-0.5.0.zip` exactly as the launcher unpacks it, the Lads Core 26.3 jar built from the committed code (1.13.19), no old
 save: the test mod `LadsSMP/qa-smoke` (`-Dladsqa.world=true`, test only, never shipped) waits for the title screen, opens Create New World, presses Create with the pack's default settings
@@ -107,6 +107,17 @@ Villager API / Xaero work all run on the render thread; the window shows the fir
 | Fresh worlds with the final build (AntiXray on or off in its config) | 6 of 6 healthy (4 short worlds with block break/place and mob checks, 2 long flights); before the fix 9 of 19 fresh worlds stopped receiving chunks. Block break (`startDestroyBlock`, client and server air), place (`useItemOn`, client and server cobblestone) and mobs ticking passed in 3 of 3 worlds where the item reached the hand in time (2 runs had the test's `item replace` arrive late: not a game fault) |
 | Dedicated server boot (274 server mods, final jar sha1 c63823cb...) | `Done (16.294s)!`, clean `stop`, exit 0 (also 16.860 s on the previous build) |
 
+**Round 2 (2026-11-15, arash-legion, pack 0.5.3 / Lads SMP 0.3.4; 0.5.1 and 0.5.2 were never published: the public URL cached the first bytes served under a name, so every re-cut got a new name)**
+
+| Run | Result |
+| :--- | :--- |
+| Unit tests (`gradlew test` in LadsSMP) | `BUILD SUCCESSFUL`, 119 tests, 0 failures, 0 errors, 0 skipped |
+| Fresh world 3 (seed ladsqa-round2b, jar before the structure/teleport fixes), 12 min of play, 4 Overworld legs of ~1,000 blocks at 20 blocks/s, 100 s dwell, End 4 legs, Nether | no Overworld or End stall over 3 s (2.4 s and 2.8 s once each at the first flight start), `antiXrayHeld=0` in all 134 reports, chunks under the player at every leg end (client 379-651 chunks); Nether: server thread stood still **33.0 s** after the teleport (stack: the next reader in line, Bits and Balance's biome-titles structure tracker, `StructureManager.startsForStructure` -> `Level.getChunk`) |
+| Same, seed ladsqa-round2c (jar with ladders, ImmersiveMC, player-tick and structure guards) | Overworld stall **7.3 s** once (stack: Incendium's scheduled clock function runs `execute if entity @e[..., predicate=...]` and vanilla's `LootContext.pushVisitedElement` hashes the whole nested predicate tree per entity, with ~20 zombies from the mob test around; a second reading of the same stall was Ad Chimneys' `SmokeLocations.onServerTick` reading blocks of a not yet loaded chunk, the kind the loaded-only guards fix), Nether **27.2 s** (stack: vanilla `handleAcceptTeleportPacket` -> `Entity.move` -> `Level.getBlockState`, waiting for the first Nether chunk) |
+| Same, seed ladsqa-round2d (jar with the held teleport acknowledgement, 0.3.3 contents) | 8.3 min of play (600-block legs), `longestServerStall=12079 ms` in the Nether (2 stalls: **6.9 s**, stack Smart Backpacks `LightUpgradeHandler.onPlayerTick` -> `findDesiredLightPos` -> `getBlockState`; **12.1 s**, stack vanilla `handleMovePlayer` -> `Entity.move` into a chunk the 20 blocks/s flight outran), none in the Overworld or the End, break OK, mobs tick OK, `antiXrayHeld=0` in all 96 reports; place against mid-air at y=247 fails by test design (the flight is at y=250; place passed in 3 of 3 ground worlds earlier) |
+| Server-thread stall right after the teleport into the not generated Nether, before / after | before: **17.8 s** (d1, 0.5.1 round-1 jar), 25.2 s and 33.0 s in later fresh worlds; after the loaded-only guards and the held teleport acknowledgement: **6.9 s + 12.1 s** in one world, **29.4 s + 8.9 s** in the next (the final jar, seed ladsqa-round2e, 11.5 min of play, Overworld and End without a stall over 3 s, ntiXrayHeld=0 in 134 reports, break and mobs OK): **not fixed**; the 29.4 s stack is Smart Backpacks' LightUpgradeHandler.onPlayerTick -> indDesiredLightPos -> getBlockState (a guard like the Bits and Balance one is the next step), the rest is vanilla movement into chunks the test flight outruns |
+| Dedicated server boot (274 server mods) with the shipped jar (sha1 debaad06...) | `Done (19.951s)!`, `Stopping server`, exit code 0 (18.523 s on the previous build) |
+
 **The "no more chunks load" freeze itself** (seen in 9 of 19 fresh worlds, with and without the other fixes): the integrated server stops delivering packets to the client after the second chunk batch.
 Evidence at the stuck moment (test mod `qa-smoke` reads both ends): the server's `PlayerChunkSender` holds 5/5 unacknowledged batches and 366-470 chunks pending, the client's channel is empty and
 connected (`inboundBuf=0`, no open bundle, 0 queued packets, renders at 60 fps and moves locally), and the server's `Connection` has **8,122 packets waiting in AntiXray's `antiXray$isActionReady` / `pendingActions` queue**.
@@ -114,4 +125,4 @@ AntiXray 1.4.17 (`me.drex.antixray.common.mixin.ConnectionMixin.flushQueue`) sen
 chunk packet that never becomes ready stops the connection for good (no thread busy, no log line). It happens with AntiXray switched off in its config too (stuck run with `enabled = false`: 20,722 packets held),
 so the config alone does not help. Connectivity and Packet Fixer remove the keep-alive timeouts, so the client is not even kicked: the player sees the first chunks, can still walk, and nothing else ever
 arrives (no chunks, no teleports, no game mode). Fix in Lads SMP 0.3.2: `MixinAntiXrayNeverHolds` makes `Util.isReady` true on a game client (its own server has nothing to hide from its only player; a dedicated
-server is untouched), and the pack's `config/antixray.toml` (config patch in `update-0.5.1.json` for installed packs) leaves the obfuscation itself off in the pack's own worlds so no half-processed chunk is ever sent.
+server is untouched), and the pack's `config/antixray.toml` (config patch in `update-0.5.3.json` for installed packs) leaves the obfuscation itself off in the pack's own worlds so no half-processed chunk is ever sent.

@@ -100,6 +100,8 @@ public class DraggableHudScreen {
     /** Names in the element list, top to bottom (including rows scrolled out of view). */
     public List<String> listedNames(){return listed().stream().map(HudElement::getModuleName).toList();}
     public Rect previewBounds(){return preview;}
+    /** How far the HUD list is scrolled, in pixels (QA). */
+    public int listScrolled(){return listScroll;}
     /** The Lads HUD's whole viewport in its units (0, 0, width, height): the edges a HUD can be dragged to. */
     public Rect hudViewport(){return new Rect(0,0,hudWidth,hudHeight);}
     /** The screen the editor is drawn on, in the screen's own units (QA keeps the pointer inside it, as a window does). */
