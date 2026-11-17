@@ -208,6 +208,7 @@
     "LadsApiDisconnectMixin",
     "ServerOptionMixin",
     "HideCloudsOptionsMixin",
+    "SmoothMovementMixin",
     "ServerOptionsSaveMixin",
     "MinecraftFriendsMixin",
     "ScreenChatClickMixin",
