@@ -111,6 +111,9 @@ components (LGPL, MPL, CC-BY-NC-SA) is packaged directly inside `theladscore.jar
 * ServerPingerFixer
   License: MIT License (see `META-INF/lads-sources/serverpingerfixer/LICENSE`, `META-INF/lads-sources/serverpingerfixer/NOTICE.txt`)
 
+* Interpolation-Fix by Lodestone (Smooth Movement module, 26.3)
+  License: MIT License (see `assets/theladscore/licenses/interpolation-fix-MIT-LICENSE.txt`)
+
 --------------------------------------------------------------------------------
 3. Formats Implemented From Public Specifications
 --------------------------------------------------------------------------------
