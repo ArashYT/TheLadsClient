@@ -50,7 +50,6 @@ public final class ServerPolicy {
     /** Lane CORE: installs a validated snapshot (null clears). */
     static void set(ServerPolicy policy) {
         active = policy;
-        ServerSettings.policyChanged();
     }
 
     /** The server's display name from its hello ("Lads SMP"). */

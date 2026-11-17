@@ -24,8 +24,6 @@ public final class ServerSettings {
     /** Every other vanilla option and keybind by its options.txt name ("renderClouds", "key_key.jump"), listed once the game's options exist. */
     private static volatile Supplier<List<Option>> vanillaCatalog;
     private static boolean catalogued;
-    /** The version's reaction to new rules (rerun option callbacks, rebind keys); any thread may call it. */
-    private static volatile Runnable vanillaChanged;
 
     static {
         HUD_MODULE.addOption(new SliderOption("Scale", 0, 0, 16, 1)); // 0 follows vanilla's GUI scale
@@ -63,21 +61,10 @@ public final class ServerSettings {
         vanillaHooked = true;
     }
 
-    /** Like {@link #vanillaHooked()}, and every option and keybind the catalog lists may be named too; onChange runs when the rules change. */
-    public static void vanillaHooked(Supplier<List<Option>> catalog, Runnable onChange) {
+    /** Like {@link #vanillaHooked()}, and every option and keybind the catalog lists may be named too. */
+    public static void vanillaHooked(Supplier<List<Option>> catalog) {
         vanillaCatalog = catalog;
-        vanillaChanged = onChange;
         vanillaHooked = true;
-    }
-
-    /** Called by ServerPolicy.set. */
-    static void policyChanged() {
-        Runnable r = vanillaChanged;
-        if (r != null) {
-            try {
-                r.run();
-            } catch (RuntimeException ignored) {}
-        }
     }
 
     /** Adds the catalog's options to "Minecraft" the first time a policy names it (the game's options exist by then). */

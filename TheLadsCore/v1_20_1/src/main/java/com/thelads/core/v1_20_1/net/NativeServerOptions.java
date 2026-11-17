@@ -1,6 +1,7 @@
 package com.thelads.core.v1_20_1.net;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.thelads.core.client.ladsapi.ServerPolicy;
 import com.thelads.core.client.ladsapi.ServerSettings;
 import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.DropdownOption;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.OptionInstance;
@@ -42,10 +44,16 @@ public final class NativeServerOptions {
 
     private NativeServerOptions() {}
 
+    /** The rules rulesChanged last applied; a tick that sees others applies them (a task queued for it can be dropped by a disconnect). */
+    private static Object applied;
+
     public static void install() {
-        ServerSettings.vanillaHooked(NativeServerOptions::catalog, () -> {
-            Minecraft mc = Minecraft.getInstance();
-            if (mc != null) mc.execute(NativeServerOptions::rulesChanged);
+        ServerSettings.vanillaHooked(NativeServerOptions::catalog);
+        ClientTickEvents.END_CLIENT_TICK.register(mc -> {
+            ServerPolicy policy = ServerPolicy.active();
+            if (policy == applied) return;
+            applied = policy;
+            rulesChanged();
         });
     }
 
@@ -175,7 +183,7 @@ public final class NativeServerOptions {
         return null;
     }
 
-    /** Render thread: options whose effective value changed rerun vanilla's callback (chunks, sound volume, GUI scale), keys rebind. */
+    /** Client tick: options whose effective value changed rerun vanilla's callback (chunks, sound volume, GUI scale), keys rebind. */
     private static void rulesChanged() {
         Minecraft mc = Minecraft.getInstance();
         Options o = mc.options;
