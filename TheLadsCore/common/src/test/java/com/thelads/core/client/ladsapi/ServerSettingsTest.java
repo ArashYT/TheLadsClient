@@ -147,4 +147,20 @@ class ServerSettingsTest {
         assertTrue(ServerSettings.vanilla("View Bobbing", true));
         assertEquals(90, ServerSettings.vanilla("FOV", 110), "a limit is not a forced change");
     }
+
+    @Test
+    void hudFpsLimitRuleCapsTheHudForTheSession() {
+        hud.setHudFpsCapEnabled(false);
+        try {
+            assertEquals(0, hud.effectiveHudFpsLimit(), "own: unlimited");
+            JsonObject ack = policy("", "\"HUD\":{\"FPS Limit\":{\"value\":60,\"lock\":true}}");
+            assertEquals(List.of(), names(ack, "ignored"));
+            assertEquals(60, hud.effectiveHudFpsLimit());
+            assertFalse(hud.isHudFpsCapEnabled(), "the player's own setting is untouched");
+            LadsApiClient.reset();
+            assertEquals(0, hud.effectiveHudFpsLimit());
+        } finally {
+            hud.setHudFpsCapEnabled(true);
+        }
+    }
 }

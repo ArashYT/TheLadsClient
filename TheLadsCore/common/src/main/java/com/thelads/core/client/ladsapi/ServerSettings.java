@@ -23,6 +23,7 @@ public final class ServerSettings {
         HUD_MODULE.addOption(new BoolOption("Text Shadow", true));
         HUD_MODULE.addOption(new BoolOption("Soft Shadow", false));
         HUD_MODULE.addOption(new BoolOption("Backgrounds", true));
+        HUD_MODULE.addOption(new SliderOption("FPS Limit", 60, 0, 240, 1)); // 0 = unlimited
         MINECRAFT_MODULE.addOption(new SliderOption("FOV", 70, 30, 110, 1));
         MINECRAFT_MODULE.addOption(new SliderOption("Brightness", 50, 0, 100, 1).suffix("%"));
         MINECRAFT_MODULE.addOption(new SliderOption("Render Distance", 12, 2, 32, 1));

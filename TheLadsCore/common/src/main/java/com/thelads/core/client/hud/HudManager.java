@@ -36,7 +36,7 @@ public class HudManager {
     private double unit = 1;
 
     public int getMeasuredHudFps() {
-        return measuredHudFps > 0 ? measuredHudFps : HudSettings.getInstance().getHudFpsLimit();
+        return measuredHudFps > 0 ? measuredHudFps : HudSettings.getInstance().effectiveHudFpsLimit();
     }
 
     public void recordHudFrame() {
