@@ -163,4 +163,26 @@ class ServerSettingsTest {
             hud.setHudFpsCapEnabled(true);
         }
     }
+
+    @Test
+    void everyVanillaOptionAndKeybindByItsOptionsTxtName() {
+        ServerSettings.vanillaHooked(() -> List.of(
+            new com.thelads.core.config.DropdownOption("cloudStatus", 2, "off", "fast", "fancy"),
+            new BoolOption("hideGui", false),
+            new ServerSettings.KeyOption("key_key.jump", "key.keyboard.space")));
+        JsonObject ack = policy("", "\"Minecraft\":{\"cloudStatus\":{\"value\":\"off\"},\"key_key.jump\":{\"value\":\"key.keyboard.f\"},"
+            + "\"key_key.sneak\":{\"value\":\"key.keyboard.g\"},\"hideGui\":{\"value\":\"yes\"}}");
+        assertEquals(List.of("Minecraft.key_key.sneak", "Minecraft.hideGui"), names(ack, "ignored"), "unknown keybind, wrong value type");
+        assertEquals(0, ServerSettings.vanillaChoice("cloudStatus", 2));
+        assertEquals("key.keyboard.f", ServerSettings.vanillaKey("key_key.jump"));
+
+        letServersChange(false);
+        assertNull(ServerSettings.vanillaKey("key_key.jump"), "the player refused server changes");
+        assertEquals(2, ServerSettings.vanillaChoice("cloudStatus", 2));
+        letServersChange(true);
+
+        LadsApiClient.reset();
+        assertNull(ServerSettings.vanillaKey("key_key.jump"));
+        assertFalse(ServerSettings.hasVanillaRule("cloudStatus"));
+    }
 }

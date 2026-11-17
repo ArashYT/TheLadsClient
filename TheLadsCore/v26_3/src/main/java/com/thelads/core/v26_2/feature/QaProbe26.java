@@ -309,6 +309,7 @@ public final class QaProbe26 {
                 LOGGER.info("Lads 26.3 qa newest-first: {}", names);
             }
             case "log" -> LOGGER.info("Lads 26.3 qa log: {}", rest(s, 1));
+            case "vanilla" -> LOGGER.info("Lads 26.3 qa vanilla: {}", NativeServerOptions.qa(rest(s, 1))); // vanilla <options.txt names>: effective values
             case "textui" -> textUi(mc, s);
             case "gui" -> { mc.options.guiScale().set(Integer.parseInt(arg(s, 1))); mc.resizeGui(); } // the GUI scale, 0 = auto
             case "pointer" -> { // where a real mouse would be, in window pixels: hover states and tooltips render for a shot
