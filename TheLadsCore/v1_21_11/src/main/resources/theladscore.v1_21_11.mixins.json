@@ -70,6 +70,7 @@
     "LadsApiPacketListenerMixin",
     "LadsApiDisconnectMixin",
     "ServerOptionMixin",
+    "HideCloudsOptionsMixin",
     "ServerOptionsSaveMixin"
   ]
 }

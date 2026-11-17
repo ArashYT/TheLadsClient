@@ -207,6 +207,7 @@
     "LadsApiPacketListenerMixin",
     "LadsApiDisconnectMixin",
     "ServerOptionMixin",
+    "HideCloudsOptionsMixin",
     "ServerOptionsSaveMixin",
     "MinecraftFriendsMixin",
     "ScreenChatClickMixin",

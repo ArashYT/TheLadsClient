@@ -44,6 +44,7 @@
     "DimensionSpecialEffectsMixin",
     "LadsApiPacketListenerMixin",
     "ServerOptionMixin",
+    "HideCloudsOptionsMixin",
     "ServerOptionsSaveMixin"
   ]
 }

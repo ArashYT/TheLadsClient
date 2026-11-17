@@ -40,7 +40,7 @@ public final class ModuleGroups {
         new Group("Combat", "Animations", List.of("1.7 Animations", "LegacySwing", "NotEnoughAnimations")),
         new Group("Combat", "Game Modes", List.of("Bed Colors", "MLG Cobweb", "TNT Timer", "UHC Overlay")),
         new Group("Visuals", "Light & Color", List.of("Fullbright", "ColorSaturation", "DynamicLights", "Light Overlay", "Glint Colorizer", "Dark Mode")),
-        new Group("Visuals", "World", List.of("Time Changer", "Weather Changer", "Fog Customizer", "Cloud Height", "CustomSky", "HideFoliage", "ClearGlass", "ChunkAnimator", "Chunk Borders")),
+        new Group("Visuals", "World", List.of("Time Changer", "Weather Changer", "Fog Customizer", "Cloud Height", "Hide Clouds", "CustomSky", "HideFoliage", "ClearGlass", "ChunkAnimator", "Chunk Borders")),
         new Group("Visuals", "Screen Effects", List.of("MotionBlur", "MenuBlur", "Overlays", "Render Tweaks", "Raised")),
         new Group("Visuals", "Dropped Items", List.of("Item Physics", "Loot Beams", "Item Despawn", "Custom Item Textures")),
         new Group("Visuals", "Players & Mobs", List.of("Nametags", "SkinLayers", "Wavy Capes", "Cosmetics", "Nick Hider", "Mount Opacity")),
