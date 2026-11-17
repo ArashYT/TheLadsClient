@@ -20,7 +20,8 @@ public class ServerStatusServiceTests
         int port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port, nextState = 0, requestId = -1;
         var server = Task.Run(async () =>
         {
-            using var client = await listener.AcceptTcpClientAsync();
+            // bounded: on a slow CI runner the client can give up before connecting, and an unbounded accept then hung the run
+            using var client = await listener.AcceptTcpClientAsync(new CancellationTokenSource(TimeSpan.FromSeconds(30)).Token);
             var s = client.GetStream();
             var handshake = new byte[await ReadVarInt(s)];
             await s.ReadExactlyAsync(handshake);
@@ -33,8 +34,8 @@ public class ServerStatusServiceTests
             await s.WriteAsync(json);
         });
 
-        var status = await ServerStatusService.SlpAsync("127.0.0.1", port);
-        await server;
+        var status = await ServerStatusService.SlpAsync("127.0.0.1", port, 30000);
+        await server.WaitAsync(TimeSpan.FromSeconds(30));
         listener.Stop();
 
         Assert.Equal(1, nextState);
