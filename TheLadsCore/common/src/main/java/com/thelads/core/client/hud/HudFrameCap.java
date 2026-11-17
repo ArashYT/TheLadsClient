@@ -110,8 +110,7 @@ public final class HudFrameCap {
     private HudFrameCap() {}
 
     public static boolean enabled() {
-        HudSettings settings = HudSettings.getInstance();
-        return !settings.isHudFpsUnlimited() && settings.getHudFpsLimit() > 0;
+        return HudSettings.getInstance().effectiveHudFpsLimit() > 0;
     }
 
     /**
@@ -168,7 +167,7 @@ public final class HudFrameCap {
     public static boolean due(long now, int scaledWidth, int scaledHeight) {
         frames++;
         if (HudManager.getInstance().coverChanged()) last = 0;
-        long interval = 1_000_000_000L / Math.max(1, HudSettings.getInstance().getHudFpsLimit()), since = now - last;
+        long interval = 1_000_000_000L / Math.max(1, HudSettings.getInstance().effectiveHudFpsLimit()), since = now - last;
         if (moved || now < animatingUntil) interval = Math.min(interval, ANIMATING);
         if (last != 0 && since < interval && scaledWidth == width && scaledHeight == height) return false;
         steps = frames;

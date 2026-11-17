@@ -38,6 +38,11 @@ public class HudSettings {
     public int getHudFpsLimit() { return hudFpsLimit; }
     public void setHudFpsLimit(int limit) { hudFpsLimit = Math.max(0, limit); }
     public boolean isHudFpsUnlimited() { return !hudFpsCapEnabled || hudFpsLimit <= 0 || hudFpsLimit > 240; }
+    /** The cap the HUD runs at, 0 = unlimited: the player's own unless a LadsClientAPI server sets "HUD.FPS Limit". */
+    public int effectiveHudFpsLimit() {
+        int limit = ServerSettings.hud("FPS Limit", isHudFpsUnlimited() ? 0 : hudFpsLimit);
+        return limit <= 0 || limit > 240 ? 0 : limit;
+    }
     public static String formatFpsLimit(int limit) {
         if (limit <= 0 || limit > 240) return "Unlimited";
         if (limit == 60) return "60 (Recommended)";

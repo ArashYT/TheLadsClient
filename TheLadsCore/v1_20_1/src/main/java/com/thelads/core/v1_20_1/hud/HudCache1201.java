@@ -149,7 +149,7 @@ public final class HudCache1201 {
             if (mapMain == null) freeMap();
             return false;
         }
-        long now = System.nanoTime(), interval = 1_000_000_000L / Math.max(1, HudSettings.getInstance().getHudFpsLimit());
+        long now = System.nanoTime(), interval = 1_000_000_000L / Math.max(1, HudSettings.getInstance().effectiveHudFpsLimit());
         if (mapBuilt && map.width == main.width && map.height == main.height && now - mapLast < interval) {
             composite(graphics, main, map);
             return true;
