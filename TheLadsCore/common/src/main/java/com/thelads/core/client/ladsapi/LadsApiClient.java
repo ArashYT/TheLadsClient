@@ -848,6 +848,26 @@ public final class LadsApiClient {
             return new OptionRule(null, Double.NaN, Double.NaN, Double.NaN, forcedChoice, allowedChoices, null, lock);
         }
 
+        if (option instanceof ServerSettings.KeyOption) {
+            if (ruleObj.has("min") || ruleObj.has("max") || ruleObj.has("choices")) {
+                addLimited(ignored, fullKey);
+                return null;
+            }
+            String forcedKey = null;
+            if (ruleObj.has("value")) {
+                JsonElement v = ruleObj.get("value");
+                if (!v.isJsonPrimitive() || !v.getAsJsonPrimitive().isString() || !ServerSettings.KeyOption.valid(v.getAsString())) {
+                    addLimited(ignored, fullKey);
+                    return null;
+                }
+                forcedKey = v.getAsString();
+            }
+            if (forcedKey != null && playerRefuses) {
+                addLimited(refused, fullKey);
+            }
+            return new OptionRule(null, Double.NaN, Double.NaN, Double.NaN, forcedKey, null, null, lock);
+        }
+
         if (option instanceof ColorOption) {
             if (ruleObj.has("min") || ruleObj.has("max") || ruleObj.has("choices")) {
                 addLimited(ignored, fullKey);

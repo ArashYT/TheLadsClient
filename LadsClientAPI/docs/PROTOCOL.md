@@ -75,6 +75,17 @@ Full snapshot. Replaces the previous one entirely (never a diff). Sent after the
   - `HUD`: `Scale` (slider 0-16, 0 = follow the GUI scale), `Text Shadow`, `Soft Shadow`, `Backgrounds` (bools).
   - `Minecraft` (1.20.1, 1.21.11, 26.x; ignored + reported on 1.8.9): `FOV` (30-110), `Brightness` (0-100 %, so `max: 100` also
     caps a gamma above 100 %), `Render Distance` (2-32), `View Bobbing`, `Entity Shadows`.
+    Since client 1.13.27 also every vanilla option and keybind (mods' keys too) by its options.txt name, typed as the client
+    sees it: on/off options take `true`/`false`; number options a number (whole numbers in their vanilla range, 0.0-1.0 for
+    percent sliders like `gamma`, `chatOpacity`, `soundCategory_master`), `min`/`max` work too; choice options a lowercase name
+    (`renderClouds`: `off`/`fast`/`fancy`, `particles`: `all`/`decreased`/`minimal`), `choices` works too; keybinds
+    `key_<name>` take the key as options.txt writes it (`key.keyboard.f`, `key.mouse.left`, `key.keyboard.unknown` = unbound).
+    Names differ by version: fancy leaves are `cutoutLeaves: true` on 1.21.11 and 26.x (`graphicsPreset` there) but
+    `graphicsMode: fancy` on 1.20.1; `enableVsync`, `maxFps` (260 = unlimited) on all. Never: `fullscreen`,
+    `exclusiveFullscreen`, `macFullscreenMenuVisibility`, `preferredGraphicsBackend`, `soundDevice`, `telemetryOptInExtra`,
+    `onboardAccessibility`. Names this game version does not have are reported as ignored. Changing a rule reruns vanilla's
+    own reaction (chunk reload, GUI resize, sound volume). Example:
+    `"Minecraft":{"renderClouds":{"value":"off"},"cutoutLeaves":{"value":true},"key_key.drop":{"value":"key.keyboard.unknown"}}`.
   Example: `"options":{"Minecraft":{"Brightness":{"max":100}},"HUD":{"Backgrounds":{"value":false}}}`.
   As with module options the value only lives in the snapshot: options.txt and the Lads config keep the player's own value.
 

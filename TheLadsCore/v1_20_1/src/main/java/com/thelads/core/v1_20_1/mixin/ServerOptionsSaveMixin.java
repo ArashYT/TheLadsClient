@@ -12,11 +12,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class ServerOptionsSaveMixin {
     @Inject(method = "save", at = @At("HEAD"))
     private void lads$ownValues(CallbackInfo ci) {
-        NativeServerOptions.saving = true;
+        NativeServerOptions.beginSave();
     }
 
     @Inject(method = "save", at = @At("RETURN"))
     private void lads$ownValuesDone(CallbackInfo ci) {
-        NativeServerOptions.saving = false;
+        NativeServerOptions.endSave();
     }
 }
