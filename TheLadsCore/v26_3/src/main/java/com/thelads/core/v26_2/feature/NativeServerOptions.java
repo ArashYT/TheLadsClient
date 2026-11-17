@@ -23,12 +23,15 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.OptionInstance;
 import net.minecraft.client.Options;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Vanilla options a LadsClientAPI server may set or limit (ServerSettings "Minecraft"), asked by OptionInstance.get (ServerOptionMixin).
  * Besides the five named ones, every option and keybind (mods' keys too) by its options.txt name: "renderClouds", "key_key.jump".
  */
 public final class NativeServerOptions {
+    private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     /** Options.save() is writing options.txt: it gets the player's own values (ServerOptionsSaveMixin). */
     public static volatile boolean saving;
     /** Never a server's: the window, the graphics backend, the sound device, telemetry and first-run screens. */
@@ -189,12 +192,14 @@ public final class NativeServerOptions {
         Options o = mc.options;
         if (o == null) return;
         boolean changed = false;
+        List<String> rerun = new ArrayList<>();
         for (Object option : names.keySet()) {
             OptionInstance<?> inst = (OptionInstance<?>) option;
             Object now = inst.get(), before = LAST.containsKey(option) ? LAST.get(option) : own(inst);
             LAST.put(option, now);
             if (!now.equals(before)) {
                 changed = true;
+                rerun.add(names.get(option) + "=" + now);
                 callback(inst, now);
             }
         }
@@ -215,6 +220,7 @@ public final class NativeServerOptions {
             } catch (RuntimeException ignored) {} // a key name this version does not know
         }
         if (rebound) KeyMapping.resetMapping();
+        if (!rerun.isEmpty() || rebound) LOGGER.info("LadsClientAPI vanilla options now {}, keys rebound: {}", rerun, rebound);
         if (changed && mc.player != null) o.broadcastOptions(); // view distance, skin parts, main hand
     }
 
@@ -233,12 +239,14 @@ public final class NativeServerOptions {
     private static void callback(OptionInstance<?> inst, Object value) {
         try {
             for (Field f : OptionInstance.class.getDeclaredFields()) {
-                if (f.getType() != OptionInstance.ValueUpdateListener.class) continue;
+                if (f.getType() != OptionInstance.ValueUpdateListener.class || java.lang.reflect.Modifier.isStatic(f.getModifiers())) continue; // not NO_ACTION
                 f.setAccessible(true);
                 ((OptionInstance.ValueUpdateListener) f.get(inst)).valueChanged(value);
                 return;
             }
-        } catch (ReflectiveOperationException | RuntimeException ignored) {}
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            LOGGER.warn("LadsClientAPI: option callback failed: {}", e.toString());
+        }
     }
 
     /** QA: "name=effective" for each options.txt name (keybinds as their key). */
