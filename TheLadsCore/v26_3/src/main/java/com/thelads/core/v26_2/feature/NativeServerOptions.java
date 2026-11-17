@@ -142,6 +142,9 @@ public final class NativeServerOptions {
             return new SliderOption(name, (Integer) own, r.minInclusive(), r.maxInclusive(), 1);
         }
         if (values instanceof OptionInstance.UnitDouble) return new SliderOption(name, (Double) own, 0, 1, 0.01);
+        double[] range = sliderRange(values); // a remapped range (maxFps 10-260)
+        if (range != null && own instanceof Integer i) return new SliderOption(name, i, range[0], range[1], 1);
+        if (range != null && own instanceof Double d) return new SliderOption(name, d, range[0], range[1], (range[1] - range[0]) / 100);
         List<?> list = null;
         if (values instanceof OptionInstance.Enum<?> en) list = en.values();
         else if (values instanceof OptionInstance.AltEnum<?> alt) list = alt.values();
@@ -154,6 +157,22 @@ public final class NativeServerOptions {
         }
         choiceValues.put(inst, new ArrayList<>(list));
         return new DropdownOption(name, Math.max(0, list.indexOf(own)), choices);
+    }
+
+    /** A slider's values at both ends (its fromSliderValue(0) and (1)), or null when it is no number slider. */
+    private static double[] sliderRange(Object values) {
+        for (Class<?> c = values.getClass(); c != null && c != Object.class; c = c.getSuperclass()) {
+            for (Method m : c.getDeclaredMethods()) {
+                if (m.getParameterCount() != 1 || m.getParameterTypes()[0] != double.class || m.getReturnType().isPrimitive()) continue;
+                try {
+                    m.setAccessible(true);
+                    if (m.invoke(values, 0.0) instanceof Number lo && m.invoke(values, 1.0) instanceof Number hi && lo.doubleValue() < hi.doubleValue()) {
+                        return new double[] {lo.doubleValue(), hi.doubleValue()};
+                    }
+                } catch (ReflectiveOperationException | RuntimeException ignored) {}
+            }
+        }
+        return null;
     }
 
     /** Render thread: options whose effective value changed rerun vanilla's callback (chunks, sound volume, GUI scale), keys rebind. */
