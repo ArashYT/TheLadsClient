@@ -155,7 +155,8 @@ try {
             if ($LASTEXITCODE -ne 0) { throw 'Core build/deploy failed.' }
         } finally { Pop-Location }
     }
-    & dotnet test TheLadsLauncher.Tests/TheLadsLauncher.Tests.csproj -c Release --nologo
+    # A hung test (CI 1.13.26 sat in here 70+ min twice) fails after 10 min and names itself instead of holding the release.
+    & dotnet test TheLadsLauncher.Tests/TheLadsLauncher.Tests.csproj -c Release --nologo --blame-hang-timeout 10m --blame-hang-dump-type none --logger "console;verbosity=normal"
     if ($LASTEXITCODE -ne 0) { throw 'Launcher tests failed.' }
     & dotnet publish TheLadsLauncher/TheLadsLauncher.csproj -c Release -r win-x64 --self-contained true -o $publishDir
     if ($LASTEXITCODE -ne 0) { throw 'Launcher publish failed.' }
