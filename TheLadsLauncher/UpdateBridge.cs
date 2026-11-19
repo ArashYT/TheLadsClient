@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -19,16 +20,19 @@ public static class UpdateBridge
     /// <summary>Created by the bridge; the new launcher sets it once its window is up, and the bridge fades out.</summary>
     public const string LauncherShownEvent = @"Local\TheLadsClient.LauncherShown";
     public const string RestoreWindowArg = "--restore-window";
+    /// <summary>Which block of the mining scene the bridge loops; the relaunched launcher pins its startup screen to the same one.</summary>
+    public const string MiningCycleArg = "--mining-cycle";
+    public const int MiningFps = 30;
     public static readonly string Folder = Path.Combine(Path.GetTempPath(), "TheLadsClient-update");
 
     /// <summary>Copies the bridge out of current\ (which Update.exe replaces), starts it over <paramref name="client"/> and waits up to 2 s for its first frame.</summary>
     /// <returns>Whether the bridge is on screen; never throws.</returns>
-    public static bool TryStart(string snapshotPng, PixelRect client, PixelRect bar, bool reducedMotion)
+    public static bool TryStart(string snapshotPng, PixelRect client, PixelRect bar, bool reducedMotion, (string Frames, PixelRect Rect)? mining = null, string? qaUpdateExe = null)
     {
         try
         {
-            string updateExe = VelopackLocator.Current.UpdateExePath ?? throw new InvalidOperationException("no Update.exe (not installed)");
-            string root = VelopackLocator.Current.RootAppDir ?? throw new InvalidOperationException("no install root");
+            string updateExe = qaUpdateExe ?? VelopackLocator.Current.UpdateExePath ?? throw new InvalidOperationException("no Update.exe (not installed)");   // qaUpdateExe: the QA handoff preview has no install
+            string root = qaUpdateExe != null ? Path.GetDirectoryName(qaUpdateExe)! : VelopackLocator.Current.RootAppDir ?? throw new InvalidOperationException("no install root");
             Directory.CreateDirectory(Folder);
             string exe = Path.Combine(Folder, "LadsUpdateBridge.exe");
             File.Copy(Path.Combine(AppContext.BaseDirectory, "LadsUpdateBridge.exe"), exe, overwrite: true);
@@ -38,6 +42,7 @@ public static class UpdateBridge
                          "--update-exe", updateExe, "--relaunch", Path.Combine(root, "The Lads Client.exe"), "--grace", "15" })
                 start.ArgumentList.Add(arg);
             if (reducedMotion) start.ArgumentList.Add("--reduced-motion");
+            if (mining is { } m) foreach (string arg in new[] { "--mining", Rect(m.Rect), "--frames", m.Frames }) start.ArgumentList.Add(arg);
             // The bridge's taskbar button groups with the launcher's (Velopack runs it as velopack.<packId>) instead of adding a second one.
             if (GetCurrentProcessExplicitAppUserModelID(out string? appId) == 0 && !string.IsNullOrEmpty(appId))
             {
@@ -57,6 +62,22 @@ public static class UpdateBridge
         {
             Log("bridge not started: " + e);
             return false;
+        }
+    }
+
+    /// <summary>One loop of the pickaxe scene for the bridge, which has no Avalonia: int count, double cycle seconds, long epoch ticks (UTC),
+    /// then count x (int length, PNG bytes). The bridge plays frame floor(phase * count) where phase comes from the same wall clock.</summary>
+    public static void WriteMiningFrames(string path, IReadOnlyList<byte[]> pngs)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        using var writer = new BinaryWriter(File.Create(path));
+        writer.Write(pngs.Count);
+        writer.Write(Controls.MiningAnimation.CycleSeconds);
+        writer.Write(Controls.MiningAnimation.Epoch.Ticks);
+        foreach (byte[] png in pngs)
+        {
+            writer.Write(png.Length);
+            writer.Write(png);
         }
     }
 

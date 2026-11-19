@@ -12,6 +12,36 @@ namespace TheLadsLauncher;
 
 public partial class MainWindow
 {
+    /// <summary>Sandbox-only: the update handoff for real. Fake download statuses drive the startup screen (the first report is already 70%, then a stall),
+    /// then PrepareUpdateRestart starts the real bridge over a fake Update.exe and this window closes; the QA script starts the next launcher with
+    /// the returned args (written to handoff-args.txt) and captures the screen all the while. progress.csv logs the shown percent.</summary>
+    private async Task RunHandoffPreviewAsync(string output, string fakeUpdateExe)
+    {
+        Directory.CreateDirectory(output);
+        _qaUpdateExe = fakeUpdateExe;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var rows = new System.Collections.Generic.List<string> { "ms,percent,fill" };
+        var log = new Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+        log.Tick += (_, _) => rows.Add($"{sw.ElapsedMilliseconds},{StartupPercentText.Text},{StartupProgressFill.Width:0.0}");
+        log.Start();
+        Log("[Handoff] start");
+        ShowStartupStatus("Checking for launcher updates…");
+        await Task.Delay(700);
+        ShowStartupStatus("Downloading v9.9.9: 70%");
+        await Task.Delay(1500);
+        for (int percent = 71; percent <= 100; percent++) { ShowStartupStatus($"Downloading v9.9.9: {percent}%"); await Task.Delay(120); }
+        await Task.Delay(1200);   // verifying the package: the bar must not freeze here
+        ShowStartupStatus("Installing v9.9.9 and restarting…");
+        await Task.Delay((int)_autoUpdater.InstallLead.TotalMilliseconds);
+        var restart = PrepareUpdateRestart("9.9.9");
+        File.WriteAllLines(Path.Combine(output, "handoff-args.txt"), restart);
+        rows.Add($"{sw.ElapsedMilliseconds},{StartupPercentText.Text},{StartupProgressFill.Width:0.0},handoff");
+        log.Stop();
+        File.WriteAllLines(Path.Combine(output, "progress.csv"), rows);
+        await Task.Delay(500);
+        Close();
+    }
+
     // Sandbox-only UI evidence: the update screen during a simulated download, plus exact mining-animation frames.
     private async Task RunStartupPreviewAsync(string output)
     {

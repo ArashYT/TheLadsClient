@@ -21,13 +21,19 @@ namespace TheLadsLauncher.UpdateBridge
         readonly double _graceMs;
         readonly bool _reducedMotion;
         readonly EventWaitHandle _launcherShown;
+        byte[][] _frames;      // PNG frames of one loop of the pickaxe scene (empty: reduced motion or none made)
+        Rectangle _mining;     // in window pixels
+        double _cycleSeconds;
+        DateTime _epoch;
+        Bitmap _frame;
+        int _frameIndex = -1;
         readonly Stopwatch _clock = Stopwatch.StartNew();
         readonly System.Windows.Forms.Timer _timer = new System.Windows.Forms.Timer { Interval = 15 };
         EventWaitHandle _bridgeShown;   // kept open so a late waiter still sees it
         double _lastUpdateSeenMs, _lastPollMs = double.MinValue, _fadeStartMs = -1, _topMostUntilMs = double.MaxValue;
         float _scale = 1;
 
-        public BridgeForm(string image, Rectangle client, Rectangle bar, string updateExe, string relaunch, double graceSeconds, bool reducedMotion, EventWaitHandle launcherShown)
+        public BridgeForm(string image, Rectangle client, Rectangle bar, string updateExe, string relaunch, double graceSeconds, bool reducedMotion, EventWaitHandle launcherShown, string framesFile, Rectangle mining)
         {
             _image = new Bitmap(new MemoryStream(File.ReadAllBytes(image)));   // no file lock; GDI+ keeps the stream for the bitmap's lifetime
             _bar = new Rectangle(bar.X - client.X, bar.Y - client.Y, bar.Width, bar.Height);
@@ -36,6 +42,8 @@ namespace TheLadsLauncher.UpdateBridge
             _graceMs = graceSeconds * 1000;
             _reducedMotion = reducedMotion;
             _launcherShown = launcherShown;
+            _frames = new byte[0][];
+            if (framesFile != null && mining.Width > 0 && mining.Height > 0 && !reducedMotion) LoadFrames(framesFile, mining, client);
 
             Text = "The Lads Client";
             Icon = new Icon(typeof(BridgeForm).Assembly.GetManifestResourceStream("icon.ico"));
@@ -52,6 +60,31 @@ namespace TheLadsLauncher.UpdateBridge
             _timer.Start();
         }
 
+        // Written by the launcher (UpdateBridge.WriteMiningFrames): int count, double cycle seconds, long epoch ticks, then count x (int length, PNG).
+        void LoadFrames(string file, Rectangle mining, Rectangle client)
+        {
+            try
+            {
+                byte[][] frames;
+                using (var reader = new BinaryReader(File.OpenRead(file)))
+                {
+                    int count = reader.ReadInt32();
+                    _cycleSeconds = reader.ReadDouble();
+                    _epoch = new DateTime(reader.ReadInt64(), DateTimeKind.Utc);
+                    if (count <= 0 || count > 1000 || !(_cycleSeconds > 0)) throw new InvalidDataException("bad frame header");
+                    frames = new byte[count][];
+                    for (int i = 0; i < count; i++) frames[i] = reader.ReadBytes(reader.ReadInt32());
+                }
+                _mining = new Rectangle(mining.X - client.X, mining.Y - client.Y, mining.Width, mining.Height);
+                _frames = frames;
+                Program.Log("mining frames loaded: " + frames.Length + " at " + _mining.X + "," + _mining.Y + "," + _mining.Width + "," + _mining.Height);
+            }
+            catch (Exception e)
+            {
+                Program.Log("mining frames not loaded: " + e.Message);
+            }
+        }
+
         [DllImport("user32.dll")] static extern uint GetDpiForWindow(IntPtr hwnd);
         [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr hwnd, IntPtr insertAfter, int x, int y, int cx, int cy, uint flags);
 
@@ -66,12 +99,44 @@ namespace TheLadsLauncher.UpdateBridge
             Rectangle area = Rectangle.Intersect(e.ClipRectangle, new Rectangle(Point.Empty, _image.Size));
             e.Graphics.InterpolationMode = InterpolationMode.NearestNeighbor;   // 1:1, no resampling blur
             e.Graphics.DrawImage(_image, area, area, GraphicsUnit.Pixel);
-            if (!_reducedMotion) DrawShine(e.Graphics);
+            if (!_reducedMotion)
+            {
+                var state = e.Graphics.Save();   // the shine narrows the clip and smoothing to its own pill
+                DrawShine(e.Graphics);
+                e.Graphics.Restore(state);
+            }
+            DrawMining(e);
             if (_bridgeShown == null)
             {
                 _bridgeShown = new EventWaitHandle(false, EventResetMode.ManualReset, @"Local\TheLadsClient.UpdateBridgeShown");
                 _topMostUntilMs = _clock.Elapsed.TotalMilliseconds + TopMostMs;
                 BeginInvoke((Action)(() => { _bridgeShown.Set(); Program.Log("shown"); }));   // after this first frame is on screen
+            }
+        }
+
+        // The pickaxe scene: the frame for the shared wall-clock phase, so it carries on where the launcher's own animation was and
+        // the relaunched launcher (same clock) continues from the same moment.
+        void DrawMining(PaintEventArgs e)
+        {
+            if (_frames.Length == 0 || !_mining.IntersectsWith(e.ClipRectangle)) return;
+            try
+            {
+                double seconds = (DateTime.UtcNow - _epoch).TotalSeconds;
+                int index = (int)(((seconds % _cycleSeconds) + _cycleSeconds) % _cycleSeconds / _cycleSeconds * _frames.Length) % _frames.Length;
+                if (index != _frameIndex)
+                {
+                    Bitmap next = new Bitmap(new MemoryStream(_frames[index]));
+                    if (_frame != null) _frame.Dispose();
+                    _frame = next;
+                    _frameIndex = index;
+                }
+                e.Graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
+                e.Graphics.DrawImage(_frame, _mining, 0, 0, _frame.Width, _frame.Height, GraphicsUnit.Pixel);
+            }
+            catch (Exception ex)
+            {
+                Program.Log("mining frame failed, stopping it: " + ex.Message);
+                _frames = new byte[0][];
             }
         }
 
@@ -109,7 +174,7 @@ namespace TheLadsLauncher.UpdateBridge
             {
                 if (now < _fadeStartMs)   // still holding fully opaque; the shine keeps moving
                 {
-                    if (!_reducedMotion) Invalidate(_bar);
+                    if (!_reducedMotion) { Invalidate(_bar); InvalidateMining(); }
                     return;
                 }
                 double opacity = 1 - (now - _fadeStartMs) / FadeMs;
@@ -139,7 +204,18 @@ namespace TheLadsLauncher.UpdateBridge
                     Program.Log("no launcher signal 30 s after shown: no longer on top");
                 }
             }
-            if (!_reducedMotion) Invalidate(_bar);
+            if (!_reducedMotion) { Invalidate(_bar); InvalidateMining(); }
+        }
+
+        int _lastDrawnFrame = -1;
+        void InvalidateMining()
+        {
+            if (_frames.Length == 0) return;
+            double seconds = (DateTime.UtcNow - _epoch).TotalSeconds;
+            int index = (int)(((seconds % _cycleSeconds) + _cycleSeconds) % _cycleSeconds / _cycleSeconds * _frames.Length) % _frames.Length;
+            if (index == _lastDrawnFrame) return;   // 30 frames a second, not one repaint per 15 ms timer tick
+            _lastDrawnFrame = index;
+            Invalidate(_mining);
         }
 
         // Raises every process running --update-exe to High; true when one is alive.

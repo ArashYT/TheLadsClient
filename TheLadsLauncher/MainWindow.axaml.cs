@@ -284,21 +284,25 @@ public partial class MainWindow : Window
         }
 
         // === Startup/update screen: glowing logo, progress bar with a sweeping shine, mining animation ===
-        const double startupDurationMs = 2200.0;
         const double startupBarWidth = 560.0;
         var startupSw = System.Diagnostics.Stopwatch.StartNew();
         int dots = 0;
-        double dotAccumulatorMs = 0, shownProgress = 0, lastTickMs = 0;
+        double dotAccumulatorMs = 0, lastTickMs = 0;
+        // After an update the bridge left the bar at 100%; the new launcher continues from there instead of restarting at 0.
+        _startupProgress = new StartupProgress(UpdateBridge.TryParseRestoreWindow(args, out _, out _, out _, out _) ? 1 : 0);
+        int pinnedCycle = Array.IndexOf(args, UpdateBridge.MiningCycleArg);
+        if (pinnedCycle >= 0 && pinnedCycle + 1 < args.Length && int.TryParse(args[pinnedCycle + 1], out int cycleNumber)) StartupMining.PinnedCycle = cycleNumber;
+        StartupProgressFill.Width = startupBarWidth * _startupProgress.Value;
+        StartupPercentText.Text = StartupProgress.Percent(_startupProgress.Value) + "%";
         if (settings.ReducedMotion) StartupMining.Freeze(0.81);
         var startupAnimTimer = _startupAnimTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
         startupAnimTimer.Tick += (s, e) =>
         {
             double t = startupSw.Elapsed.TotalMilliseconds, dt = t - lastTickMs;
             lastTickMs = t;
-            // A reported download drives the bar; until then it eases toward 90% so it never claims to be done early.
-            double target = _startupDownload ?? 0.9 * (1.0 - Math.Pow(1.0 - Math.Min(1.0, t / startupDurationMs), 3));
-            shownProgress += (target - shownProgress) * (1 - Math.Exp(-dt / 110.0));
+            double shownProgress = _startupProgress.Step(dt / 1000.0, _startupDownload, _startupComplete);
             StartupProgressFill.Width = startupBarWidth * shownProgress;
+            StartupPercentText.Text = StartupProgress.Percent(shownProgress) + "%";
             if (settings.ReducedMotion) return;
 
             // Soft glow breathing around the logo (the logo itself stays still)
@@ -309,7 +313,7 @@ public partial class MainWindow : Window
                 glow.BlurRadius = 16 + 18 * g;
             }
             if (StartupProgressShine.RenderTransform is Avalonia.Media.TranslateTransform shine)
-                shine.X = -110 + (t % 1600.0) / 1600.0 * (startupBarWidth + 110);
+                shine.X = -110 + (MiningAnimation.Now * 1000.0 % 1600.0) / 1600.0 * (startupBarWidth + 110);   // wall clock, like the bridge's shine
 
             // Animated trailing dots
             dotAccumulatorMs += 16;
@@ -326,16 +330,23 @@ public partial class MainWindow : Window
         {
             int startupPreview = Array.IndexOf(args, "--preview-startup");
             if (startupPreview >= 0) { await RunStartupPreviewAsync(Path.GetFullPath(args[startupPreview + 1])); return; }
+            int handoffPreview = Array.IndexOf(args, "--preview-handoff");
+            if (handoffPreview >= 0) { await RunHandoffPreviewAsync(Path.GetFullPath(args[handoffPreview + 1]), Path.GetFullPath(args[handoffPreview + 2])); return; }
             // Updates install before the launcher opens: this screen waits for the check (up to 10 s, a slow or offline network
             // then carries on in the background and offers its update through the title-bar button) and for a started download.
             var startupPoll = PollForUpdatesAsync();
             await Task.WhenAny(startupPoll, Task.Delay(10_000));
             while (!startupPoll.IsCompleted && _startupDownload != null) await Task.WhenAny(startupPoll, Task.Delay(100));
             if (_windowClosed) return;
+            // The bar finishes its last stretch to 100% before the screen goes (about 0.4 s; nothing at all after an update, it starts full).
+            _startupComplete = true;
+            for (int waited = 0; !_startupProgress.Finished && waited < 800 && !_windowClosed; waited += 16) await Task.Delay(16);
+            if (_windowClosed) return;
             Log($"[Startup] Launcher ready in {(DateTime.Now - System.Diagnostics.Process.GetCurrentProcess().StartTime).TotalMilliseconds:0} ms.");
             startupAnimTimer.Stop();
             StartupMining.Stop();
-            if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
+            StartupProgressFill.Width = startupBarWidth;
+            StartupPercentText.Text = "100%";
             LauncherStartupOverlay.IsVisible = false;
             _launcherShown.StartupFinished();   // still running after a startup install means it failed: dismiss its bridge now, not after 15 s
             if (Program.InitialDeepLink != null)
@@ -589,6 +600,10 @@ public partial class MainWindow : Window
     private bool _releaseNotesOpen;
     private bool _windowClosed;
     private double? _startupDownload; // 0..1 once the updater reports a download; drives the startup progress bar
+    private string? _qaUpdateExe;     // --preview-handoff only: a fake Update.exe so the real bridge can be started without an install
+    private bool _miningFramesStarted;
+    private bool _startupComplete;    // the startup work is over (installing, or nothing to download): the bar finishes to 100%
+    private StartupProgress _startupProgress = new();
     private DispatcherTimer? _startupAnimTimer;
     private readonly LauncherShownSignal _launcherShown = new(UpdateBridge.SignalLauncherShown);
 
@@ -599,32 +614,88 @@ public partial class MainWindow : Window
         FlushSettingsSave();
         string[] play = _playAfterUpdate is { } profileId ? new[] { InGameUpdate.PlayArg, profileId } : Array.Empty<string>();
         if (WindowState == WindowState.Minimized) return play;   // nothing on screen to hold; the new launcher opens centred
+        string[] restartArgs = Array.Empty<string>();
         try
         {
-            string snapshot = Path.Combine(UpdateBridge.Folder, "snapshot.png");
-            var size = RenderInstallingScreen(version, snapshot);
+            string snapshot = Path.Combine(UpdateBridge.Folder, "snapshot.png"), frames = Path.Combine(UpdateBridge.Folder, "mining.frames");
+            int cycle = StartupMining.PinnedCycle ?? MiningAnimation.CurrentCycle;
+            var size = RenderInstallingScreen(version, snapshot, settings.ReducedMotion ? null : frames, cycle, out var mining);
             var origin = this.PointToScreen(new Point(0, 0));
             // Both bar corners go through TranslatePoint, so the UI-scale LayoutTransform is included.
             var track = (Control)StartupProgressFill.Parent!;
             var bar = UpdateBridge.ToScreenPixels(origin, new Rect(track.TranslatePoint(default, this)!.Value,
                 track.TranslatePoint(new Point(track.Bounds.Width, track.Bounds.Height), this)!.Value), RenderScaling);
-            if (!UpdateBridge.TryStart(snapshot, new PixelRect(origin, size), bar, settings.ReducedMotion))
+            if (!UpdateBridge.TryStart(snapshot, new PixelRect(origin, size), bar, settings.ReducedMotion, mining == null ? null : (frames, UpdateBridge.ToScreenPixels(origin, mining.Value, RenderScaling)), _qaUpdateExe))
                 Log("[Updater] The installing screen could not be handed to the bridge; updating without it.");
+            if (!settings.ReducedMotion) { StartupMining.Opacity = 1; StartupMining.Resume(); }   // if the bridge never took over, this window keeps animating
+            if (!settings.ReducedMotion) restartArgs = new[] { UpdateBridge.MiningCycleArg, cycle.ToString(System.Globalization.CultureInfo.InvariantCulture) };
         }
         catch (Exception ex)
         {
             Log($"[Updater] Could not snapshot the installing screen ({ex.Message}); updating without the bridge.");
         }
-        return new[] { UpdateBridge.RestoreWindowArg, UpdateBridge.FormatRestoreWindow(Position, ClientSize.Width, ClientSize.Height, WindowState) }.Concat(play).ToArray();
+        return new[] { UpdateBridge.RestoreWindowArg, UpdateBridge.FormatRestoreWindow(Position, ClientSize.Width, ClientSize.Height, WindowState) }.Concat(play).Concat(restartArgs).ToArray();
+    }
+
+    private static readonly int MiningFrameCount = (int)(MiningAnimation.CycleSeconds * UpdateBridge.MiningFps + 0.5);
+    private readonly List<byte[]> _miningFrames = new();
+    private PixelSize _miningFramePixels;
+    private MiningAnimation? _miningFrameSource;
+
+    /// <summary>Where the pickaxe scene is in the window (DIPs) and how many physical pixels it covers.</summary>
+    private (Rect Rect, PixelSize Pixels) MiningFrameTarget()
+    {
+        var topLeft = StartupMining.TranslatePoint(default, this)!.Value;
+        var bottomRight = StartupMining.TranslatePoint(new Point(StartupMining.Bounds.Width, StartupMining.Bounds.Height), this)!.Value;
+        var rect = new Rect(topLeft, bottomRight);
+        return (rect, UpdateBridge.ToScreenPixels(default, rect, RenderScaling).Size);
+    }
+
+    /// <summary>One more frame of the loop, drawn by a separate off-screen copy of the scene so the visible one keeps running.</summary>
+    private void RenderMiningFrame((Rect Rect, PixelSize Pixels) target, int cycle)
+    {
+        var size = StartupMining.Bounds.Size;
+        if (_miningFrameSource == null)
+        {
+            _miningFrameSource = new MiningAnimation { Width = size.Width, Height = size.Height, PinnedCycle = cycle };
+            _miningFrameSource.Measure(size);
+            _miningFrameSource.Arrange(new Rect(size));
+        }
+        _miningFrameSource.Freeze(cycle * MiningAnimation.CycleSeconds + MiningAnimation.CycleSeconds * _miningFrames.Count / MiningFrameCount);
+        using var bitmap = new RenderTargetBitmap(target.Pixels, new Vector(96.0 * target.Pixels.Width / size.Width, 96.0 * target.Pixels.Height / size.Height));
+        bitmap.Render(_miningFrameSource);
+        using var stream = new MemoryStream();
+        bitmap.Save(stream);
+        _miningFrames.Add(stream.ToArray());
+    }
+
+    /// <summary>Once an update download starts: keeps the current block (so the bridge can loop exactly it) and prepares the bridge's frames
+    /// in the background, one per dispatcher turn, so installing later needs almost none of that work.</summary>
+    private void PrepareMiningFramesInBackground()
+    {
+        if (settings.ReducedMotion || _miningFramesStarted || LauncherStartupOverlay?.IsVisible != true || StartupMining.Bounds.Width < 40) return;
+        _miningFramesStarted = true;
+        int cycle = StartupMining.PinnedCycle ??= MiningAnimation.CurrentCycle;
+        var target = MiningFrameTarget();
+        _miningFramePixels = target.Pixels;
+        void Next()
+        {
+            if (_windowClosed || _miningFrames.Count >= MiningFrameCount || _miningFramePixels != target.Pixels) return;
+            try { RenderMiningFrame(target, cycle); }
+            catch (Exception ex) { Log($"[Updater] Mining frame {_miningFrames.Count} failed: {ex.Message}"); return; }
+            Dispatcher.UIThread.Post(Next, DispatcherPriority.Background);
+        }
+        Dispatcher.UIThread.Post(Next, DispatcherPriority.Background);
     }
 
     /// <summary>Puts the installing screen up, fully laid out, and saves it to <paramref name="path"/> in physical pixels
     /// (the bridge draws it 1:1 over the same screen pixels); returns its size.</summary>
-    private PixelSize RenderInstallingScreen(string version, string path)
+    private PixelSize RenderInstallingScreen(string version, string path, string? framesPath, int cycle, out Rect? miningRect)
     {
+        miningRect = null;
         _startupAnimTimer?.Stop();
         StartupProgressShine.IsVisible = false;   // the bridge sweeps its own shine; a frozen one would sit under it
-        StartupMining.Freeze(0.81);   // the reduced-motion frame: intact block, pickaxe winding up, no break particles
+        if (framesPath == null) StartupMining.Freeze(0.81);   // the reduced-motion frame: intact block, pickaxe winding up, no break particles
         StartupLoadingSpinner.Text = $"Installing update v{version}";
         LoadingDots.Text = "...";
         StartupPercentText.Text = "100%";
@@ -641,6 +712,17 @@ public partial class MainWindow : Window
         double scale = RenderScaling;
         var size = UpdateBridge.ToScreenPixels(default, new Rect(ClientSize), scale).Size;   // the bridge's client rect uses the same size
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        if (framesPath != null)
+        {
+            // The pickaxe keeps working during the install: one loop of the scene as PNG frames for the bridge (mostly rendered already while
+            // the download ran), and the snapshot is drawn without it.
+            var target = MiningFrameTarget();
+            miningRect = target.Rect;
+            if (_miningFramePixels != target.Pixels) { _miningFrames.Clear(); _miningFramePixels = target.Pixels; }   // the window changed size since
+            while (_miningFrames.Count < MiningFrameCount) RenderMiningFrame(target, cycle);
+            UpdateBridge.WriteMiningFrames(framesPath, _miningFrames);
+            StartupMining.Opacity = 0;
+        }
         using var bitmap = new RenderTargetBitmap(size, new Vector(96 * scale, 96 * scale));
         bitmap.Render(this);
         bitmap.Save(path);
@@ -660,7 +742,7 @@ public partial class MainWindow : Window
         var probe = new Border { Width = 1, Height = 1, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top };
         RootGrid.Children.Add(probe);
         UpdateLayout();
-        probe.SizeChanged += (_, _) => RenderInstallingScreen(Program.Version, output);   // raised inside the next layout pass
+        probe.SizeChanged += (_, _) => RenderInstallingScreen(Program.Version, output, null, 0, out _);   // raised inside the next layout pass
         probe.Width = 2;
         UpdateLayout();
         Close();
@@ -673,11 +755,11 @@ public partial class MainWindow : Window
         if (download.Success)
         {
             _startupDownload = Math.Clamp(int.Parse(download.Groups[2].Value) / 100.0, 0, 1);
+            PrepareMiningFramesInBackground();
             StartupLoadingSpinner.Text = "Downloading update " + download.Groups[1].Value;
-            StartupPercentText.Text = download.Groups[2].Value + "%";
             return;
         }
-        if (message.StartsWith("Installing", StringComparison.Ordinal)) { _startupDownload = 1; StartupPercentText.Text = "100%"; }
+        if (message.StartsWith("Installing", StringComparison.Ordinal)) { _startupDownload = 1; _startupComplete = true; }
         // The trailing dots are animated separately.
         StartupLoadingSpinner.Text = string.IsNullOrEmpty(message) ? "Loading resources" : message.TrimEnd('…', '.');
     }

@@ -44,7 +44,7 @@ public static class CrashReporter
     public static bool IsRealCrash(string gameDirectory, int exitCode, DateTime? since, TimeSpan uptime, TimeSpan startupWindow)
     {
         if (exitCode == 0) return false;
-        if ((uint)exitCode >= 0xC0000000u) return true;
+        if ((uint)exitCode >= 0xC0000000u && exitCode != -1) return true; // -1 = TerminateProcess/taskkill: killed from outside, not a fault
         if (since is not { } start) return true;
         if (uptime < startupWindow) return true;
         try

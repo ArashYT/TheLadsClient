@@ -233,6 +233,9 @@ public sealed class AutoUpdater
     /// <summary>Called with the pending version right before every restart; returns the command-line args the new launcher starts with.</summary>
     public Func<string, string[]>? PrepareRestart { get; set; }
 
+    /// <summary>How long the "Installing" status is shown before the restart is prepared (the bar's finishing animation, see StartupProgress).</summary>
+    public TimeSpan InstallLead { get; set; } = TimeSpan.FromMilliseconds(450);
+
     private void Apply(string version, Action<string> report)
     {
         string[] args;
@@ -306,6 +309,7 @@ public sealed class AutoUpdater
                 return;
             }
             report($"Installing v{_backend.PendingVersion} and restarting…");
+            await Task.Delay(InstallLead);   // the startup screen's bar finishes to 100% before its snapshot goes to the bridge
             Apply(_backend.PendingVersion!, report);
         }
         catch (Exception ex)

@@ -72,4 +72,59 @@ public interface LadsPlayer {
 
     /** Not spectating any more. Also right when the player was never spectating. */
     void spectateEnd();
+
+    // ---- Minigame API (PROTOCOL.md sections 8-21). Each call is false and does nothing without the client's cap. ----
+
+    /** The device the player uses now ("input" cap, section 9); UNKNOWN until the client reported it. */
+    LadsInput.Device inputDevice();
+
+    /** The pad family while {@link #inputDevice()} is GAMEPAD, else UNKNOWN. */
+    LadsInput.Pad padType();
+
+    default boolean usingGamepad() { return inputDevice() == LadsInput.Device.GAMEPAD; }
+
+    /** The text for a button prompt that fits the player's device: {@code kbm} on keyboard, the pad texts on a gamepad. */
+    String glyph(String kbm, String xbox, String playstation, String nintendo);
+
+    /** Controller vibration: {@code low} heavy and {@code high} light motor 0..1, {@code ms} 1..2000. Not kept. */
+    boolean rumble(double low, double high, int ms);
+
+    /** A camera move (section 11): {@code lp.camera().spline(points).ms(4000).smooth().bars().play()}. */
+    CameraBuilder camera();
+
+    /** Shader, vignette, tint and flash (section 12); the flash plays once, the rest is kept for {@code ms}. */
+    boolean screenFx(ScreenFx fx);
+
+    boolean clearScreenFx();
+
+    boolean flashScreen(String color, int ms);
+
+    /** Locks inputs for {@code ms} (1..15000, section 13); the lock ends by itself. */
+    boolean lockInput(InputLock lock, int ms);
+
+    boolean unlockInput();
+
+    Waypoints waypoints();
+
+    Telegraphs telegraphs();
+
+    Hud hud();
+
+    Audio audio();
+
+    Run run();
+
+    /** Switches to the player's own saved profile of this name (section 18); null returns to the previous one. */
+    boolean gameProfile(String name);
+
+    /** The actions the player may bind and press (section 20), at most 8; an empty list removes them. */
+    boolean actions(java.util.List<ServerAction> actions);
+
+    /** Opens a toast, vote or modal (section 21); {@code callback} gets a button id, "dismiss" or "timeout". */
+    boolean dialog(Dialog dialog, Dialog.Callback callback);
+
+    boolean closeDialog(String id);
+
+    /** Ends every minigame effect this server started for the player (camera, fx, lock, hud, waypoints, ...). */
+    void clearMinigame();
 }

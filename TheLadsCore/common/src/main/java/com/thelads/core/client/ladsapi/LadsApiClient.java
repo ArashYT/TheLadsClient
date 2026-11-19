@@ -13,6 +13,8 @@ import com.thelads.core.config.DropdownOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.client.hud.ToastAction;
+import com.thelads.core.client.ladsapi.minigame.Caps;
+import com.thelads.core.client.ladsapi.minigame.Minigame;
 import java.util.Collections;
 import com.thelads.core.config.Option;
 import com.thelads.core.config.SliderOption;
@@ -109,24 +111,33 @@ public final class LadsApiClient {
         long now = clock.getAsLong();
         rateTokens = Math.min(RATE_BURST, rateTokens + Math.max(0, now - rateLast) * RATE_PER_SECOND / 1000.0);
         rateLast = now;
-        if (rateTokens < 1) {
+        Minigame.refill(now);
+        if (rateTokens < 1 && !Minigame.hasToken()) {
             return;
         }
-        rateTokens--;
 
         JsonObject json;
         try {
             String str = new String(payload, StandardCharsets.UTF_8);
             json = GSON.fromJson(str, JsonObject.class);
-            if (json == null) return;
         } catch (Exception e) {
+            json = null;
+        }
+        String type = null;
+        if (json != null && json.has("t") && json.get("t").isJsonPrimitive()) {
+            type = json.get("t").getAsString();
+        }
+        // Minigame messages draw on their own 40/s bucket (PROTOCOL.md 8.1); everything else, and anything unreadable, on the 8/s one.
+        if (type != null && Minigame.isMinigame(type)) {
+            if (!Minigame.hasToken()) return;
+            Minigame.take();
+        } else {
+            if (rateTokens < 1) return;
+            rateTokens--;
+        }
+        if (type == null) {
             return;
         }
-
-        if (!json.has("t") || !json.get("t").isJsonPrimitive()) {
-            return;
-        }
-        String type = json.get("t").getAsString();
 
         if ("hello".equalsIgnoreCase(type)) {
             handleHello(json);
@@ -143,6 +154,8 @@ public final class LadsApiClient {
             handleToast(json);
         } else if ("spectate".equalsIgnoreCase(type)) {
             SpectateState.set(SpectateState.parse(json));
+        } else {
+            Minigame.receive(type, json, now);
         }
     }
 
@@ -161,12 +174,58 @@ public final class LadsApiClient {
         return true;
     }
 
+    /** The clock minigame durations use: the client's own, never the server's. */
+    public static long now() {
+        return clock.getAsLong();
+    }
+
+    /**
+     * The player really pressed (down) or released a server action key (PROTOCOL.md section 20): only in-world with no screen
+     * and no text field, which the caller guarantees. Goes out only for an id of the current actions list, at most 20 a second.
+     */
+    public static boolean serverAction(String id, boolean down) {
+        if (!sessionOk || !Minigame.actions.press(id, clock.getAsLong())) return false;
+        JsonObject o = new JsonObject();
+        o.addProperty("t", "action");
+        o.addProperty("id", id);
+        o.addProperty("down", down);
+        sendPayload(o.toString().getBytes(StandardCharsets.UTF_8));
+        return true;
+    }
+
+    /**
+     * The player clicked a button, pressed its number key, or dismissed a dialog (section 21): {@code choice} is a button id or
+     * "dismiss". Sent once, only for an open, unexpired dialog of this session and a button it named.
+     */
+    public static boolean dialogChoice(String id, String choice) {
+        if (!sessionOk || !Minigame.dialogs.answer(id, choice, clock.getAsLong())) return false;
+        JsonObject o = new JsonObject();
+        o.addProperty("t", "dialog");
+        o.addProperty("id", id);
+        o.addProperty("choice", choice);
+        sendPayload(o.toString().getBytes(StandardCharsets.UTF_8));
+        return true;
+    }
+
+    /**
+     * Input device (section 9): call when the player used another device, or on a tick. Sends only when the hello offered it and
+     * the device class changed (or one is waiting after a hello), at most once per 5 s. Returns whether it was sent.
+     */
+    public static boolean pollInput() {
+        if (!sessionOk) return false;
+        String payload = Minigame.input.poll(clock.getAsLong());
+        if (payload == null) return false;
+        sendPayload(payload.getBytes(StandardCharsets.UTF_8));
+        return true;
+    }
+
     private static void handleHello(JsonObject json) {
         // hello: reset old state, store serverName (<=32 chars) and sessionOk
         ServerPolicy.set(null);
         LadsPresence.serverClear();
         LadsApiUi.policyCleared();
         SpectateState.clear();
+        Minigame.clear();
         sessionOk = false;
 
         String name = "";
@@ -178,6 +237,7 @@ public final class LadsApiClient {
         }
         serverName = name;
         sessionOk = true;
+        Minigame.hello(json);
         // Optional (PROTOCOL.md): a backend behind a proxy that named them may not, so a hello without them leaves them as they are.
         if (json.has("game") && json.get("game").isJsonPrimitive()) networkGame = cap(json.get("game").getAsString().trim(), 32);
         if (json.has("hub") && json.get("hub").isJsonPrimitive()) networkHub = hubCommand(json.get("hub").getAsString());
@@ -210,9 +270,11 @@ public final class LadsApiClient {
         reply.addProperty("v", 1);
         reply.addProperty("lads", LadsVersion.VERSION);
         reply.addProperty("mc", minecraftVersion != null ? minecraftVersion : "");
-        if (!capabilities.isEmpty()) {
+        java.util.Set<String> all = new java.util.TreeSet<>(capabilities);
+        all.addAll(Caps.declared()); // minigame caps a version declared (none: the reply is exactly as before)
+        if (!all.isEmpty()) {
             com.google.gson.JsonArray caps = new com.google.gson.JsonArray();
-            for (String cap : new java.util.TreeSet<>(capabilities)) caps.add(cap);
+            for (String cap : all) caps.add(cap);
             reply.add("caps", caps);
         }
         return reply;
@@ -224,7 +286,8 @@ public final class LadsApiClient {
      * spectator into the target's eyes), so a version without the code must not say it.
      */
     public static void capability(String name) {
-        if (name != null && name.matches("[a-z0-9_-]{1,24}")) capabilities.add(name);
+        if (Caps.isFeature(name)) Caps.declare(name);
+        else if (name != null && name.matches("[a-z0-9_-]{1,24}")) capabilities.add(name);
     }
 
     /** A hello's nonce or server id: 16-64 hex characters, or null. They go to the relay and into what it signs. */
@@ -357,6 +420,7 @@ public final class LadsApiClient {
         LadsPresence.serverClear();
         LadsApiUi.policyCleared();
         SpectateState.clear();
+        Minigame.clear();
         networkGame = "";
         helloReplies = 0;
     }
@@ -382,6 +446,7 @@ public final class LadsApiClient {
         rateTokens = RATE_BURST;
         rateLast = 0;
         spectateAsked = 0;
+        Minigame.resetAll();
         lastHashedSeed = null;
         lastDimension = null;
         seededRespawn = false;
@@ -503,6 +568,11 @@ public final class LadsApiClient {
             return m.getOption("Shape");
         }
         return null;
+    }
+
+    /** "Let servers change my Lads settings" is off (Server Control): server-driven changes such as a profile switch do nothing. */
+    public static boolean playerRefusesChanges() {
+        return isPlayerRefusingChanges();
     }
 
     private static boolean isPlayerRefusingChanges() {
@@ -938,7 +1008,7 @@ public final class LadsApiClient {
         return list;
     }
 
-    static UUID parseUuid(String s) {
+    public static UUID parseUuid(String s) {
         if (s == null) return null;
         String trimmed = s.trim();
         if (trimmed.length() == 36) {

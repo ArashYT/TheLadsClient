@@ -71,6 +71,8 @@ public class CrashReporterTests
             Assert.False(CrashReporter.IsRealCrash(dir, 0, start, TimeSpan.Zero, window));
             Assert.True(CrashReporter.IsRealCrash(dir, 1, start, TimeSpan.FromSeconds(3), window));
             Assert.True(CrashReporter.IsRealCrash(dir, unchecked((int)0xC0000005), start, up, window));
+            Assert.False(CrashReporter.IsRealCrash(dir, -1, start, up, window)); // killed from outside (9 false reports on 2026-11-19)
+            Assert.True(CrashReporter.IsRealCrash(dir, -1, start, TimeSpan.FromSeconds(3), window));
             File.WriteAllText(Path.Combine(dir, "hs_err_pid42.log"), "x");
             Assert.True(CrashReporter.IsRealCrash(dir, 1, start, up, window));
             File.Delete(Path.Combine(dir, "hs_err_pid42.log"));

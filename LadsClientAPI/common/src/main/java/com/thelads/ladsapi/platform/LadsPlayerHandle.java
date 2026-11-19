@@ -16,6 +16,9 @@ public interface LadsPlayerHandle {
     /** "survival", "creative", "adventure" or "spectator" for per-game-mode rules; null when the platform cannot tell (a proxy). */
     default String gameMode() { return null; }
 
+    /** {x, y, z, yaw, pitch} of the player, or null when the platform cannot tell (a proxy); /ladsapi demo uses it. */
+    default double[] position() { return null; }
+
     boolean hasPermission(String node);
 
     /** Sends one lads:api payload. Paper: adds lads:api to the player's channel set first (PROTOCOL.md 1). */
