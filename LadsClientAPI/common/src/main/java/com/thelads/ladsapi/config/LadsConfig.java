@@ -34,6 +34,7 @@ verify-timeout: 15             # require-lads-client: seconds a client gets to p
 perks-need-verified: true      # false: perks for every client that answers the hello, also one that cannot prove itself (before 1.13.9)
 require-verified-message: "This server could not verify your Lads Client. Update it, sign in with your Minecraft account and join again."
 relay-public-keys: []          # empty = the Lads relay keys built into this plugin
+input-device: true             # ask Lads clients for their input device class (keyboard/mouse or gamepad type) for LadsPlayer.usingGamepad()/glyph()
 badge:
   presence: true               # tell Lads clients who else runs Lads (badge)
   placeholder: "&c✿ "          # %ladsapi_badge% for TAB/LuckPerms (vanilla viewers); empty = off
@@ -59,6 +60,7 @@ debug: false
     private List<String> relayPublicKeys = List.of();
     private boolean badgePresence = true;
     private String badgePlaceholder = "&c✿ ";
+    private boolean inputDevice = true;
     private boolean debug = false;
 
     public static LadsConfig load(Path dataFolder, Logger logger) {
@@ -116,6 +118,7 @@ debug: false
         this.relayPublicKeys = List.of();
         this.badgePresence = true;
         this.badgePlaceholder = "&c✿ ";
+        this.inputDevice = true;
         this.debug = false;
     }
 
@@ -192,6 +195,9 @@ debug: false
                 this.badgePlaceholder = p == null ? "" : String.valueOf(p);
             }
         }
+        if (map.containsKey("input-device")) {
+            this.inputDevice = Boolean.parseBoolean(String.valueOf(map.get("input-device")));
+        }
         if (map.containsKey("debug")) {
             this.debug = Boolean.parseBoolean(String.valueOf(map.get("debug")));
         }
@@ -225,6 +231,7 @@ debug: false
     public List<String> getRelayPublicKeys() { return relayPublicKeys; }
     public boolean isBadgePresence() { return badgePresence; }
     public String getBadgePlaceholder() { return badgePlaceholder; }
+    public boolean isInputDevice() { return inputDevice; }
     public boolean isDebug() { return debug; }
 
     public void setEnabled(boolean enabled) { this.enabled = enabled; }

@@ -5,6 +5,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.thelads.ladsapi.LadsCore;
 import com.thelads.ladsapi.api.LadsClientAPI;
+import com.thelads.ladsapi.api.Dialog;
+import com.thelads.ladsapi.api.LadsInput;
 import com.thelads.ladsapi.api.LadsPlayer;
 import com.thelads.ladsapi.config.LadsConfig;
 import com.thelads.ladsapi.platform.LadsPlatform;
@@ -45,6 +47,10 @@ public final class SessionManager implements LadsClientAPI {
     private AttestVerifier verifier;
     private List<String> verifierKeys;
     private LongSupplier clock = () -> System.currentTimeMillis() / 1000;
+    private LongSupplier millis = System::currentTimeMillis;
+    private final List<LadsInput.ActionListener> actionListeners = new ArrayList<>();
+    private final List<LadsInput.DialogListener> dialogListeners = new ArrayList<>();
+    private final List<LadsInput.Listener> inputListeners = new ArrayList<>();
 
     public SessionManager(LadsPlatform platform, LadsConfig config, LadsRules rules) {
         this.platform = platform;
@@ -81,7 +87,33 @@ public final class SessionManager implements LadsClientAPI {
         }
     }
 
+    /** Called when a player presses or releases a server action (PROTOCOL.md section 20). */
+    public void addActionListener(LadsInput.ActionListener listener) {
+        synchronized (lock) {
+            actionListeners.add(listener);
+        }
+    }
+
+    /** Called with every dialog answer: a button id, "dismiss" or "timeout" (section 21). */
+    public void addDialogListener(LadsInput.DialogListener listener) {
+        synchronized (lock) {
+            dialogListeners.add(listener);
+        }
+    }
+
+    /** Called when a client reports its input device (section 9). */
+    public void addInputListener(LadsInput.Listener listener) {
+        synchronized (lock) {
+            inputListeners.add(listener);
+        }
+    }
+
     public String getServerId() { return serverId; }
+
+    /** Unix milliseconds for the minigame timers and rate limits; tests set it. */
+    public long nowMs() { return millis.getAsLong(); }
+
+    public void setMillisClock(LongSupplier millis) { this.millis = millis; }
 
     /** Unix seconds; tests set it. */
     public void setClock(LongSupplier clock) { this.clock = clock; }
@@ -278,6 +310,7 @@ public final class SessionManager implements LadsClientAPI {
             s.sendPresence(true, getAllLadsPlayerUuids(), Collections.emptyList());
         }
         s.resendSpectate();
+        s.resendFeatures();
     }
 
     public void receive(LadsPlayerHandle handle, byte[] payload) {
@@ -294,7 +327,8 @@ public final class SessionManager implements LadsClientAPI {
             session.setHandle(handle);
         }
 
-        if (!session.checkRateLimit()) {
+        long now = nowMs();
+        if (!session.checkFlood(now)) {
             if (config.isDebug() && platform.logger() != null) {
                 platform.logger().warning("[LadsClientAPI] Rate limit exceeded for " + handle.name());
             }
@@ -315,13 +349,118 @@ public final class SessionManager implements LadsClientAPI {
         String type = text(root, "t");
         if (type == null) return;
 
-        if ("hello".equalsIgnoreCase(type)) {
-            handleHello(session, handle, root);
-        } else if ("ack".equalsIgnoreCase(type)) {
-            handleAck(session, handle, root);
-        } else if ("spectate".equalsIgnoreCase(type)) {
-            handleSpectate(session, root);
+        // The feature messages have limits of their own (sections 9, 20, 21); everything else shares the 8 per second.
+        switch (type.toLowerCase(java.util.Locale.ROOT)) {
+            case "input" -> handleInput(session, root, now);
+            case "action" -> handleAction(session, root, now);
+            case "dialog" -> handleDialog(session, root, now);
+            default -> {
+                if (!session.checkRateLimit(now)) {
+                    if (config.isDebug() && platform.logger() != null) {
+                        platform.logger().warning("[LadsClientAPI] Rate limit exceeded for " + handle.name());
+                    }
+                    return;
+                }
+                if ("hello".equalsIgnoreCase(type)) {
+                    handleHello(session, handle, root);
+                } else if ("ack".equalsIgnoreCase(type)) {
+                    handleAck(session, handle, root);
+                } else if ("spectate".equalsIgnoreCase(type)) {
+                    handleSpectate(session, root);
+                }
+            }
         }
+    }
+
+    private void demoLog(LadsSession session, String what) {
+        if (session.isDemo() && platform.logger() != null) {
+            platform.logger().info("[LadsClientAPI] " + session.getHandle().name() + " sent " + what);
+        }
+    }
+
+    /** Section 9: the device class, only when the last hello asked for it. */
+    private void handleInput(LadsSession session, JsonObject root, long now) {
+        if (!session.isLads() || !session.takeInput(now)) return;
+        String d = text(root, "device");
+        LadsInput.Device device = "kbm".equals(d) ? LadsInput.Device.KBM : "gamepad".equals(d) ? LadsInput.Device.GAMEPAD : null;
+        if (device == null) return;
+        LadsInput.Pad pad = LadsInput.Pad.UNKNOWN;
+        if (device == LadsInput.Device.GAMEPAD) {
+            String p = text(root, "pad");
+            pad = "xbox".equals(p) ? LadsInput.Pad.XBOX : "playstation".equals(p) ? LadsInput.Pad.PLAYSTATION
+                    : "switch".equals(p) ? LadsInput.Pad.SWITCH : LadsInput.Pad.GENERIC;
+        }
+        session.setDevice(device, pad);
+        demoLog(session, "input device=" + device + " pad=" + pad);
+        List<LadsInput.Listener> listeners;
+        synchronized (lock) {
+            listeners = new ArrayList<>(inputListeners);
+        }
+        for (LadsInput.Listener l : listeners) {
+            try {
+                l.onInput(session.getLadsPlayer(), device, pad);
+            } catch (Throwable t) {
+                warn("input", t);
+            }
+        }
+    }
+
+    /** Section 20: a press or release of an action the server offered, at most 20 per second. */
+    private void handleAction(LadsSession session, JsonObject root, long now) {
+        if (!session.isLads() || !session.hasCap("action") || !session.checkActionRate(now)) return;
+        String id = text(root, "id");
+        JsonElement down = root.get("down");
+        if (id == null || down == null || !down.isJsonPrimitive() || !down.getAsJsonPrimitive().isBoolean()) return;
+        if (!session.features().hasAction(id)) return;
+        boolean isDown = down.getAsBoolean();
+        demoLog(session, "action " + id + " down=" + isDown);
+        List<LadsInput.ActionListener> listeners;
+        synchronized (lock) {
+            listeners = new ArrayList<>(actionListeners);
+        }
+        for (LadsInput.ActionListener l : listeners) {
+            try {
+                l.onAction(session.getLadsPlayer(), id, isDown);
+            } catch (Throwable t) {
+                warn("action", t);
+            }
+        }
+    }
+
+    /** Section 21: the answer to a dialog this session has open, at most 4 per second. */
+    private void handleDialog(LadsSession session, JsonObject root, long now) {
+        if (!session.isLads() || !session.hasCap("dialog") || !session.checkDialogRate(now)) return;
+        String id = text(root, "id");
+        String choice = text(root, "choice");
+        if (id == null || choice == null) return;
+        Dialog.Callback cb = session.features().takeAnswer(id, choice);
+        if (cb == null) return;
+        demoLog(session, "dialog " + id + " choice=" + choice);
+        dispatchDialog(session, id, choice, cb);
+    }
+
+    /** Runs a dialog's callback and the dialog listeners (also for the plugin's own "timeout"). */
+    public void dispatchDialog(LadsSession session, String id, String choice, Dialog.Callback cb) {
+        List<LadsInput.DialogListener> listeners;
+        synchronized (lock) {
+            listeners = new ArrayList<>(dialogListeners);
+        }
+        try {
+            if (cb != null) cb.onChoice(session.getLadsPlayer(), choice);
+        } catch (Throwable t) {
+            warn("dialog", t);
+        }
+        for (LadsInput.DialogListener l : listeners) {
+            try {
+                l.onDialog(session.getLadsPlayer(), id, choice);
+            } catch (Throwable t) {
+                warn("dialog", t);
+            }
+        }
+    }
+
+    private void warn(String what, Throwable t) {
+        if (platform.logger() != null) platform.logger().warning("[LadsClientAPI] Error in " + what + " listener: " + t.getMessage());
     }
 
     /**
@@ -467,14 +606,14 @@ public final class SessionManager implements LadsClientAPI {
         return e != null && e.isJsonPrimitive() && e.getAsJsonPrimitive().isString() ? e.getAsString() : null;
     }
 
-    /** The hello's {@code caps} (PROTOCOL.md section 3): at most 16 short lower-case names, everything else in it is skipped. */
+    /** The hello's {@code caps} (PROTOCOL.md section 3): at most 32 short lower-case names, everything else in it is skipped. */
     private static java.util.Set<String> clientCaps(JsonObject root) {
         JsonElement e = root.get("caps");
         if (e == null || !e.isJsonArray()) return java.util.Set.of();
         java.util.Set<String> out = new java.util.HashSet<>();
         int seen = 0;
         for (JsonElement cap : e.getAsJsonArray()) {
-            if (++seen > 64 || out.size() >= 16) break;
+            if (++seen > 64 || out.size() >= 32) break;
             if (!cap.isJsonPrimitive() || !cap.getAsJsonPrimitive().isString()) continue;
             String name = cap.getAsString();
             if (name.matches("[a-z0-9_-]{1,24}")) out.add(name);

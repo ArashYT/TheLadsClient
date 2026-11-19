@@ -41,6 +41,7 @@ public final class LadsCommandHandler {
             lines.add("§e/ladsapi clear <player> [Module] §7- Clear temporary and kept overrides (all, or one module); kept ones work offline");
             lines.add("§e/ladsapi scope <player> <name> [seconds|off|--keep] §7- Switch a rules.yml scope on (some seconds, or kept for every login) or off");
             lines.add("§e/ladsapi announce <text> §7- Show a toast on every connected Lads client");
+            lines.add("§e/ladsapi demo <player> <feature> [args] §7- Play a Minigame API feature on one player (rumble, camera, fx, lock, waypoint, telegraph, hud, audio, profile, run, actions, dialog, input, off)");
             return lines;
         }
 
@@ -53,8 +54,21 @@ public final class LadsCommandHandler {
             case "clear" -> handleClear(core, args);
             case "scope" -> handleScope(core, args);
             case "announce" -> handleAnnounce(core, args);
+            case "demo" -> handleDemo(core, args);
             default -> List.of("§cUnknown subcommand: " + args[0] + ". Use /ladsapi help for commands.");
         };
+    }
+
+    private static List<String> handleDemo(LadsCore core, String[] args) {
+        if (args.length < 3) {
+            List<String> lines = new ArrayList<>();
+            lines.add("§cUsage: /ladsapi demo <player> <feature> [args]");
+            lines.addAll(DemoCommand.HELP);
+            return lines;
+        }
+        LadsPlayerHandle handle = findOnlinePlayer(core, args[1]);
+        if (handle == null) return List.of("§cPlayer not found: " + args[1]);
+        return DemoCommand.run(core, handle, args);
     }
 
     private static List<String> handleAnnounce(LadsCore core, String[] args) {
@@ -114,6 +128,8 @@ public final class LadsCommandHandler {
         lines.add("§7Verified by the Lads relay: " + (s.isVerified() ? "§ayes" : "§eno"));
         lines.add("§7World: §f" + handle.world());
         lines.add("§7Active policy rev: §f" + s.getRev());
+        lines.add("§7Input device: §f" + s.getDevice() + (s.getPad() != com.thelads.ladsapi.api.LadsInput.Pad.UNKNOWN ? " (" + s.getPad() + ")" : "")
+                + "§7, client caps: §f" + new java.util.TreeSet<>(s.getClientCaps()));
         if (!s.getApiOverrides().isEmpty()) {
             lines.add("§7Temporary overrides (until logout): §e" + s.getApiOverrides().keySet());
         }
@@ -409,15 +425,20 @@ public final class LadsCommandHandler {
     public static List<String> suggest(LadsCore core, String[] args, List<String> playerNames) {
         if (args == null || args.length <= 1) {
             String prefix = (args == null || args.length == 0) ? "" : args[0];
-            return filterMatching(List.of("reload", "status", "inspect", "set", "clear", "scope"), prefix);
+            return filterMatching(List.of("reload", "status", "inspect", "set", "clear", "scope", "announce", "demo"), prefix);
         }
 
         String sub = args[0].toLowerCase();
         if (args.length == 2) {
-            if ("inspect".equals(sub) || "set".equals(sub) || "clear".equals(sub) || "scope".equals(sub)) {
+            if ("inspect".equals(sub) || "set".equals(sub) || "clear".equals(sub) || "scope".equals(sub) || "demo".equals(sub)) {
                 return filterMatching(playerNames != null ? playerNames : Collections.emptyList(), args[1]);
             }
             return Collections.emptyList();
+        }
+
+        if ("demo".equals(sub)) {
+            if (args.length == 3) return filterMatching(DemoCommand.FEATURES, args[2]);
+            return DemoCommand.suggestFeature(args, args[args.length - 1]);
         }
 
         if ("set".equals(sub) || "scope".equals(sub)) {

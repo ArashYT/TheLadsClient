@@ -49,6 +49,27 @@ public final class LadsPaperPlugin extends JavaPlugin implements PluginMessageLi
             }
         });
 
+        core.sessionManager().addActionListener((ladsPlayer, id, down) -> {
+            Player p = Bukkit.getPlayer(ladsPlayer.uuid());
+            if (p != null) {
+                Bukkit.getPluginManager().callEvent(new com.thelads.ladsapi.paper.event.LadsActionEvent(p, ladsPlayer, id, down));
+            }
+        });
+
+        core.sessionManager().addDialogListener((ladsPlayer, dialogId, choice) -> {
+            Player p = Bukkit.getPlayer(ladsPlayer.uuid());
+            if (p != null) {
+                Bukkit.getPluginManager().callEvent(new com.thelads.ladsapi.paper.event.LadsDialogResponseEvent(p, ladsPlayer, dialogId, choice));
+            }
+        });
+
+        core.sessionManager().addInputListener((ladsPlayer, device, pad) -> {
+            Player p = Bukkit.getPlayer(ladsPlayer.uuid());
+            if (p != null) {
+                Bukkit.getPluginManager().callEvent(new com.thelads.ladsapi.paper.event.LadsInputDeviceEvent(p, ladsPlayer, device, pad));
+            }
+        });
+
         // Register plugin messaging channels
         getServer().getMessenger().registerOutgoingPluginChannel(this, LadsCore.CHANNEL);
         getServer().getMessenger().registerIncomingPluginChannel(this, LadsCore.CHANNEL, this);

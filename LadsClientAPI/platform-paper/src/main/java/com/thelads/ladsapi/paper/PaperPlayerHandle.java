@@ -42,6 +42,12 @@ public final class PaperPlayerHandle implements LadsPlayerHandle {
     }
 
     @Override
+    public double[] position() {
+        org.bukkit.Location l = player.getLocation();
+        return new double[] {l.getX(), l.getY(), l.getZ(), l.getYaw(), l.getPitch()};
+    }
+
+    @Override
     public boolean hasPermission(String node) {
         return player.hasPermission(node);
     }

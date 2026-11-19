@@ -3,6 +3,7 @@ package com.thelads.ladsapi.session;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.thelads.ladsapi.LadsCore;
+import com.thelads.ladsapi.api.LadsInput;
 import com.thelads.ladsapi.api.LadsPlayerImpl;
 import com.thelads.ladsapi.platform.LadsPlayerHandle;
 import com.thelads.ladsapi.policy.PolicyBuilder;
@@ -32,6 +33,20 @@ public final class LadsSession {
     /** Scope name -> its newest timer: an older timer that fires finds another number and does nothing. */
     private final Map<String, Integer> scopeTimers = new java.util.HashMap<>();
     private final LadsPlayerImpl ladsPlayer;
+    private final Features features = new Features(this);
+    /** Everything inbound passes this flood guard first, then the limiter of its own type. */
+    private final RateLimiter floodLimiter = new RateLimiter(64);
+    private final RateLimiter actionLimiter = new RateLimiter(20);
+    private final RateLimiter dialogLimiter = new RateLimiter(4);
+    private volatile boolean inputOffered;
+    private volatile boolean inputFresh;
+    private volatile long lastInputMs;
+    private volatile LadsInput.Device device = LadsInput.Device.UNKNOWN;
+    private volatile LadsInput.Pad pad = LadsInput.Pad.UNKNOWN;
+    private volatile boolean demo;
+    /** The minigame features this plugin can send (PROTOCOL.md section 8); a client uses the ones it named itself. */
+    public static final java.util.List<String> FEATURE_CAPS = java.util.List.of(
+            "rumble", "camera", "fx", "lock", "waypoint", "telegraph", "hud", "audio", "profile", "run", "ghost", "action", "dialog");
 
     private volatile int rev = 0;
     private volatile boolean lads = false;
@@ -104,6 +119,37 @@ public final class LadsSession {
     public boolean hasCap(String cap) { return cap != null && clientCaps.contains(cap); }
     public void setClientCaps(java.util.Set<String> caps) { this.clientCaps = caps == null ? java.util.Set.of() : caps; }
 
+    /** The minigame state sent to this client (PROTOCOL.md section 8). */
+    public Features features() { return features; }
+
+    /** A new hello made the client drop its minigame state: it gets the current one again. */
+    public void resendFeatures() { if (lads) features.resend(); }
+
+    public boolean checkFlood(long nowMs) { return floodLimiter.tryAcquire(nowMs); }
+    public boolean checkActionRate(long nowMs) { return actionLimiter.tryAcquire(nowMs); }
+    public boolean checkDialogRate(long nowMs) { return dialogLimiter.tryAcquire(nowMs); }
+
+    /** The client's device report (section 9): only when the last hello asked, the first after each hello, then 4 s apart. */
+    public boolean takeInput(long nowMs) {
+        if (!inputOffered) return false;
+        if (inputFresh) {
+            inputFresh = false;
+            lastInputMs = nowMs;
+            return true;
+        }
+        if (nowMs - lastInputMs < 4000) return false;
+        lastInputMs = nowMs;
+        return true;
+    }
+
+    public void setDevice(LadsInput.Device device, LadsInput.Pad pad) { this.device = device; this.pad = pad; }
+    public LadsInput.Device getDevice() { return device; }
+    public LadsInput.Pad getPad() { return pad; }
+    public java.util.Set<String> getClientCaps() { return clientCaps; }
+    /** Set by /ladsapi demo: this player's incoming action, dialog and input messages are logged. */
+    public boolean isDemo() { return demo; }
+    public void setDemo(boolean demo) { this.demo = demo; }
+
     public boolean checkRateLimit() {
         return rateLimiter.tryAcquire();
     }
@@ -135,6 +181,11 @@ public final class LadsSession {
         caps.add("policy");
         caps.add("presence");
         caps.add("reset");
+        for (String cap : FEATURE_CAPS) caps.add(cap);
+        boolean askInput = manager.getConfig() != null && manager.getConfig().isInputDevice();
+        if (askInput) caps.add("input");
+        inputOffered = askInput;
+        inputFresh = askInput;
         obj.add("caps", caps);
 
         handle.send(obj.toString().getBytes(StandardCharsets.UTF_8));
