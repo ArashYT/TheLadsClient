@@ -16,9 +16,13 @@ import java.util.function.Supplier;
  * the real getter passes the player's own value in and gets the effective one back, so a server value is never saved.
  */
 public final class ServerSettings {
-    public static final String HUD = "HUD", MINECRAFT = "Minecraft";
+    public static final String HUD = "HUD", MINECRAFT = "Minecraft", SODIUM = "Sodium";
+    private static final String ANIMATE_VISIBLE = "Animate Only Visible Textures";
     private static final Module HUD_MODULE = new Module(HUD, "The Lads HUD's global look.");
     private static final Module MINECRAFT_MODULE = new Module(MINECRAFT, "Minecraft's own options.");
+    private static final Module SODIUM_MODULE = new Module(SODIUM, "Sodium's own options.");
+    /** Set by a version whose game has Sodium loaded; without it "Sodium" rules are reported as ignored. */
+    static volatile boolean sodiumHooked;
     /** Set by a version that hooks vanilla's option getters; without it "Minecraft" rules are reported as ignored. */
     static volatile boolean vanillaHooked;
     /** Every other vanilla option and keybind by its options.txt name ("renderClouds", "key_key.jump"), listed once the game's options exist. */
@@ -31,6 +35,7 @@ public final class ServerSettings {
         HUD_MODULE.addOption(new BoolOption("Soft Shadow", false));
         HUD_MODULE.addOption(new BoolOption("Backgrounds", true));
         HUD_MODULE.addOption(new SliderOption("FPS Limit", 60, 0, 240, 1)); // 0 = unlimited
+        SODIUM_MODULE.addOption(new BoolOption(ANIMATE_VISIBLE, true));
         MINECRAFT_MODULE.addOption(new SliderOption("FOV", 70, 30, 110, 1));
         MINECRAFT_MODULE.addOption(new SliderOption("Brightness", 50, 0, 100, 1).suffix("%"));
         MINECRAFT_MODULE.addOption(new SliderOption("Render Distance", 12, 2, 32, 1));
@@ -59,6 +64,11 @@ public final class ServerSettings {
     /** A version calls this once its vanilla option getters ask {@link #vanilla}. */
     public static void vanillaHooked() {
         vanillaHooked = true;
+    }
+
+    /** A version calls this when Sodium is loaded and its animation mixin asks {@link #sodiumAnimatesAll()}. */
+    public static void sodiumHooked() {
+        sodiumHooked = true;
     }
 
     /** Like {@link #vanillaHooked()}, and every option and keybind the catalog lists may be named too. */
@@ -91,15 +101,21 @@ public final class ServerSettings {
             catalog();
             return MINECRAFT_MODULE;
         }
+        if (SODIUM.equalsIgnoreCase(name) && sodiumHooked) return SODIUM_MODULE;
         return null;
     }
 
     static List<Module> modules() {
-        return List.of(HUD_MODULE, MINECRAFT_MODULE);
+        return List.of(HUD_MODULE, MINECRAFT_MODULE, SODIUM_MODULE);
     }
 
     public static boolean hud(String option, boolean own) {
         return ServerPolicy.applyBool(HUD, option, own);
+    }
+
+    /** Whether the server turns Sodium's "Animate Only Visible Textures" off: every animated texture is then redrawn. Sodium's own saved value is never touched. */
+    public static boolean sodiumAnimatesAll() {
+        return !ServerPolicy.applyBool(SODIUM, ANIMATE_VISIBLE, true);
     }
 
     public static int hud(String option, int own) {

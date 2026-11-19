@@ -62,6 +62,24 @@ class ServerSettingsTest {
     }
 
     @Test
+    void sodiumRuleOverridesTheReadAndIsIgnoredWithoutSodium() {
+        String rule = "\"Sodium\":{\"Animate Only Visible Textures\":{\"value\":false}}";
+        assertEquals(List.of("Sodium.Animate Only Visible Textures"), names(policy("", rule), "ignored"), "no Sodium hooked: ignored like an unknown option");
+        assertFalse(ServerSettings.sodiumAnimatesAll());
+        LadsApiClient.reset();
+        sent.clear();
+        ServerSettings.sodiumHooked = true;
+        try {
+            assertEquals(List.of(), names(policy("", rule), "ignored"));
+            assertTrue(ServerSettings.sodiumAnimatesAll());
+            LadsApiClient.reset();
+            assertFalse(ServerSettings.sodiumAnimatesAll(), "back to the player's own value once the policy is gone");
+        } finally {
+            ServerSettings.sodiumHooked = false;
+        }
+    }
+
+    @Test
     void hudRulesApplyForTheSessionAndAreNeverSaved() {
         JsonObject ack = policy("", "\"HUD\":{\"Text Shadow\":{\"value\":false},\"Backgrounds\":{\"value\":false},"
             + "\"Soft Shadow\":{\"value\":true},\"Scale\":{\"value\":3}}");
