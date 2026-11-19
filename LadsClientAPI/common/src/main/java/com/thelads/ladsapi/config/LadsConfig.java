@@ -28,6 +28,7 @@ notice: ""
 game-name: ""                  # the game or lobby Lads clients show (HUD, Discord), %world% = world or proxy backend; empty = none
 hub-command: ""                # e.g. "/hub": the pause menu's Hub button on The Lads Network; empty = none
 proxy-rules: false             # proxy mode: run rules on proxy (only when on Velocity)
+proxy-rules-servers: []        # Velocity: backend names the proxy runs rules for itself (rules.yml worlds.<name>); other backends keep their own plugin
 verify-client: true            # ask Lads clients to prove themselves through the Lads relay; perks and require-lads-client then need it
 verify-timeout: 15             # require-lads-client: seconds a client gets to prove itself before the kick
 perks-need-verified: true      # false: perks for every client that answers the hello, also one that cannot prove itself (before 1.13.9)
@@ -50,6 +51,7 @@ debug: false
     private String hubCommand = "";
     private String notice = "";
     private boolean proxyRules = false;
+    private List<String> proxyRulesServers = List.of();
     private boolean verifyClient = true;
     private int verifyTimeout = 15;
     private boolean perksNeedVerified = true;
@@ -106,6 +108,7 @@ debug: false
         this.hubCommand = "";
         this.notice = "";
         this.proxyRules = false;
+        this.proxyRulesServers = List.of();
         this.verifyClient = true;
         this.verifyTimeout = 15;
         this.perksNeedVerified = true;
@@ -154,6 +157,13 @@ debug: false
         if (map.containsKey("proxy-rules")) {
             this.proxyRules = Boolean.parseBoolean(String.valueOf(map.get("proxy-rules")));
         }
+        if (map.get("proxy-rules-servers") instanceof List<?> names) {
+            List<String> list = new ArrayList<>();
+            for (Object n : names) {
+                if (n != null && !String.valueOf(n).isBlank()) list.add(String.valueOf(n).trim());
+            }
+            this.proxyRulesServers = List.copyOf(list);
+        }
         if (map.containsKey("verify-client")) {
             this.verifyClient = Boolean.parseBoolean(String.valueOf(map.get("verify-client")));
         }
@@ -198,6 +208,16 @@ debug: false
     public String getHubCommand() { return hubCommand; }
     public String getNotice() { return notice; }
     public boolean isProxyRules() { return proxyRules; }
+    public List<String> getProxyRulesServers() { return proxyRulesServers; }
+    /** The proxy runs sessions at all: for every backend (proxy-rules) or for the listed ones (proxy-rules-servers). */
+    public boolean isProxyActive() { return proxyRules || !proxyRulesServers.isEmpty(); }
+    /** The proxy itself runs the hello/policy exchange for a player on this backend; every other backend keeps its own plugin. */
+    public boolean proxyRulesFor(String server) {
+        if (proxyRules) return true;
+        if (server == null) return false;
+        for (String s : proxyRulesServers) if (s.equalsIgnoreCase(server)) return true;
+        return false;
+    }
     public boolean isVerifyClient() { return verifyClient; }
     public int getVerifyTimeout() { return verifyTimeout; }
     public boolean isPerksNeedVerified() { return perksNeedVerified; }

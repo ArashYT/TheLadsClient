@@ -58,16 +58,19 @@ public final class LadsVelocityPlugin {
             return;
         }
 
-        // Register lads:api with ChannelRegistrar ONLY in proxy-rules mode
-        // Otherwise, backend messages pass through untouched!
-        if (core.config().isProxyRules()) {
+        // Register lads:api with ChannelRegistrar ONLY when the proxy rules for some backend (proxy-rules or proxy-rules-servers).
+        // Otherwise, backend messages pass through untouched! Even registered, a message goes on to the backend unless the player
+        // stands on a backend the proxy rules for (onPluginMessage).
+        if (core.config().isProxyActive()) {
             server.getChannelRegistrar().register(CHANNEL);
             core.sessionManager().addReadyListener(ladsPlayer -> {
                 server.getPlayer(ladsPlayer.uuid()).ifPresent(p -> {
                     server.getEventManager().fire(new LadsPlayerReadyEvent(p, ladsPlayer));
                 });
             });
-            logger.info("Proxy rules enabled: lads:api registered on proxy.");
+            logger.info("Proxy rules enabled for "
+                    + (core.config().isProxyRules() ? "every backend" : "backends " + core.config().getProxyRulesServers())
+                    + ": lads:api registered on proxy.");
         } else {
             logger.info("Backend forward mode: lads:api not registered on proxy (forwarded to backend).");
         }
@@ -101,31 +104,29 @@ public final class LadsVelocityPlugin {
 
     @Subscribe
     public void onServerPostConnect(ServerPostConnectEvent event) {
-        // Session/policy logic on the proxy only with proxy-rules: true
-        if (core != null && core.config().isProxyRules()) {
-            Player player = event.getPlayer();
-            if (event.getPreviousServer() == null) {
-                core.join(platform.handleOf(player));
-            } else {
-                // The client reset on the switch: the new backend needs hello -> policy again (per-backend rules)
-                core.worldChanged(platform.handleOf(player));
-            }
+        // Session/policy logic on the proxy only for backends it rules (proxy-rules, proxy-rules-servers). The client reset on the
+        // switch: a ruled backend gets hello -> policy, any other drops the proxy's session so its own plugin takes over.
+        if (core != null && core.config().isProxyActive()) {
+            core.proxyServerChanged(platform.handleOf(event.getPlayer()));
         }
     }
 
     @Subscribe
     public void onDisconnect(DisconnectEvent event) {
-        if (core != null && core.config().isProxyRules()) {
+        if (core != null && core.config().isProxyActive()) {
             core.quit(event.getPlayer().getUniqueId());
         }
     }
 
     @Subscribe
     public void onPluginMessage(PluginMessageEvent event) {
-        if (core != null && core.config().isProxyRules() && CHANNEL.equals(event.getIdentifier())) {
+        if (core != null && core.config().isProxyActive() && CHANNEL.equals(event.getIdentifier())) {
             if (event.getSource() instanceof Player player) {
+                VelocityPlayerHandle handle = platform.handleOf(player);
+                // A backend the proxy does not rule keeps its own plugin: the message goes on untouched.
+                if (!core.config().proxyRulesFor(handle.world())) return;
                 event.setResult(PluginMessageEvent.ForwardResult.handled());
-                core.receive(platform.handleOf(player), event.getData());
+                core.receive(handle, event.getData());
             }
         }
     }

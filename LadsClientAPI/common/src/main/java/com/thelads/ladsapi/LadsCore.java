@@ -97,6 +97,13 @@ public final class LadsCore {
         }
     }
 
+    /** Velocity: the player is on another backend now (see SessionManager#proxyServerChanged). */
+    public void proxyServerChanged(LadsPlayerHandle player) {
+        if (sessionManager != null) {
+            sessionManager.proxyServerChanged(player);
+        }
+    }
+
     /** Game mode changed (call it once the new mode is in force): per-game-mode rules may differ. */
     public void gameModeChanged(LadsPlayerHandle player) {
         if (sessionManager != null) {
@@ -125,11 +132,11 @@ public final class LadsCore {
 
     public void reload() {
         boolean wasEnabled = config != null && config.isEnabled();
-        boolean prevProxyRules = config != null && config.isProxyRules();
+        boolean prevProxyRules = config != null && config.isProxyActive();
 
         if (config != null) {
             config.readFrom(platform.dataFolder().resolve("config.yml"), platform.logger());
-            if (config.isProxyRules() != prevProxyRules && platform.logger() != null) {
+            if (config.isProxyActive() != prevProxyRules && platform.logger() != null) {
                 platform.logger().warning("[LadsClientAPI] proxy-rules change requires a server restart to take effect.");
             }
         }
