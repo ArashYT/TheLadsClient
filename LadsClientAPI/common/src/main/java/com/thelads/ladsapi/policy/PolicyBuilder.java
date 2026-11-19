@@ -71,7 +71,7 @@ public final class PolicyBuilder {
             }
 
             if (player != null && player.world() != null && rules.getWorlds() != null) {
-                Map<String, ModuleRule> wMods = rules.getWorlds().get(player.world());
+                Map<String, ModuleRule> wMods = worldRules(rules.getWorlds(), player.world());
                 if (wMods != null) {
                     for (Map.Entry<String, ModuleRule> e : wMods.entrySet()) {
                         merged.computeIfAbsent(e.getKey(), k -> new ModuleRule()).mergeFrom(e.getValue());
@@ -162,6 +162,20 @@ public final class PolicyBuilder {
         }
 
         return GSON.toJson(root);
+    }
+
+    /** The exact world name wins; else the longest "prefix*" key that matches (dynamic worlds such as witp_tpls_61). */
+    private static Map<String, ModuleRule> worldRules(Map<String, Map<String, ModuleRule>> worlds, String world) {
+        Map<String, ModuleRule> exact = worlds.get(world);
+        if (exact != null) return exact;
+        String best = null;
+        for (String key : worlds.keySet()) {
+            if (key.length() > 1 && key.endsWith("*") && world.startsWith(key.substring(0, key.length() - 1))
+                    && (best == null || key.length() > best.length())) {
+                best = key;
+            }
+        }
+        return best == null ? null : worlds.get(best);
     }
 
     private static void mergeAll(Map<String, ModuleRule> merged, Map<String, ModuleRule> layer) {

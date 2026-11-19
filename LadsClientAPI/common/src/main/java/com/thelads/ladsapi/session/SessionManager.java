@@ -41,6 +41,7 @@ public final class SessionManager implements LadsClientAPI {
     private final Object lock = new Object();
     /** Names this server in every hello and in the relay's token; new on every start, it says nothing about the server. */
     private final String serverId = LadsSession.randomId();
+    private final KeptSettings kept;
     private AttestVerifier verifier;
     private List<String> verifierKeys;
     private LongSupplier clock = () -> System.currentTimeMillis() / 1000;
@@ -49,7 +50,11 @@ public final class SessionManager implements LadsClientAPI {
         this.platform = platform;
         this.config = config;
         this.rules = rules;
+        this.kept = new KeptSettings(platform.dataFolder(), rules, platform.logger());
     }
+
+    /** What admins saved per player (players.yml). */
+    public KeptSettings kept() { return kept; }
 
     public LadsPlatform getPlatform() { return platform; }
     public LadsConfig getConfig() { return config; }
@@ -135,6 +140,8 @@ public final class SessionManager implements LadsClientAPI {
             session = new LadsSession(handle, this);
             sessions.put(uuid, session);
         }
+        kept.touchName(uuid, handle.name());
+        for (String scope : kept.scopes(uuid)) session.enterScope(scope); // kept scopes come back with every session
 
         // The tasks belong to this session object: a quick reconnect must not inherit the old tasks.
         // Schedule hello at +1 tick
@@ -484,6 +491,13 @@ public final class SessionManager implements LadsClientAPI {
             }
         }
         return list;
+    }
+
+    /** After players.yml was read again: sessions enter the scopes kept for their player (nothing is ended). */
+    public void reapplyKeptScopes() {
+        for (LadsSession s : sessions.values()) {
+            for (String scope : kept.scopes(s.getHandle().uuid())) s.enterScope(scope);
+        }
     }
 
     public void resendAllPolicies() {

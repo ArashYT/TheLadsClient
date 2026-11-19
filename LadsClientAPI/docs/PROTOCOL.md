@@ -68,8 +68,18 @@ Full snapshot. Replaces the previous one entirely (never a diff). Sent after the
   rules.yml `modules` -> `worlds.<world>` -> `gamemodes.<survival|creative|adventure|spectator>` (Paper) -> `groups.<permission>`
   -> each scope the player is in, oldest first (`scopes.<name>`, then the rules a plugin gave that scope) -> per-player API
   overrides. A scope is switched on and off per player by a plugin (`LadsPlayer.scope("duel")`, `.expireIn(seconds)`, `.end()`)
-  or by `/ladsapi scope <player> <name> [seconds|off]`. When a world, game mode or scope changes or a timer runs out, the server
+  or by `/ladsapi scope <player> <name> [seconds|off|--keep]`. When a world, game mode or scope changes or a timer runs out, the server
   sends the new full snapshot, so every client version follows scopes and the client keeps no timers.
+- Per-player settings (plugin 1.4.0, no wire change): `/ladsapi set <player> <target> <rule>` lasts until the player logs out (the
+  session is dropped on quit; on a Paper backend a proxy server switch is a quit there and a join on the next backend, on a
+  Velocity proxy with `proxy-rules: true` the session, and so the rule, survives the switch). With `--keep` anywhere after the
+  player the rule is also saved in `plugins/LadsClientAPI/players.yml` (by UUID, last known name beside it) and applied on every
+  later login: it is the base of the per-player layer, and a temporary `set` on the same module or option wins while the session
+  lasts. `/ladsapi scope <player> <name> --keep` keeps a scope the same way (not with seconds; `off` removes it).
+  `/ladsapi clear <player> [Module]` drops temporary and kept rules (all of them, or one module; no module also drops kept
+  scopes) and works for an offline player's kept rules by name or UUID. `inspect` lists kept rules and scopes apart from
+  temporary ones. players.yml is written atomically, read at start and on `/ladsapi reload`, validated like rules.yml, and
+  rules.yml is never touched. A `worlds` key ending in `*` matches every world with that prefix (`"witp_*"`; an exact name wins).
 - Settings that are no module's (client 1.13.9, no wire change): two names are accepted in `options` only, never in `modules`.
   An older client reports them as unknown (ignored), like any other name.
   - `HUD`: `Scale` (slider 0-16, 0 = follow the GUI scale), `Text Shadow`, `Soft Shadow`, `Backgrounds` (bools).
@@ -125,7 +135,7 @@ Full snapshot. Replaces the previous one entirely (never a diff). Sent after the
   fields plus `"token":"v1.<exp>.<sig>"` (section 6). At most one per answered server hello. An older plugin ignores it: its
   session is acked already.
 - Client 1.13.9, optional `"caps":["spectate"]`: what this build of the client does itself. It names code that is in the
-  game version, never a setting, a mod or anything about the player. `spectate`: section 7. The plugin (1.3.1) keeps at most
+  game version, never a setting, a mod or anything about the player. `spectate`: section 7. The plugin (1.4.0) keeps at most
   16 names of `[a-z0-9_-]{1,24}` from the first hello it accepts and skips the rest (`LadsPlayer.can`). It is said, not
   proven: a plugin picks how to show something by it and grants nothing for it.
 
@@ -233,7 +243,7 @@ Client -> server:
   not `off` and has `switch`. The plugin drops it from a session that was not offered the switch.
 - With `proxy-rules: true` the proxy takes every client message, so the request never reaches a backend: no switcher there.
 
-Which camera the game plugin uses (plugin 1.3.1):
+Which camera the game plugin uses (plugin 1.4.0):
 - A client that does not say `caps: ["spectate"]` (vanilla, Bedrock, an older Lads Client, a game version without the camera
   code) is shown the plugin's own spectator mode, unchanged. PvPArena moves that spectator into the target's eyes every tick,
   because a vanilla client with its camera on another player draws only that player's held item.

@@ -7,9 +7,13 @@ import com.thelads.ladsapi.LadsCore;
 import com.thelads.ladsapi.api.LadsClientAPI;
 import com.thelads.ladsapi.api.LadsPlayer;
 import com.thelads.ladsapi.platform.LadsPlayerHandle;
+import com.thelads.ladsapi.rules.ModuleRule;
+import com.thelads.ladsapi.rules.RuleOption;
+import com.thelads.ladsapi.session.KeptSettings;
 import com.thelads.ladsapi.session.LadsSession;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -31,10 +35,11 @@ public final class LadsCommandHandler {
             lines.add("§e/ladsapi reload §7- Reload configuration and rules files");
             lines.add("§e/ladsapi status §7- Show plugin status and connected Lads players");
             lines.add("§e/ladsapi inspect <player> §7- Inspect player's client and active policy");
-            lines.add("§e/ladsapi set <player> <Module> <state> §7- Set module state (allow|block|on)");
-            lines.add("§e/ladsapi set <player> <Module.Option> <rule> §7- Set option rule (max=10, min=0, value=...)");
-            lines.add("§e/ladsapi clear <player> §7- Clear all API overrides for a player");
-            lines.add("§e/ladsapi scope <player> <name> [seconds|off] §7- Switch a rules.yml scope on (for some seconds) or off");
+            lines.add("§e/ladsapi set <player> <Module> <state> [--keep] §7- Set module state (allow|block|on)");
+            lines.add("§e/ladsapi set <player> <Module.Option> <rule> [--keep] §7- Set option rule (max=10, min=0, value=...)");
+            lines.add("§7  A set lasts until the player logs out; §e--keep§7 also saves it in players.yml for every later login.");
+            lines.add("§e/ladsapi clear <player> [Module] §7- Clear temporary and kept overrides (all, or one module); kept ones work offline");
+            lines.add("§e/ladsapi scope <player> <name> [seconds|off|--keep] §7- Switch a rules.yml scope on (some seconds, or kept for every login) or off");
             lines.add("§e/ladsapi announce <text> §7- Show a toast on every connected Lads client");
             return lines;
         }
@@ -110,8 +115,15 @@ public final class LadsCommandHandler {
         lines.add("§7World: §f" + handle.world());
         lines.add("§7Active policy rev: §f" + s.getRev());
         if (!s.getApiOverrides().isEmpty()) {
-            lines.add("§7API overrides: §e" + s.getApiOverrides().keySet());
+            lines.add("§7Temporary overrides (until logout): §e" + s.getApiOverrides().keySet());
         }
+        List<String> keptScopes = core.sessionManager().kept().scopes(handle.uuid());
+        List<String> nowScopes = new ArrayList<>(s.scopeNames());
+        nowScopes.removeAll(keptScopes);
+        if (!nowScopes.isEmpty()) lines.add("§7Temporary scopes: §e" + nowScopes);
+        Map<String, ModuleRule> keptRules = core.sessionManager().kept().rules(handle.uuid());
+        if (!keptRules.isEmpty()) lines.add("§7Kept overrides (players.yml): §e" + keptRules.keySet());
+        if (!keptScopes.isEmpty()) lines.add("§7Kept scopes (players.yml): §e" + keptScopes);
         return lines;
     }
 
@@ -180,9 +192,24 @@ public final class LadsCommandHandler {
         return new ResolvedTarget(target, null, false);
     }
 
-    private static List<String> handleSet(LadsCore core, String[] args) {
+    /** Splits "--keep" out of the words after the player (it may stand anywhere there). */
+    private static boolean takeKeep(List<String> words) {
+        boolean keep = false;
+        for (int i = words.size() - 1; i >= 2; i--) {
+            if ("--keep".equalsIgnoreCase(words.get(i))) {
+                words.remove(i);
+                keep = true;
+            }
+        }
+        return keep;
+    }
+
+    private static List<String> handleSet(LadsCore core, String[] rawArgs) {
+        List<String> words = new ArrayList<>(List.of(rawArgs));
+        boolean keep = takeKeep(words);
+        String[] args = words.toArray(new String[0]);
         if (args.length < 4) {
-            return List.of("§cUsage: /ladsapi set <player> <Module> <state> OR /ladsapi set <player> <Module.Option> <rule>");
+            return List.of("§cUsage: /ladsapi set <player> <Module> <state> [--keep] OR /ladsapi set <player> <Module.Option> <rule> [--keep]");
         }
         LadsPlayerHandle handle = findOnlinePlayer(core, args[1]);
         if (handle == null) {
@@ -207,69 +234,111 @@ public final class LadsCommandHandler {
             output.add("§eWarning: '" + target + "' is not in schema.");
         }
 
+        // The rule as a one-module layer: applied to this session (temporary) or saved (--keep).
+        ModuleRule rule = new ModuleRule();
+        String what;
         if (resolved.option != null) {
-            String module = resolved.module;
-            String option = resolved.option;
-
+            RuleOption opt = new RuleOption();
             String lower = ruleVal.toLowerCase();
-            if (lower.startsWith("max=")) {
-                try {
-                    double max = Double.parseDouble(ruleVal.substring(4));
-                    lp.limit(module, option, Double.NaN, max);
-                } catch (NumberFormatException e) {
-                    return List.of("§cInvalid number: " + ruleVal.substring(4));
+            try {
+                if (lower.startsWith("max=")) {
+                    opt.setMax(Double.parseDouble(ruleVal.substring(4)));
+                } else if (lower.startsWith("min=")) {
+                    opt.setMin(Double.parseDouble(ruleVal.substring(4)));
+                } else {
+                    opt.setValue(parseScalarValue(lower.startsWith("value=") ? ruleVal.substring(6) : ruleVal));
+                    opt.setLock(true);
                 }
-            } else if (lower.startsWith("min=")) {
-                try {
-                    double min = Double.parseDouble(ruleVal.substring(4));
-                    lp.limit(module, option, min, Double.NaN);
-                } catch (NumberFormatException e) {
-                    return List.of("§cInvalid number: " + ruleVal.substring(4));
-                }
-            } else if (lower.startsWith("value=")) {
-                String valStr = ruleVal.substring(6);
-                lp.force(module, option, parseScalarValue(valStr));
-            } else {
-                lp.force(module, option, parseScalarValue(ruleVal));
+            } catch (NumberFormatException e) {
+                return List.of("§cInvalid number: " + ruleVal.substring(4));
             }
-            output.add("§aSet " + module + "." + option + " to " + ruleVal + " for " + handle.name());
-            return output;
+            rule.setOption(resolved.option, opt);
+            what = resolved.module + "." + resolved.option + " to " + ruleVal;
         } else {
-            String module = resolved.module;
             String state = ruleVal.toLowerCase();
-            switch (state) {
+            if (!state.equals("allow") && !state.equals("block") && !state.equals("on")) {
+                return List.of("§cInvalid state: " + ruleVal + " (expected: allow | block | on)");
+            }
+            rule.setState(state);
+            what = "module " + resolved.module + " state to " + state;
+        }
+
+        if (keep) {
+            try {
+                if (!core.sessionManager().kept().put(handle.uuid(), handle.name(), resolved.module, rule)) {
+                    output.add("§cCould not write players.yml (see the server log): the rule only lasts until the next restart.");
+                }
+            } catch (IllegalArgumentException e) {
+                return List.of("§c" + e.getMessage());
+            }
+            lp.resend();
+            output.add("§aSet " + what + " for " + handle.name() + " §7(kept: every login)");
+            return output;
+        }
+        applyTemporary(lp, resolved.module, rule);
+        output.add("§aSet " + what + " for " + handle.name() + " §7(until logout)");
+        return output;
+    }
+
+    private static void applyTemporary(LadsPlayer lp, String module, ModuleRule rule) {
+        if (rule.getState() != null) {
+            switch (rule.getState()) {
                 case "allow" -> lp.allow(module);
                 case "block" -> lp.block(module);
-                case "on" -> lp.forceOn(module);
-                default -> {
-                    return List.of("§cInvalid state: " + ruleVal + " (expected: allow | block | on)");
-                }
+                default -> lp.forceOn(module);
             }
-            output.add("§aSet module " + module + " state to " + state + " for " + handle.name());
-            return output;
+        }
+        for (Map.Entry<String, RuleOption> e : rule.getOptions().entrySet()) {
+            RuleOption o = e.getValue();
+            if (o.getValue() != null) lp.force(module, e.getKey(), o.getValue());
+            else lp.limit(module, e.getKey(), o.getMin() == null ? Double.NaN : o.getMin(), o.getMax() == null ? Double.NaN : o.getMax());
         }
     }
 
+    /** /ladsapi clear <player> [Module]: temporary and kept overrides; an offline player's kept ones too (name or UUID). */
     private static List<String> handleClear(LadsCore core, String[] args) {
-        if (args.length < 2) {
-            return List.of("§cUsage: /ladsapi clear <player>");
+        if (args.length < 2 || args.length > 3) {
+            return List.of("§cUsage: /ladsapi clear <player> [Module]");
         }
+        String module = null;
+        if (args.length == 3) {
+            ResolvedTarget resolved = resolveTarget(core.schema(), args[2]);
+            if (resolved == null || resolved.option != null) {
+                return List.of("§cclear takes a module name, not Module.Option: " + args[2]);
+            }
+            module = resolved.module;
+        }
+        KeptSettings kept = core.sessionManager().kept();
         LadsPlayerHandle handle = findOnlinePlayer(core, args[1]);
-        if (handle == null) {
+        UUID uuid = handle != null ? handle.uuid() : kept.find(args[1]);
+        if (uuid == null) {
             return List.of("§cPlayer not found: " + args[1]);
         }
-        Optional<LadsPlayer> optLp = LadsClientAPI.get().player(handle.uuid());
-        if (optLp.isEmpty()) {
-            return List.of("§cPlayer " + handle.name() + " is not running Lads Client.");
+        String who = handle != null ? handle.name() : (kept.name(uuid).isEmpty() ? uuid.toString() : kept.name(uuid));
+        List<String> scopesGone = module == null ? kept.scopes(uuid) : List.of();
+        boolean keptGone = kept.clear(uuid, module);
+        boolean tempGone = false;
+        LadsSession session = core.sessionManager().getSessions().get(uuid);
+        if (session != null) {
+            for (String scope : scopesGone) session.endScope(scope);
+            tempGone = module == null ? !session.getApiOverrides().isEmpty() : session.getApiOverrides().containsKey(module);
+            session.clearApiOverrides(module);
+            if (session.isLads()) session.sendPolicy();
         }
-        optLp.get().clear(null);
-        return List.of("§aCleared all API overrides for " + handle.name());
+        if (!keptGone && !tempGone) {
+            return List.of("§e" + who + " had no " + (module == null ? "" : module + " ") + "overrides to clear.");
+        }
+        return List.of("§aCleared " + (module == null ? "all" : module) + " overrides for " + who
+                + " §7(" + (tempGone ? "temporary" : "") + (tempGone && keptGone ? " + " : "") + (keptGone ? "kept" : "") + ")");
     }
 
-    /** /ladsapi scope <player> <name> [seconds|off]: switches a rules.yml scope on (for good or for some seconds) or off. */
-    private static List<String> handleScope(LadsCore core, String[] args) {
+    /** /ladsapi scope <player> <name> [seconds|off|--keep]: switches a rules.yml scope on (for good, for some seconds, or kept) or off. */
+    private static List<String> handleScope(LadsCore core, String[] rawArgs) {
+        List<String> words = new ArrayList<>(List.of(rawArgs));
+        boolean keep = takeKeep(words);
+        String[] args = words.toArray(new String[0]);
         if (args.length < 3) {
-            return List.of("§cUsage: /ladsapi scope <player> <name> [seconds|off]");
+            return List.of("§cUsage: /ladsapi scope <player> <name> [seconds|off|--keep]");
         }
         LadsPlayerHandle handle = findOnlinePlayer(core, args[1]);
         if (handle == null) {
@@ -280,11 +349,14 @@ public final class LadsCommandHandler {
             return List.of("§cPlayer " + handle.name() + " is not running Lads Client.");
         }
         LadsPlayer lp = optLp.get();
+        KeptSettings kept = core.sessionManager().kept();
         String name = args[2].toLowerCase();
         if (args.length >= 4 && "off".equalsIgnoreCase(args[3])) {
-            if (!lp.scopes().contains(name)) return List.of("§e" + handle.name() + " is not in scope " + name);
-            lp.scope(name).end();
-            return List.of("§aScope " + name + " ended for " + handle.name());
+            boolean wasKept = kept.removeScope(handle.uuid(), name);
+            boolean wasOn = lp.scopes().contains(name);
+            if (!wasOn && !wasKept) return List.of("§e" + handle.name() + " is not in scope " + name);
+            if (wasOn) lp.scope(name).end();
+            return List.of("§aScope " + name + " ended for " + handle.name() + (wasKept ? " §7(no longer kept)" : ""));
         }
         long seconds = 0;
         if (args.length >= 4) {
@@ -294,8 +366,20 @@ public final class LadsCommandHandler {
                 return List.of("§cNot a number of seconds: " + args[3]);
             }
         }
-        lp.scope(name).expireIn(seconds);
         String note = core.sessionManager().getRules().getScopes().containsKey(name) ? "" : " §7(rules.yml has no scopes." + name + ": no rules yet)";
+        if (keep) {
+            if (seconds > 0) return List.of("§cA timed scope cannot be kept: use --keep without seconds.");
+            try {
+                if (!kept.addScope(handle.uuid(), handle.name(), name)) {
+                    note += " §cCould not write players.yml (see the server log)";
+                }
+            } catch (IllegalArgumentException e) {
+                return List.of("§c" + e.getMessage());
+            }
+            lp.scope(name).expireIn(0);
+            return List.of("§aScope " + name + " on for " + handle.name() + " §7(kept: every login)" + note);
+        }
+        lp.scope(name).expireIn(seconds);
         return List.of("§aScope " + name + " on for " + handle.name() + (seconds > 0 ? " for " + seconds + " s" : "") + note);
     }
 
@@ -334,6 +418,40 @@ public final class LadsCommandHandler {
                 return filterMatching(playerNames != null ? playerNames : Collections.emptyList(), args[1]);
             }
             return Collections.emptyList();
+        }
+
+        if ("set".equals(sub) || "scope".equals(sub)) {
+            // --keep may stand anywhere after the player: suggest it once, and complete the rest without it
+            String cur = args[args.length - 1];
+            List<String> rest = new ArrayList<>();
+            boolean hasKeep = false;
+            for (int i = 0; i < args.length - 1; i++) {
+                if (i >= 2 && "--keep".equalsIgnoreCase(args[i])) hasKeep = true;
+                else rest.add(args[i]);
+            }
+            if (cur.startsWith("--")) return hasKeep ? Collections.emptyList() : filterMatching(List.of("--keep"), cur);
+            rest.add(cur);
+            args = rest.toArray(new String[0]);
+            if ("scope".equals(sub)) {
+                if (args.length == 3) {
+                    List<String> names = core != null ? new ArrayList<>(core.sessionManager().getRules().getScopes().keySet()) : List.of();
+                    return filterMatching(names, cur);
+                }
+                if (args.length == 4) {
+                    List<String> opts = new ArrayList<>(List.of("off"));
+                    if (!hasKeep) opts.add("--keep");
+                    return filterMatching(opts, cur);
+                }
+                return Collections.emptyList();
+            }
+        }
+
+        if ("clear".equals(sub) && args.length == 3) {
+            List<String> mods = new ArrayList<>();
+            if (core != null && core.schema() != null && core.schema().getModules() != null) {
+                for (LadsSchema.SchemaModule mod : core.schema().getModules()) mods.add(mod.getName());
+            }
+            return filterMatching(mods, args[2]);
         }
 
         if ("set".equals(sub)) {

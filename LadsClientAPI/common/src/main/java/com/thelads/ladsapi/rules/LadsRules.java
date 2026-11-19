@@ -150,6 +150,14 @@ public final class LadsRules {
         return Collections.unmodifiableMap(out);
     }
 
+    /** One layer of module rules from plain YAML data (keys must already be strings), checked like rules.yml; players.yml uses it. */
+    @SuppressWarnings("unchecked")
+    public Map<String, ModuleRule> parseLayer(Map<String, Object> data, Logger logger) {
+        Map<String, ModuleRule> out = new LinkedHashMap<>();
+        if (data != null) parseModulesMap(data, out, logger);
+        return out;
+    }
+
     @SuppressWarnings("unchecked")
     private void parseModulesMap(Map<String, Object> map, Map<String, ModuleRule> target, Logger logger) {
         for (Map.Entry<String, Object> entry : map.entrySet()) {

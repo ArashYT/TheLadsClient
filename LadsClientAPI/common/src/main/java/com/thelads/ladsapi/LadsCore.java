@@ -137,6 +137,8 @@ public final class LadsCore {
             rules.readFrom(platform.dataFolder().resolve("rules.yml"), platform.logger());
         }
         if (sessionManager != null) {
+            sessionManager.kept().load();
+            sessionManager.reapplyKeptScopes();
             if (config != null && !config.isEnabled()) {
                 sessionManager.stop();
             } else if (!wasEnabled) {

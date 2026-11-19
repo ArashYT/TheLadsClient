@@ -156,8 +156,13 @@ public final class LadsSession {
         syncedWorld = handle.world();
         Map<String, ModuleRule> overridesCopy;
         Map<String, Map<String, ModuleRule>> scopesCopy = new LinkedHashMap<>();
+        Map<String, ModuleRule> keptRules = manager.kept().rules(handle.uuid());
         synchronized (apiOverrides) {
-            overridesCopy = new LinkedHashMap<>(apiOverrides);
+            // Kept rules (players.yml) are the base of the top layer; this session's own overrides go over them.
+            overridesCopy = keptRules;
+            for (Map.Entry<String, ModuleRule> e : apiOverrides.entrySet()) {
+                overridesCopy.computeIfAbsent(e.getKey(), k -> new ModuleRule()).mergeFrom(e.getValue());
+            }
             for (Map.Entry<String, Map<String, ModuleRule>> e : scopes.entrySet()) {
                 scopesCopy.put(e.getKey(), new LinkedHashMap<>(e.getValue()));
             }
