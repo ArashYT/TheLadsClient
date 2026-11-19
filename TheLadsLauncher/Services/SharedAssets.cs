@@ -9,7 +9,6 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using CmlLib.Core;
-using CmlLib.Core.Files;
 
 namespace TheLadsLauncher.Services;
 
@@ -57,9 +56,9 @@ public static class SharedAssets
             var stores = Stores(dataDirectory).Where(store => !SamePath(store, assets)).ToList();
             if (stores.Count == 0) return null;
 
-            AssetMetadata? index = null;
-            for (var version = await VersionAsync(launcher, versionId, token); version != null && index == null; version = version.ParentVersion)
-                index = version.AssetIndex;
+            var index = LocalIndex(launcher.MinecraftPath.Versions, versionId);
+            for (var version = index == null ? await VersionAsync(launcher, versionId, token) : null; version != null && index == null; version = version.ParentVersion)
+                if (version.AssetIndex is { } found) index = new Index(found.Id, found.GetSha1(), found.Url);
             if (index?.Id is not { Length: > 0 } id || id.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) return null;
 
             string indexFile = Path.Combine(assets, "indexes", id + ".json");
@@ -76,6 +75,33 @@ public static class SharedAssets
         }
     }
 
+    internal sealed record Index(string? Id, string? Sha1, string? Url);
+
+    /// <summary>The asset index the installed version files name (a loader's json inherits the game's): no network, so a slow
+    /// or unreachable Mojang does not cost the reuse. Null when the version is not on disk yet.</summary>
+    internal static Index? LocalIndex(string versions, string versionId)
+    {
+        try
+        {
+            for (int depth = 0; depth < 4 && versionId.Length > 0 && versionId.IndexOfAny(Path.GetInvalidFileNameChars()) < 0; depth++)
+            {
+                string file = Path.Combine(versions, versionId, versionId + ".json");
+                if (!File.Exists(file)) return null;
+                using var document = JsonDocument.Parse(File.ReadAllBytes(file));
+                var root = document.RootElement;
+                if (root.TryGetProperty("assetIndex", out var index) && index.ValueKind == JsonValueKind.Object)
+                    return new Index(Text(index, "id"), Text(index, "sha1"), Text(index, "url"));
+                if (Text(root, "inheritsFrom") is not { } parent) return null;
+                versionId = parent;
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { }
+        return null;
+
+        static string? Text(JsonElement element, string name) =>
+            element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+    }
+
     private static async Task<CmlLib.Core.Version.IVersion?> VersionAsync(MinecraftLauncher launcher, string versionId, CancellationToken token)
     {
         try
@@ -90,11 +116,11 @@ public static class SharedAssets
     }
 
     /// <summary>The index from another folder (hash-checked against the version's), else Mojang's.</summary>
-    private static async Task FetchIndexAsync(string indexFile, string id, AssetMetadata index, List<string> stores, HttpClient http, CancellationToken token)
+    private static async Task FetchIndexAsync(string indexFile, string id, Index index, List<string> stores, HttpClient http, CancellationToken token)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(indexFile)!);
         string part = indexFile + ".part";
-        string? sha1 = index.GetSha1();
+        string? sha1 = index.Sha1;
         if (IsSha1(sha1))
         {
             foreach (var store in stores)
@@ -134,7 +160,7 @@ public static class SharedAssets
         }
 
         int linked = 0, copied = 0, missing = 0;
-        Parallel.ForEach(wanted, new ParallelOptions { MaxDegreeOfParallelism = 4, CancellationToken = token }, item =>
+        Parallel.ForEach(wanted, new ParallelOptions { MaxDegreeOfParallelism = Math.Clamp(Environment.ProcessorCount, 2, 8), CancellationToken = token }, item =>
         {
             string relative = Path.Combine("objects", item.Key[..2], item.Key);
             string target = Path.Combine(assets, relative);

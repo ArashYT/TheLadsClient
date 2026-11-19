@@ -71,6 +71,28 @@ public class SharedAssetsTests
     }
 
     [Fact]
+    public void TheAssetIndexIsReadFromTheInstalledVersionFiles()
+    {
+        using var dir = new TestDirectory();
+        void Version(string id, string json)
+        {
+            Directory.CreateDirectory(Path.Combine(dir.Path, id));
+            File.WriteAllText(Path.Combine(dir.Path, id, id + ".json"), json);
+        }
+        Version("26.3", """{"id":"26.3","assetIndex":{"id":"34","sha1":"f3df28b441565ca4e5deb9cda856d90df62e1433","url":"https://piston-meta.mojang.com/34.json"}}""");
+        Version("fabric-loader-0.19.5-26.3", """{"id":"fabric-loader-0.19.5-26.3","inheritsFrom":"26.3"}""");
+        Version("orphan", """{"id":"orphan","inheritsFrom":"1.0"}""");
+        Version("loop", """{"id":"loop","inheritsFrom":"loop"}""");
+        Version("broken", "{");
+
+        var expected = new SharedAssets.Index("34", "f3df28b441565ca4e5deb9cda856d90df62e1433", "https://piston-meta.mojang.com/34.json");
+        Assert.Equal(expected, SharedAssets.LocalIndex(dir.Path, "26.3"));
+        Assert.Equal(expected, SharedAssets.LocalIndex(dir.Path, "fabric-loader-0.19.5-26.3"));
+        foreach (var id in new[] { "orphan", "loop", "broken", "missing", "", @"...3" })
+            Assert.Null(SharedAssets.LocalIndex(dir.Path, id));
+    }
+
+    [Fact]
     public void StoresAreTheFoldersThatHoldObjects()
     {
         using var dir = new TestDirectory();
