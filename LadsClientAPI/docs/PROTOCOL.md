@@ -12,6 +12,11 @@ Lanes implement exactly this. Changing it requires Claude's sign-off. Design rea
   server `hello` in the current session.
 - Paper: before the first send to a player, the server adds `lads:api` to `((CraftPlayer) p).channels()` (live set; reflective
   call on the public method), otherwise `sendPluginMessage` drops it. Velocity forwards `lads:api` both ways as is.
+- Velocity `proxy-rules-servers: [name, ...]` (plugin 1.4.0): the proxy itself runs hello/policy for a player while the player's backend is
+  listed (rules.yml `worlds.<backend name>`, for a backend with no plugin such as PicoLimbo), and forwards `lads:api` untouched for every
+  other backend. On a switch the proxy sends `reset` (before the new backend's JoinGame); a listed target then gets a fresh hello, any other
+  drops the proxy's session so that backend's own plugin takes over. The client answers a valid hello on `lads:api` whether or not any
+  backend registered the channel. `proxy-rules: true` still means every backend.
 
 ## 2. Server -> client
 
@@ -116,7 +121,7 @@ Full snapshot. Replaces the previous one entirely (never a diff). Sent after the
 ```json
 {"t":"reset"}
 ```
-- Drop policy and presence now. Sent by a proxy install on every `ServerPostConnectEvent`, and by a server on plugin disable.
+- Drop policy and presence now. Sent by a proxy install on every backend switch (`ServerConnectedEvent`), and by a server on plugin disable.
 
 ### spectate
 ```json

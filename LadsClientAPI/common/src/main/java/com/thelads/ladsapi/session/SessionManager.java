@@ -126,7 +126,7 @@ public final class SessionManager implements LadsClientAPI {
         if (handle == null) return;
 
         // A proxy runs sessions only with proxy-rules: true; otherwise the backends own the policy (the proxy just sends reset).
-        if (platform.isProxy() && !config.isProxyRules()) {
+        if (platform.isProxy() && !config.proxyRulesFor(handle.world())) {
             return;
         }
 
@@ -210,6 +210,24 @@ public final class SessionManager implements LadsClientAPI {
      */
     public void worldChanged(LadsPlayerHandle handle) {
         refresh(handle, platform.isProxy());
+    }
+
+    /**
+     * Velocity: the player is now on the backend {@code handle.world()}. A backend the proxy rules for gets a fresh session (hello,
+     * policy), or a resync when the player came from another ruled backend; any other backend gets none, so the proxy's policy is
+     * dropped and that backend's own plugin takes over (the client already reset on the switch).
+     */
+    public void proxyServerChanged(LadsPlayerHandle handle) {
+        if (handle == null || !platform.isProxy()) return;
+        if (config.proxyRulesFor(handle.world())) {
+            boolean has;
+            synchronized (lock) {
+                has = sessions.containsKey(handle.uuid());
+            }
+            if (has) worldChanged(handle); else join(handle);
+        } else {
+            quit(handle.uuid());
+        }
     }
 
     /** Game mode changed: the client kept its session, so a new policy is enough, and only when rules.yml has per-game-mode rules. */
