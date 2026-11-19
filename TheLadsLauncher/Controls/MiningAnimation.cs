@@ -8,6 +8,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Media.Immutable;
 using Avalonia.Platform;
+using Avalonia.Threading;
 
 namespace TheLadsLauncher.Controls;
 
@@ -25,49 +26,82 @@ public sealed class MiningAnimation : Control
     private static readonly Dictionary<int, Color[]> Chips = new();
     private static WriteableBitmap? _pickaxe;
     private static readonly IPen Seam = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromArgb(150, 12, 12, 14)), 1);
-    private readonly Stopwatch _clock = Stopwatch.StartNew();
-    private readonly Action<TimeSpan> _frame;
+    // Wall-clock time since a fixed epoch: the launcher, the update bridge and the relaunched launcher all show the same moment of the scene.
+    public static readonly DateTime Epoch = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+    private readonly DispatcherTimer _watchdog = new() { Interval = TimeSpan.FromMilliseconds(250) };
+    private readonly Stopwatch _sinceFrame = Stopwatch.StartNew();
     private double? _frozen;
     private bool _running;
+    private int _loop; // bumped on every (re)start so a frame request left over from an earlier loop ends instead of doubling the rate
 
     public MiningAnimation()
     {
-        _frame = OnFrame;
         ClipToBounds = true; // the falling block and flying chips never cross the progress bar above
+        _watchdog.Tick += (_, _) => { if (_running && _sinceFrame.ElapsedMilliseconds > 300) StartLoop(); };
     }
+
+    /// <summary>Seconds on the shared clock (see <see cref="Epoch"/>).</summary>
+    public static double Now => (DateTime.UtcNow - Epoch).TotalSeconds;
+
+    /// <summary>Which block the shared clock is on right now.</summary>
+    public static int CurrentCycle => (int)Math.Floor(Now / Cycle);
+
+    /// <summary>Keeps this block (material, crack pattern, chips) for every cycle instead of moving on to the next one; the relaunched launcher
+    /// uses it so the block the bridge was looping is the block it shows.</summary>
+    public int? PinnedCycle { get; set; }
 
     /// <summary>One block from drop-in to break.</summary>
     public static double CycleSeconds => Cycle;
 
     /// <summary>Shows one exact moment (previews, reduced motion) instead of the live clock.</summary>
-    public void Freeze(double seconds) { _frozen = seconds; _running = false; InvalidateVisual(); }
-    public void Stop() => _running = false;
+    public void Freeze(double seconds) { _frozen = seconds; _running = false; _watchdog.Stop(); InvalidateVisual(); }
+    public void Stop() { _running = false; _watchdog.Stop(); }
+
+    /// <summary>Back to the live clock after <see cref="Freeze"/> (the launcher keeps animating if the bridge could not take over).</summary>
+    public void Resume()
+    {
+        _frozen = null;
+        if (VisualRoot != null) Start();
+    }
+
+    private void Start()
+    {
+        if (_frozen != null || _running) return;
+        _running = true;
+        _watchdog.Start();
+        StartLoop();
+    }
+
+    // A frame request can be dropped (window minimised or hidden, a surface being recreated); the watchdog restarts the chain then.
+    private void StartLoop()
+    {
+        int loop = ++_loop;
+        void Frame(TimeSpan _)
+        {
+            if (!_running || loop != _loop) return;
+            _sinceFrame.Restart();
+            InvalidateVisual();
+            TopLevel.GetTopLevel(this)?.RequestAnimationFrame(Frame);
+        }
+        TopLevel.GetTopLevel(this)?.RequestAnimationFrame(Frame);
+    }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        if (_frozen != null || _running) return;
-        _running = true;
-        TopLevel.GetTopLevel(this)?.RequestAnimationFrame(_frame);
+        Start();
     }
 
-    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e) { _running = false; base.OnDetachedFromVisualTree(e); }
-
-    private void OnFrame(TimeSpan _)
-    {
-        if (!_running) return;
-        InvalidateVisual();
-        TopLevel.GetTopLevel(this)?.RequestAnimationFrame(_frame);
-    }
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e) { Stop(); base.OnDetachedFromVisualTree(e); }
 
     public override void Render(DrawingContext context)
     {
         base.Render(context);
         double w = Bounds.Width, h = Bounds.Height;
         if (w < 40 || h < 40) return;
-        double t = _frozen ?? _clock.Elapsed.TotalSeconds;
-        int cycle = (int)Math.Floor(t / Cycle), material = ((cycle % Materials.Length) + Materials.Length) % Materials.Length;
-        double local = t - cycle * Cycle;
+        double t = _frozen ?? Now;
+        int cycle = PinnedCycle ?? (int)Math.Floor(t / Cycle), material = ((cycle % Materials.Length) + Materials.Length) % Materials.Length;
+        double local = PinnedCycle != null ? t - Math.Floor(t / Cycle) * Cycle : t - cycle * Cycle;
         var art = Art(material); // also fills the chip palette
         // F is the cube's front-top vertex; the cube spans cy-L..cy+L vertically and cx±0.866L horizontally.
         // Wind-up lifts the head ~1.47L above cy, so the scene sits low enough to never touch the progress bar above it.

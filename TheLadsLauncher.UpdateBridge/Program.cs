@@ -8,7 +8,7 @@ using System.Windows.Forms;
 
 namespace TheLadsLauncher.UpdateBridge
 {
-    // LadsUpdateBridge.exe --image <png> --client x,y,w,h --bar x,y,w,h --update-exe <path> --relaunch <path> --grace <seconds> [--reduced-motion] [--app-id <AppUserModelID>]
+    // LadsUpdateBridge.exe --image <png> --client x,y,w,h --bar x,y,w,h --update-exe <path> --relaunch <path> --grace <seconds> [--mining x,y,w,h --frames <file>] [--reduced-motion] [--app-id <AppUserModelID>]
     // Numbers are invariant culture, rects are physical screen pixels.
     static class Program
     {
@@ -19,8 +19,8 @@ namespace TheLadsLauncher.UpdateBridge
         {
             try
             {
-                string image = null, updateExe = null, relaunch = null, appId = null;
-                Rectangle client = Rectangle.Empty, bar = Rectangle.Empty;
+                string image = null, updateExe = null, relaunch = null, appId = null, frames = null;
+                Rectangle client = Rectangle.Empty, bar = Rectangle.Empty, mining = Rectangle.Empty;
                 double grace = 15;
                 bool reducedMotion = false;
                 for (int i = 0; i < args.Length; i++)
@@ -30,6 +30,8 @@ namespace TheLadsLauncher.UpdateBridge
                         case "--image": image = args[++i]; break;
                         case "--client": client = ParseRect(args[++i]); break;
                         case "--bar": bar = ParseRect(args[++i]); break;
+                        case "--mining": mining = ParseRect(args[++i]); break;
+                        case "--frames": frames = args[++i]; break;
                         case "--update-exe": updateExe = Path.GetFullPath(args[++i]); break;
                         case "--relaunch": relaunch = Path.GetFullPath(args[++i]); break;
                         case "--grace": grace = double.Parse(args[++i], NumberStyles.Float, CultureInfo.InvariantCulture); break;
@@ -59,7 +61,7 @@ namespace TheLadsLauncher.UpdateBridge
                 // Created (unsignalled) before the window shows, so the new launcher can always find it.
                 var launcherShown = new EventWaitHandle(false, EventResetMode.ManualReset, @"Local\TheLadsClient.LauncherShown");
                 launcherShown.Reset();
-                Application.Run(new BridgeForm(image, client, bar, updateExe, relaunch, grace, reducedMotion, launcherShown));
+                Application.Run(new BridgeForm(image, client, bar, updateExe, relaunch, grace, reducedMotion, launcherShown, frames, mining));
                 Log("exit");
                 return 0;
             }
