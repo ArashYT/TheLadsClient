@@ -5435,6 +5435,8 @@ public partial class MainWindow : Window
             LaunchService.EnsureLoadingScreenColors(launchOpt, launchSettings);
             LaunchService.EnsureSecurityJvmArguments(launchOpt, requiredJava, gameDirectory, activeProfile.MinecraftVersion);
             AddSocialLaunchArgument(launchOpt);
+            if (!(settings.QuickLaunch && File.Exists(installedMarker)))
+                await SharedAssets.SeedAsync(launcher, launchVersionId, _pathService.BaseDirectory, _httpClient, message => Log("[Launcher] " + message), token);
             if (settings.QuickLaunch && File.Exists(installedMarker))
             {
                 GameLaunchStatusText.Text = "Quick launching (skipping verification)...";
