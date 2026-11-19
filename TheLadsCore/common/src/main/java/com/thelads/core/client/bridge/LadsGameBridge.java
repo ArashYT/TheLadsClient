@@ -53,6 +53,11 @@ public interface LadsGameBridge {
      * returning to the title/multiplayer screen and displaying the disconnection reason.
      */
     default void disconnectWithReason(String title, String message) {}
+    /**
+     * Clears any active or lingering downloaded server resource packs and restores
+     * the player's vanilla/client resource packs.
+     */
+    default void clearServerResourcePacks() {}
     default String getItemCountText(int selection) { return "Items: 0"; }
     /** Total block count of held item type in hotbar slots 0..8, or -1 if not holding a block. */
     default int getHeldItemBlockCount() { return -1; }

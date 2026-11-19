@@ -21,6 +21,15 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             com.thelads.core.v26_2.social.SocialBridge26.onWorldDisconnect();
         });
+        net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.BEFORE_INIT.register((client, screen, width, height) -> {
+            // A failed or cancelled server transfer leaves the old server's packs loaded: vanilla keeps them for the next server.
+            if (client.level != null || client.getConnection() != null) return;
+            if (screen instanceof net.minecraft.client.gui.screens.DisconnectedScreen
+                    || screen instanceof net.minecraft.client.gui.screens.TitleScreen
+                    || screen instanceof net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen) {
+                LadsGameBridge.get().clearServerResourcePacks();
+            }
+        });
         net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper.registerKeyMapping(com.thelads.core.v26_2.feature.NativeKeyBindings.TOAST_ACCEPT);
         net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper.registerKeyMapping(com.thelads.core.v26_2.feature.NativeKeyBindings.TOAST_DENY);
         com.thelads.core.security.AntiInjectDetector.init();

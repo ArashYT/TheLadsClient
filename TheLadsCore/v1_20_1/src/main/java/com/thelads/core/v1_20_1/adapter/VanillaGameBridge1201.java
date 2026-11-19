@@ -662,6 +662,19 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
     }
 
     @Override
+    public void clearServerResourcePacks() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null) return;
+        if (!mc.isSameThread()) {
+            mc.execute(this::clearServerResourcePacks);
+            return;
+        }
+        if (mc.getDownloadedPackSource() != null) {
+            mc.getDownloadedPackSource().clearServerPack();
+        }
+    }
+
+    @Override
     public DefenseEnchants getDefenseEnchants() {
         var player = Minecraft.getInstance().player;
         if (player == null) return new DefenseEnchants(0, 0, 0, 0, 0);

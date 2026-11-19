@@ -648,6 +648,19 @@ public class VanillaGameBridge26 implements LadsGameBridge {
     }
 
     @Override
+    public void clearServerResourcePacks() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null) return;
+        if (!mc.isSameThread()) {
+            mc.execute(this::clearServerResourcePacks);
+            return;
+        }
+        if (mc.getResourcePackRepository().getSelectedIds().stream().noneMatch(id -> id.startsWith("server/"))) return;
+        org.slf4j.LoggerFactory.getLogger("TheLadsCore").info("Server resource packs were still loaded with no server connected (failed transfer): unloading them");
+        mc.clearDownloadedResourcePacks();
+    }
+
+    @Override
     public DefenseEnchants getDefenseEnchants() {
         var player = Minecraft.getInstance().player;
         if (player == null) return new DefenseEnchants(0, 0, 0, 0, 0);
