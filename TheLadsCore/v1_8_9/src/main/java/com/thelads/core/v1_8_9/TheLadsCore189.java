@@ -333,6 +333,11 @@ public class TheLadsCore189 {
 
     @SubscribeEvent
     public void open(net.minecraftforge.client.event.GuiOpenEvent event) {
+        if (net.minecraft.client.Minecraft.getMinecraft().theWorld == null && (event.gui instanceof net.minecraft.client.gui.GuiDisconnected
+                || event.gui instanceof net.minecraft.client.gui.GuiMainMenu
+                || event.gui instanceof net.minecraft.client.gui.GuiMultiplayer)) {
+            com.thelads.core.client.bridge.LadsGameBridge.get().clearServerResourcePacks();
+        }
         event.gui = com.thelads.core.v1_8_9.gui.ControlsScreen189.replace(event.gui);
         event.gui = com.thelads.core.v1_8_9.gui.SkinCustomizationScreen189.replace(event.gui);
         if (!event.isCanceled()) {

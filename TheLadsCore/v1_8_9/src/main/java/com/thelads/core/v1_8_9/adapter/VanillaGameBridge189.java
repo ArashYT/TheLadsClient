@@ -854,4 +854,17 @@ public class VanillaGameBridge189 implements LadsGameBridge {
             mc.displayGuiScreen(new net.minecraft.client.gui.GuiDisconnected(parent, "disconnect.lost", new net.minecraft.util.ChatComponentText(message)));
         });
     }
+
+    @Override
+    public void clearServerResourcePacks() {
+        Minecraft mc = mc();
+        if (mc == null) return;
+        if (!mc.isCallingFromMinecraftThread()) {
+            mc.addScheduledTask(this::clearServerResourcePacks);
+            return;
+        }
+        if (mc.getResourcePackRepository() != null && mc.getResourcePackRepository().getResourcePackInstance() != null) {
+            mc.getResourcePackRepository().clearResourcePack(); // schedules the resource reload itself
+        }
+    }
 }

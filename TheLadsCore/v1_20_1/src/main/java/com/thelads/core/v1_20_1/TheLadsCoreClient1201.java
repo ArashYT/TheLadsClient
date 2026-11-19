@@ -98,6 +98,15 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
 
         SocialHudToast1201.register();
         net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> SocialBridge1201.resetLoopbackState());
+        net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.BEFORE_INIT.register((client, screen, width, height) -> {
+            // A failed or cancelled server transfer leaves the old server's packs loaded: vanilla keeps them for the next server.
+            if (client.level != null || client.getConnection() != null) return;
+            if (screen instanceof net.minecraft.client.gui.screens.DisconnectedScreen
+                    || screen instanceof net.minecraft.client.gui.screens.TitleScreen
+                    || screen instanceof net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen) {
+                LadsGameBridge.get().clearServerResourcePacks();
+            }
+        });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             com.thelads.core.client.bridge.LadsGameBridge.get().tickClient();
