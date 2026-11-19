@@ -310,6 +310,7 @@ public final class QaProbe26 {
             }
             case "log" -> LOGGER.info("Lads 26.3 qa log: {}", rest(s, 1));
             case "vanilla" -> LOGGER.info("Lads 26.3 qa vanilla: {}", NativeServerOptions.qa(rest(s, 1))); // vanilla <options.txt names>: effective values
+            case "sodium" -> LOGGER.info("Lads 26.3 qa sodium: savedOption={} rule={} epoch={}", sodiumVisibleOnly(), com.thelads.core.client.ladsapi.ServerSettings.sodiumAnimatesAll(), com.thelads.core.client.ladsapi.SodiumAnimation.epoch);
             case "textui" -> textUi(mc, s);
             case "gui" -> { mc.options.guiScale().set(Integer.parseInt(arg(s, 1))); mc.resizeGui(); } // the GUI scale, 0 = auto
             case "pointer" -> { // where a real mouse would be, in window pixels: hover states and tooltips render for a shot
@@ -577,5 +578,14 @@ public final class QaProbe26 {
         QaProgress.result(QaProgress.Result.FAIL);
         QaProgress.done();
         LOGGER.error("Lads 26.3 QA FAILED: {}: {}", where, e.toString(), e);
+    }
+
+    /** QA: Sodium's in-memory "animate only visible textures" (the saved option the rule must never change), or "none". */
+    private static String sodiumVisibleOnly() {
+        try {
+            Object options = Class.forName("net.caffeinemc.mods.sodium.client.SodiumClientMod").getMethod("options").invoke(null);
+            Object performance = options.getClass().getField("performance").get(options);
+            return String.valueOf(performance.getClass().getField("animateOnlyVisibleTextures").getBoolean(performance));
+        } catch (Throwable absent) { return "none"; }
     }
 }

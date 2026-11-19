@@ -52,6 +52,7 @@ public final class NativeServerOptions {
 
     public static void install() {
         ServerSettings.vanillaHooked(NativeServerOptions::catalog);
+        if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("sodium")) ServerSettings.sodiumHooked(); // "Sodium" rules: SodiumAnimateAllMixin
         ClientTickEvents.END_CLIENT_TICK.register(mc -> {
             ServerPolicy policy = ServerPolicy.active();
             if (policy == applied) return;

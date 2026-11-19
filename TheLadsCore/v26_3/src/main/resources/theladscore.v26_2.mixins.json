@@ -208,6 +208,8 @@
     "LadsApiDisconnectMixin",
     "ServerOptionMixin",
     "HideCloudsOptionsMixin",
+    "SodiumAnimateAllMixin",
+    "AnimationStateDirtyAccess",
     "SmoothMovementMixin",
     "ServerOptionsSaveMixin",
     "MinecraftFriendsMixin",

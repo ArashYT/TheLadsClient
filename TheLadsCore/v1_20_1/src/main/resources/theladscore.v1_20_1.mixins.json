@@ -45,6 +45,8 @@
     "LadsApiPacketListenerMixin",
     "ServerOptionMixin",
     "HideCloudsOptionsMixin",
+    "SodiumAnimateAllMixin",
+    "SodiumTickerMixin",
     "ServerOptionsSaveMixin"
   ]
 }

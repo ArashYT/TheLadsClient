@@ -71,6 +71,8 @@
     "LadsApiDisconnectMixin",
     "ServerOptionMixin",
     "HideCloudsOptionsMixin",
+    "SodiumAnimateAllMixin",
+    "AnimationStateDirtyAccess",
     "ServerOptionsSaveMixin"
   ]
 }
