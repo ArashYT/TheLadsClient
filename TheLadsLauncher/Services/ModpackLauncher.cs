@@ -315,6 +315,8 @@ public static class ModpackLauncher
 
         string verifiedMarker = Path.Combine(launcher.MinecraftPath.Versions, versionId, ".lads-verified");
         Process process;
+        if (!(settings.QuickLaunch && File.Exists(verifiedMarker)))
+            await SharedAssets.SeedAsync(launcher, versionId, dataDirectory, http, status, token); // assets a profile or .minecraft already has
         if (settings.QuickLaunch && File.Exists(verifiedMarker))
         {
             try

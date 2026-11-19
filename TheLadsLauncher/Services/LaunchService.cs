@@ -209,6 +209,11 @@ public class LaunchService : ILaunchService
         statusCallback?.Invoke("Starting game process...");
         Process process;
         string installedMarker = Path.Combine(gameDir, "versions", versionId, ".lads-verified");
+        if (!(settings.QuickLaunch && File.Exists(installedMarker)))
+        {
+            using var assetsHttp = new HttpClient(new LaunchCancellationHandler(cancellationToken));
+            await SharedAssets.SeedAsync(launcher, versionId, _pathService.BaseDirectory, assetsHttp, report, cancellationToken);
+        }
         if (settings.QuickLaunch && File.Exists(installedMarker))
         {
             try
