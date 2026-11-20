@@ -51,6 +51,17 @@ public static class RunningGameMarker
         return null;
     }
 
+    /// <summary>Every game the marker names, running or not, newest first; changes nothing (unlike <see cref="GetRunning"/>, which deletes a dead
+    /// marker). It lets a starting launcher see the games a launcher that is gone left behind.</summary>
+    public static IReadOnlyList<RunningGameInfo> ReadAll(string gameDirectory)
+    {
+        var path = PathFor(gameDirectory);
+        return File.Exists(path) ? Games(Read(path)).ToList() : Array.Empty<RunningGameInfo>();
+    }
+
+    /// <summary>Whether <paramref name="info"/> is still a running game: its pid is a java process that started within 5 s of the marker's time.</summary>
+    public static bool IsAlive(RunningGameInfo info) => IsLive(info);
+
     public static bool IsRunning(string gameDirectory) => GetRunning(gameDirectory) != null;
 
     /// <summary>Removes <paramref name="pid"/>'s game from the marker (another game may have replaced it at the top). The marker
