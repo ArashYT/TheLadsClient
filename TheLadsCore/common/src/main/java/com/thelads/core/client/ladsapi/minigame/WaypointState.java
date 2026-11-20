@@ -32,6 +32,7 @@ public final class WaypointState {
     }
 
     public List<Waypoint> all() {
+        if (map.isEmpty()) return List.of();
         return new ArrayList<>(map.values());
     }
 

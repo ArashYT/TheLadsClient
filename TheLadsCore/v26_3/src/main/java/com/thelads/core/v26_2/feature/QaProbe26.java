@@ -47,6 +47,7 @@ public final class QaProbe26 {
     public static void register() {
         if (registered) return;
         String script = System.getProperty("thelads.qaScript");
+        if (script == null || script.isBlank()) script = System.getenv("LADS_QA_SCRIPT"); // the launcher drops -D flags but keeps the environment
         if (script == null || script.isBlank()) return;
         registered = true;
         ClientLifecycleEvents.CLIENT_STARTED.register(QaProbe26::begin);
@@ -61,6 +62,7 @@ public final class QaProbe26 {
             gameDir = FabricLoader.getInstance().getGameDir().toRealPath();
             active = true;
             String script = System.getProperty("thelads.qaScript");
+            if (script == null || script.isBlank()) script = System.getenv("LADS_QA_SCRIPT");
             if (script != null && !script.isBlank()) steps = parse(Path.of(script));
             LOGGER.info("Lads 26.3 QA script BEGIN: {} steps from {}", steps.size(), script);
         } catch (Exception e) {
@@ -294,6 +296,7 @@ public final class QaProbe26 {
                 com.thelads.core.client.qa.QaProgress.hide(down);
             }
             case "srv" -> ServerListQa26.step(mc, s);
+            case "ladsui" -> com.thelads.core.v26_2.ladsapi.ui.LadsApiUiQa26.step(mc, s);
             case "friendso" -> friendso(mc);
             case "seedshots" -> {
                 com.thelads.core.client.qa.QaScreenshotFixtures.seed(gameDir);

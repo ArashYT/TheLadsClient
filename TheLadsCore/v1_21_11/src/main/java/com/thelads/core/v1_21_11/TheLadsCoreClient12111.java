@@ -25,6 +25,7 @@ public class TheLadsCoreClient12111 implements ClientModInitializer {
             }
         });
         com.thelads.core.security.AntiInjectDetector.init();
+        com.thelads.core.client.hud.ServerHudElement.registerModules(); // minigame API server HUD + run timer modules, before the config loads
         ConfigManager.load();
         com.thelads.core.config.ModuleSupport.registerBuiltIn("Threads");
         ModuleSupport.registerBuiltIn(com.thelads.core.client.ServerListDrag.NAME);
@@ -39,6 +40,8 @@ public class TheLadsCoreClient12111 implements ClientModInitializer {
         com.thelads.core.v1_21_11.feature.NativeHypixel.initialize();
         com.thelads.core.v1_21_11.feature.NativeLadsApi.initialize();
         com.thelads.core.v1_21_11.feature.AddServerProbe.register();
+        com.thelads.core.v1_21_11.ladsapi.minigame.world.MinigameWorld12111.register();
+        com.thelads.core.v1_21_11.ladsapi.ui.LadsApiUi12111.register(); // minigame API input/2D half
         com.thelads.core.v1_21_11.feature.QaProbe12111.register();
         com.thelads.core.v1_21_11.embedded.EmbeddedMods.clientInit();
         LOGGER.info("TheLadsCore 1.21.11 initialized successfully.");

@@ -318,7 +318,8 @@ The server hello `caps` lists the same names (informative), except `input`, whic
   sends a full-state message only when it differs from what the client has.
 - **Numbers.** JSON numbers, finite. Out of range = clamped. Wrong type, NaN or a missing optional field = the default named
   below. A missing required field, an unknown `op`/`mode`/`shape`/`kind`/`style` or a bad `id` = the message (in a list: that
-  item) is ignored: never a crash, never a kick. Arrays are cut to their maximum. Unknown fields are ignored.
+  item) is ignored: never a crash, never a kick (one exception: an unknown `camera` mode ends the running shot, section 11).
+  Arrays are cut to their maximum. Unknown fields are ignored.
 - **Names.** `id`: `[a-z0-9_-]{1,32}` (24 for actions and buttons). Text: formatting codes and control characters stripped,
   cut at the limit shown. Item and sound ids: `namespace:path`, no namespace = `minecraft`. Colors: `"#RRGGBB"`; a bad color
   takes the field's default.
@@ -518,7 +519,7 @@ The server is the timer authority; the client only shows it and sends nothing.
 {"t":"run","op":"finish","course":"easy_1","time_ms":60512}
 {"t":"run","op":"reset","course":"easy_1"}
 ```
-- `op`: `start`, `split`, `finish`, `reset`. `course` `[a-z0-9_-]{1,32}` required. One run at a time; `start` replaces.
+- `op`: `start`, `split`, `finish`, `reset`. `course` `[a-z0-9_-]{1,32}` required, except on `reset`, where none = whatever runs. One run at a time; `start` replaces.
 - `start`: `time_ms` 0-86,400,000 (0), counted up by the client from there. `name` <= 24, `checkpoints` 0-255 (0), `best` <= 255 cumulative
   ms values (personal best per checkpoint), `best_total`; without them no delta shows.
 - `split` (`cp` 0-254, `time_ms`): corrects the clock; shows the time and the delta against `best[cp]` for 3 s (green `-0.42`,

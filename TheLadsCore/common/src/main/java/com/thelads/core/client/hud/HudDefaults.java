@@ -91,6 +91,11 @@ public final class HudDefaults {
             case "Protection" -> {x=hotbar.right()+7;y=hotbar.bottom()-eh-24;}
             case "DungeonMap" -> {x=w-ew-10;y=10;}
             case "SkyBlockTimers" -> {x=LEFT;y=Math.min(260,floor);}
+            case "Server HUD" -> {x=w-ew-5;y=h/2-eh/2;}
+            case "Server HUD 2" -> {x=5;y=h/2-eh/2;}
+            case "Server HUD 3" -> {x=5;y=h/2+60;}
+            case "Server HUD 4" -> {x=w-ew-5;y=h/2+70;}
+            case "Run Timer" -> {x=(w-ew)/2;y=40;}
             default -> {return null;}
         }
         return new int[]{Math.max(0,Math.min(x,w-ew)),Math.max(0,Math.min(y,h-eh))};

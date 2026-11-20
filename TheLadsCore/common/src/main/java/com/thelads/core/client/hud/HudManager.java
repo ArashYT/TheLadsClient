@@ -115,6 +115,8 @@ public class HudManager {
         add(new HeldItemLoreHudElement(), "HeldItemLore");
         add(new DungeonMapHudElement(), DungeonMapHudElement.ID);
         add(new SkyBlockTimersHudElement(), SkyBlockTimersHudElement.ID);
+        for (int i = 0; i < ServerHudElement.NAMES.length; i++) add(new ServerHudElement(i), ServerHudElement.NAMES[i]); // Lads API widgets
+        add(new RunHudElement(), RunHudElement.NAME); // Lads API run timer
     }
 
     private void add(HudElement element, String moduleName) {

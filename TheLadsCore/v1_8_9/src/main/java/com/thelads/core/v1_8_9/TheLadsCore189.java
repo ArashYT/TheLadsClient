@@ -91,6 +91,7 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.social.SocialKeybind189());
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.social.SocialToasts189());
         com.thelads.core.security.AntiInjectDetector.init();
+        com.thelads.core.client.hud.ServerHudElement.registerModules(); // minigame API server HUD + run timer modules, before the config loads
         ConfigManager.load();
         com.thelads.core.client.util.LogPruner.pruneIfEnabled(new java.io.File("logs"));
         com.thelads.core.v1_8_9.feature.LocalSkins189.initialize(); // the Skin changer's saved skin
@@ -127,6 +128,8 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new KillBanner189());
         com.thelads.core.v1_8_9.feature.Hypixel189.register();
         com.thelads.core.v1_8_9.feature.LadsApi189.register();
+        com.thelads.core.v1_8_9.ladsapi.minigame.world.MinigameWorld189.register(); // minigame API world half: camera, fx, waypoints, telegraphs, ghosts (theladscore.v1_8_9.minigame.mixins.json)
+        com.thelads.core.v1_8_9.ladsapi.ui.LadsApiUi189.register(); // minigame API input/2D half: lock, server keys, dialogs, audio, profile, input (theladscore.v1_8_9.ladsapiui.mixins.json)
         MinecraftForge.EVENT_BUS.register(LadsTitleScreen189.INSTANCE);
         MinecraftForge.EVENT_BUS.register(new Tooltips189());
         MinecraftForge.EVENT_BUS.register(new Clumps189());

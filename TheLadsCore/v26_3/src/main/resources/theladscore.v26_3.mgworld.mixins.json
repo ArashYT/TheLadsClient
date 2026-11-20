@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.ladsapi.minigame.world.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "MgCameraMixin26",
+    "MgGameRendererMixin26",
+    "MgGhostOpacityMixin26",
+    "MgHudMixin26"
+  ]
+}
