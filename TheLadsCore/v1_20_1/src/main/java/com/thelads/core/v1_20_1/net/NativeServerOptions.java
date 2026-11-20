@@ -19,10 +19,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.OptionInstance;
 import net.minecraft.client.Options;
+import net.minecraft.network.Connection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,10 +53,18 @@ public final class NativeServerOptions {
     private static Object applied;
     /** A rule change came while no player was in game (mid server switch): send the options once one is, or the server keeps the old view distance. */
     private static boolean broadcastPending;
+    /** The network link (it outlives a proxy's backend switch) a rule last changed an option on: the next backend there has only the rule's value. */
+    private static Connection ruleLink;
 
     public static void install() {
         ServerSettings.vanillaHooked(NativeServerOptions::catalog);
         if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("sodium")) ServerSettings.sodiumHooked(); // "Sodium" rules: SodiumAnimateAllMixin
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> {
+            if (ruleLink == null || handler.getConnection() != ruleLink) return;
+            ruleLink = null;
+            broadcastPending = true;
+            LOGGER.info("LadsClientAPI: options sent again after a server switch");
+        });
         ClientTickEvents.END_CLIENT_TICK.register(mc -> {
             if (broadcastPending && mc.player != null && mc.options != null) {
                 broadcastPending = false;
@@ -228,7 +238,10 @@ public final class NativeServerOptions {
         }
         if (rebound) KeyMapping.resetMapping();
         if (!rerun.isEmpty() || rebound) LOGGER.info("LadsClientAPI vanilla options now {}, keys rebound: {}", rerun, rebound);
-        if (changed && mc.player != null) o.broadcastOptions(); // view distance, skin parts, main hand
+        if (changed && mc.player != null) {
+            ruleLink = mc.player.connection.getConnection();
+            o.broadcastOptions(); // view distance, skin parts, main hand
+        }
         else if (changed) broadcastPending = true;
     }
 
