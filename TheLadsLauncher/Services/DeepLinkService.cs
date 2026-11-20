@@ -33,7 +33,8 @@ public static class DeepLinkService
 {
     public const string ProtocolScheme = "lads";
     /// <summary>Pipe names are machine-wide: one per Windows user (SID), so another user's launcher can neither take it nor get these links.</summary>
-    public static readonly string PipeName = "TheLadsClient-DeepLinkPipe-" + CurrentUserSid();
+    /// <remarks>LADS_PIPE_TAG (QA only) gives a sandboxed launcher its own pipe so it does not meet the owner's launcher.</remarks>
+    public static readonly string PipeName = "TheLadsClient-DeepLinkPipe-" + (Environment.GetEnvironmentVariable("LADS_PIPE_TAG") ?? "") + CurrentUserSid();
 
     private static string CurrentUserSid()
     {
@@ -153,6 +154,21 @@ public static class DeepLinkService
             await client.ConnectAsync(300);
             using var writer = new StreamWriter(client) { AutoFlush = true };
             await writer.WriteLineAsync(uriString);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Whether a launcher is listening on the pipe. Connects and sends nothing, so that launcher does not react (no window comes to front).</summary>
+    public static async Task<bool> IsInstanceRunningAsync()
+    {
+        try
+        {
+            using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out, PipeOptions.CurrentUserOnly);
+            await client.ConnectAsync(300);
             return true;
         }
         catch
