@@ -46,16 +46,18 @@ public partial class MainWindow
     private async Task RunStartupPreviewAsync(string output)
     {
         Directory.CreateDirectory(output);
-        ShowStartupStatus("Checking for launcher updates…");
+        ReportUpdate("Checking for launcher updates…");
         await Task.Delay(900);
         SaveWindowScreenshot(Path.Combine(output, "startup-checking.png"));
-        for (int percent = 0; percent <= 100; percent += 2)
+        for (int percent = 0; percent <= 100; percent += 1)
         {
-            ShowStartupStatus($"Downloading v1.3.5: {percent}%");
-            await Task.Delay(40);
+            ReportUpdate($"Downloading v1.3.5: {percent}%");
+            await Task.Delay(60);
             if (percent == 46) { await Task.Delay(700); SaveWindowScreenshot(Path.Combine(output, "startup-downloading.png")); }
         }
-        ShowStartupStatus("Installing v1.3.5 and restarting…");
+        await Task.Delay(500);
+        SaveWindowScreenshot(Path.Combine(output, "startup-verifying.png"));
+        ReportUpdate("Installing v1.3.5 and restarting…");
         await Task.Delay(800);
         SaveWindowScreenshot(Path.Combine(output, "startup-installing.png"));
         // Drop-in, wind-up peak, downswing blur, impact, deep cracks, breaking, next block dropping, then the ore and log blocks.

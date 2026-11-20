@@ -868,6 +868,7 @@
                             </Border>
                         </Border>
                     </Border>
+                    <TextBlock x:Name="StartupDetailText" Width="560" Height="16" Margin="0,-10,0,0" FontSize="12" Foreground="#8B8D98" FontFeatures="+tnum" TextTrimming="CharacterEllipsis" AttachedToVisualTree="StartupDetailText_Attached" />
                     <local:MiningAnimation x:Name="StartupMining" Width="440" Height="200" HorizontalAlignment="Center" Margin="0,6,0,0" />
                 </StackPanel>
             </Grid>
