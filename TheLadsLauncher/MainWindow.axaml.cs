@@ -88,6 +88,7 @@ public partial class MainWindow : Window
     private bool _showingMicrosoftSetup;
     // Games this launcher started, with their game folder. Touched only on the UI thread.
     private readonly Dictionary<Process, string> _runningProcesses = new();
+    private string _exitReason = "the window was closed by the user"; // what Program.ExitBreadcrumb writes when the window closes
     private DispatcherTimer? _updateCheckTimer;
     private DispatcherTimer? _usageHeartbeatTimer;
     // --preview-shared <outputDir>: sandbox-only screenshot/JSON capture of the shared-content surfaces, then exit.
@@ -168,6 +169,7 @@ public partial class MainWindow : Window
         _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
         settings = LauncherSettings.Load();
+        _orphanedGames = SnapshotRunningMarkers(); // before anything reads a marker: a dead game's marker is deleted by the first read
         InitializeProductivity();
         TheLadsLauncher.Services.NotificationService.Initialize(new TheLadsLauncher.Services.AvaloniaWindowNotifier(new Avalonia.Controls.Notifications.WindowNotificationManager(this)));
         InitializeDeepLinking();
@@ -425,6 +427,7 @@ public partial class MainWindow : Window
                 return;
             }
             _ = RunStartupSharedContentPassAsync();
+            HandleOrphanedGames();
 
             // Checks use a ten-minute interval; ready updates retry the idle condition
             // every fifteen seconds, including after the game or authentication ends.
@@ -469,7 +472,7 @@ public partial class MainWindow : Window
         };
         logTimer.Start();
         LogSearchBox.TextChanged += (_, _) => { _logDirty = true; UpdateLogDisplay(); };
-        Closed += (_, _) => { _windowClosed = true; _updateCheckTimer?.Stop(); _usageHeartbeatTimer?.Stop(); _updateNowPulse?.Stop(); _particleTimer?.Stop(); _statSmoothTimer?.Stop(); _modSearchDebounce?.Stop(); _filesMeasureCts?.Cancel(); logTimer.Stop(); _authCts?.Cancel(); _galleryScanCancellation?.Cancel(); ++_galleryGeneration; };
+        Closed += (_, _) => { Program.ExitBreadcrumb(_exitReason); _windowClosed = true; _updateCheckTimer?.Stop(); _usageHeartbeatTimer?.Stop(); _updateNowPulse?.Stop(); _particleTimer?.Stop(); _statSmoothTimer?.Stop(); _modSearchDebounce?.Stop(); _filesMeasureCts?.Cancel(); logTimer.Stop(); _authCts?.Cancel(); _galleryScanCancellation?.Cancel(); ++_galleryGeneration; };
         // Stats timer (1 second)
         StartNetworkStatus();
         _statsTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
@@ -612,6 +615,7 @@ public partial class MainWindow : Window
     private string[] PrepareUpdateRestart(string version)
     {
         FlushSettingsSave();
+        Program.ExitBreadcrumb($"restarting to install the update to v{version}");
         string[] play = _playAfterUpdate is { } profileId ? new[] { InGameUpdate.PlayArg, profileId } : Array.Empty<string>();
         if (WindowState == WindowState.Minimized) return play;   // nothing on screen to hold; the new launcher opens centred
         string[] restartArgs = Array.Empty<string>();
@@ -5517,6 +5521,7 @@ public partial class MainWindow : Window
             LaunchService.EnsureLoadingScreenColors(launchOpt, launchSettings);
             LaunchService.EnsureSecurityJvmArguments(launchOpt, requiredJava, gameDirectory, activeProfile.MinecraftVersion);
             AddSocialLaunchArgument(launchOpt);
+            AddCrashHookArgument(launchOpt);
             if (!(settings.QuickLaunch && File.Exists(installedMarker)))
                 await SharedAssets.SeedAsync(launcher, launchVersionId, _pathService.BaseDirectory, _httpClient, message => Log("[Launcher] " + message), token);
             if (settings.QuickLaunch && File.Exists(installedMarker))
@@ -5833,7 +5838,7 @@ public partial class MainWindow : Window
                 Log($"[Crash Detection] {relaunchReason}");
                 HandleCrashDetection(gameDirectory, canRelaunch, relaunchReason, profile);
                 if (settings.SendCrashReports && string.IsNullOrEmpty(profile.PackwizUrl) && policy.ShouldSendCrashReport(DateTimeOffset.UtcNow))
-                    _ = SendCrashReportAsync(gameDirectory, process.StartInfo.WorkingDirectory, profile.MinecraftVersion, exitCode);
+                    _ = SendCrashReportAsync(gameDirectory, GameWorkingDirectory(process), profile.MinecraftVersion, exitCode);
             }
             else
             {
@@ -5842,9 +5847,16 @@ public partial class MainWindow : Window
                 // Lads Crash Catcher kept the game running after a crash: its reports from this session go out as a crash's would.
                 if (settings.SendCrashReports && string.IsNullOrEmpty(profile.PackwizUrl) && GameStart(process) is { } started)
                     foreach (var report in CrashReporter.CaughtReports(gameDirectory, started))
-                        _ = SendCrashReportAsync(gameDirectory, process.StartInfo.WorkingDirectory, profile.MinecraftVersion, exitCode, report);
+                        _ = SendCrashReportAsync(gameDirectory, GameWorkingDirectory(process), profile.MinecraftVersion, exitCode, report);
             }
         });
+    }
+
+    /// <summary>The working directory the game was started in; null for a game this launcher adopted (Windows does not say, and StartInfo throws).</summary>
+    private static string? GameWorkingDirectory(Process process)
+    {
+        try { return process.StartInfo.WorkingDirectory; }
+        catch (InvalidOperationException) { return null; }
     }
 
     /// <summary>When the game process started, or null when Windows no longer says.</summary>
@@ -6178,9 +6190,9 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task SendCrashReportAsync(string gameDirectory, string? workingDirectory, string minecraftVersion, int exitCode, string? caughtReport = null)
+    private async Task SendCrashReportAsync(string gameDirectory, string? workingDirectory, string minecraftVersion, object exitCode, string? caughtReport = null, DateTime? since = null)
     {
-        string? error = await Task.Run(() => CrashReporter.SendAsync(gameDirectory, workingDirectory, minecraftVersion, exitCode, caughtReport));
+        string? error = await Task.Run(() => CrashReporter.SendAsync(gameDirectory, workingDirectory, minecraftVersion, exitCode, caughtReport, since));
         await Dispatcher.UIThread.InvokeAsync(() => Log(error == null ? "[Crash] Crash report sent to the Lads team." : $"[Crash] Crash report not sent: {error}"));
     }
 
@@ -6551,7 +6563,7 @@ public partial class MainWindow : Window
         showItem.Click += (s, e) => { this.Show(); this.WindowState = WindowState.Normal; this.Activate(); UpdateAnimationTimers(); };
 
         var exitItem = new NativeMenuItem("Exit");
-        exitItem.Click += (s, e) => { Close(); };
+        exitItem.Click += (s, e) => { _exitReason = "Exit was chosen in the tray menu"; Close(); };
 
         var menu = new NativeMenu();
         menu.Items.Add(showItem);

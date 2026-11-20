@@ -49,14 +49,25 @@ public static class CrashReporter
         if (uptime < startupWindow) return true;
         try
         {
-            string reports = Path.Combine(gameDirectory, "crash-reports");
-            if (Directory.Exists(reports) && Directory.GetFiles(reports, "*.txt").Any(f => File.GetLastWriteTime(f) >= start)) return true;
-            if (Directory.GetFiles(gameDirectory, "hs_err_pid*.log").Any(f => File.GetLastWriteTime(f) >= start)) return true;
+            if (NewestEvidence(gameDirectory, start) != null) return true;
             string log = Path.Combine(gameDirectory, "logs", "latest.log");
             if (File.Exists(log) && File.GetLastWriteTime(log) >= start && Read(log, true).Contains("Exception in thread", StringComparison.Ordinal)) return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return true; }
         return false;
+    }
+
+    /// <summary>When the newest crash report or hs_err log in <paramref name="gameDirectory"/> written at or after <paramref name="since"/> (local time) was
+    /// written, or null when there is none: the file evidence of a crash, whether or not a launcher saw the process exit.</summary>
+    public static DateTime? NewestEvidence(string gameDirectory, DateTime since)
+    {
+        string reports = Path.Combine(gameDirectory, "crash-reports");
+        var files = (Directory.Exists(reports) ? Directory.GetFiles(reports, "*.txt") : Array.Empty<string>())
+            .Concat(Directory.Exists(gameDirectory) ? Directory.GetFiles(gameDirectory, "hs_err_pid*.log") : Array.Empty<string>());
+        DateTime? newest = null;
+        foreach (var file in files)
+            if (File.GetLastWriteTime(file) is var written && written >= since && (newest == null || written > newest)) newest = written;
+        return newest;
     }
 
     private static bool Marked(string path)
@@ -67,13 +78,14 @@ public static class CrashReporter
 
     /// <summary>
     /// Sends the game's crash. <paramref name="caughtReport"/>: a crash Lads Crash Catcher caught (the game then exited normally), sent
-    /// as its own report without the JVM or Windows fault files, which belong to no crash then.
+    /// as its own report without the JVM or Windows fault files, which belong to no crash then. <paramref name="exitCode"/> is a number, or
+    /// text when the launcher was not running to see it. <paramref name="since"/>: take the evidence files written since then, not just the last 10 minutes.
     /// </summary>
-    public static async Task<string?> SendAsync(string gameDirectory, string? workingDirectory, string minecraftVersion, int exitCode, string? caughtReport = null)
+    public static async Task<string?> SendAsync(string gameDirectory, string? workingDirectory, string minecraftVersion, object exitCode, string? caughtReport = null, DateTime? since = null)
     {
         try
         {
-            var fresh = DateTime.Now.AddMinutes(-10);
+            var fresh = since?.AddSeconds(-1) ?? DateTime.Now.AddMinutes(-10); // since: a crash the launcher only found later (its game's start)
             string? Newest(string dir, string pattern) => Directory.Exists(dir)
                 ? Directory.GetFiles(dir, pattern).Where(f => File.GetLastWriteTime(f) > fresh).OrderByDescending(File.GetLastWriteTime).FirstOrDefault()
                 : null;

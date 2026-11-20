@@ -48,6 +48,26 @@ class Program
             return;
         }
 
+        // The JVM's -XX:OnError hook (CrashHook): the game just crashed natively. The JVM waits for this command, so it returns at once.
+        // A running launcher is watching the game already and is left alone (no window to front); otherwise a normal launcher starts,
+        // and on startup it finds the dead game through its running marker.
+        if (System.Linq.Enumerable.Contains(args, TheLadsLauncher.Services.CrashHook.Flag))
+        {
+            bool running = TheLadsLauncher.Services.DeepLinkService.IsInstanceRunningAsync().GetAwaiter().GetResult();
+            AppendLog($"[{DateTime.Now:HH:mm:ss}] [Launcher] The game's JVM reported a crash; " + (running ? "a launcher is running and watches it." : "no launcher is running, starting one."));
+            if (!running)
+            {
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Environment.ProcessPath!)
+                        { UseShellExecute = true, WorkingDirectory = System.IO.Path.GetDirectoryName(Environment.ProcessPath)! })?.Dispose();
+                }
+                catch (Exception ex) { AppendLog($"[{DateTime.Now:HH:mm:ss}] [Launcher] Could not start the launcher after the game's crash: {ex.Message}"); }
+            }
+            Environment.Exit(0);
+            return;
+        }
+
         // QA captures of the shared-content and Mods UI: only ever against sandbox folders, never the real .minecraft or launcher data.
         foreach (var preview in new[] { "--preview-shared", "--preview-mods", "--preview-worlds", "--preview-servers", "--preview-productivity", "--preview-discovery", "--preview-startup", "--preview-chrome", "--preview-content", "--preview-modpacks", "--preview-skins", "--preview-language", "--preview-page", "--preview-installing" })
         {
@@ -109,7 +129,19 @@ class Program
             TheLadsLauncher.Services.DeepLinkService.RegisterProtocol(stub);
         }
 
+        // A launcher that is killed or crashes leaves no line; every on-purpose exit does (ExitBreadcrumb), this catches the other normal ones.
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => ExitBreadcrumb("process exit (no other reason was logged)");
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
+
+    private static int _exitLogged;
+
+    /// <summary>Writes, synchronously and flushed, why the launcher ends on purpose (the first reason wins). Its log is queued and written in the
+    /// background, so a line from here is the one that is sure to be there: a launcher that vanishes WITHOUT it was killed or crashed.</summary>
+    internal static void ExitBreadcrumb(string reason)
+    {
+        if (System.Threading.Interlocked.Exchange(ref _exitLogged, 1) != 0) return;
+        AppendLog($"[{DateTime.Now:HH:mm:ss}] [Launcher] Exiting: {reason}.");
     }
 
     // Why the preview must not run because a profile's game folder (links resolved) is outside THELADS_DIR, or null.
@@ -162,14 +194,24 @@ class Program
         try
         {
             string text = $"[{DateTime.Now:HH:mm:ss}] [UNHANDLED {source}] {error}";
+            AppendLog(text);
+            if (!string.Equals(source, "task", StringComparison.OrdinalIgnoreCase))
+                System.IO.File.WriteAllText(System.IO.Path.Combine(Services.PathService.Instance.LogsDirectory, "crash_ui.txt"), text);
+        }
+        catch (Exception) { } // the log must never be what ends the launcher
+    }
+
+    // One line appended to logs\launcher_debug.txt, written before it returns. Never throws.
+    private static void AppendLog(string text)
+    {
+        try
+        {
             string logs = Services.PathService.Instance.LogsDirectory;
             System.IO.Directory.CreateDirectory(logs);
-            using (var stream = new System.IO.FileStream(System.IO.Path.Combine(logs, "launcher_debug.txt"), System.IO.FileMode.Append,
-                       System.IO.FileAccess.Write, System.IO.FileShare.ReadWrite)) // MainWindow's writer keeps it open too
-            using (var writer = new System.IO.StreamWriter(stream))
-                writer.WriteLine(text);
-            if (!string.Equals(source, "task", StringComparison.OrdinalIgnoreCase))
-                System.IO.File.WriteAllText(System.IO.Path.Combine(logs, "crash_ui.txt"), text);
+            using var stream = new System.IO.FileStream(System.IO.Path.Combine(logs, "launcher_debug.txt"), System.IO.FileMode.Append,
+                System.IO.FileAccess.Write, System.IO.FileShare.ReadWrite); // MainWindow's writer opens it too
+            using var writer = new System.IO.StreamWriter(stream);
+            writer.WriteLine(text);
         }
         catch (Exception) { } // the log must never be what ends the launcher
     }

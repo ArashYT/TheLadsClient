@@ -112,20 +112,28 @@ public static class GameSession
     /// Call right after Start: writes the running marker and, when the game exits, deletes it and folds server-list edits
     /// made without LadsCore back into the shared list. Every message and error goes to <paramref name="report"/>.
     /// </summary>
+    /// <param name="adopted">The game was started by an earlier launcher: only the exit handling is attached.</param>
     /// <param name="afterExit">The caller's own post-exit work. It runs once, after the marker is gone and the server list is
     /// reconciled, so a relaunch from it sees a finished session.</param>
     public static void Attach(Process process, string gameDirectory, IReadOnlyList<string> loadedMods, Action<string> report,
-        SharedContentService? sharedContent = null, Func<Task>? afterExit = null)
+        SharedContentService? sharedContent = null, Func<Task>? afterExit = null, bool adopted = false)
     {
         var shared = sharedContent ?? SharedContentService.Instance;
-        // The launcher runs lower while a background update downloads, and a child inherits that; the game keeps the priority it would have had.
-        if (ProcessPriority.ScopedFrom is { } original) ProcessPriority.TrySet(process, original);
-        BoostWhileLoading(process);
         var pid = process.Id;
+        // adopted: a game that was already running when this launcher started (its marker is there, it is no new launch).
+        if (!adopted)
+        {
+            // The launcher runs lower while a background update downloads, and a child inherits that; the game keeps the priority it would have had.
+            if (ProcessPriority.ScopedFrom is { } original) ProcessPriority.TrySet(process, original);
+            BoostWhileLoading(process);
+        }
         try
         {
-            InstanceAnalyticsService.RecordLaunch(gameDirectory, Path.GetFileName(gameDirectory));
-            RunningGameMarker.Write(gameDirectory, pid, process.StartTime.ToUniversalTime(), loadedMods);
+            if (!adopted)
+            {
+                InstanceAnalyticsService.RecordLaunch(gameDirectory, Path.GetFileName(gameDirectory));
+                RunningGameMarker.Write(gameDirectory, pid, process.StartTime.ToUniversalTime(), loadedMods);
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
