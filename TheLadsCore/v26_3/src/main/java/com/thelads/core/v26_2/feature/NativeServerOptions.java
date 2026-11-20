@@ -49,11 +49,17 @@ public final class NativeServerOptions {
 
     /** The rules rulesChanged last applied; a tick that sees others applies them (a task queued for it can be dropped by a disconnect). */
     private static Object applied;
+    /** A rule change came while no player was in game (mid server switch): send the options once one is, or the server keeps the old view distance. */
+    private static boolean broadcastPending;
 
     public static void install() {
         ServerSettings.vanillaHooked(NativeServerOptions::catalog);
         if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("sodium")) ServerSettings.sodiumHooked(); // "Sodium" rules: SodiumAnimateAllMixin
         ClientTickEvents.END_CLIENT_TICK.register(mc -> {
+            if (broadcastPending && mc.player != null && mc.options != null) {
+                broadcastPending = false;
+                mc.options.broadcastOptions();
+            }
             ServerPolicy policy = ServerPolicy.active();
             if (policy == applied) return;
             applied = policy;
@@ -223,6 +229,7 @@ public final class NativeServerOptions {
         if (rebound) KeyMapping.resetMapping();
         if (!rerun.isEmpty() || rebound) LOGGER.info("LadsClientAPI vanilla options now {}, keys rebound: {}", rerun, rebound);
         if (changed && mc.player != null) o.broadcastOptions(); // view distance, skin parts, main hand
+        else if (changed) broadcastPending = true;
     }
 
     /** The player's own value: what the option held before the first rule. */
