@@ -294,11 +294,14 @@ class MinigameListStatesTest {
         r.apply(j(START), 0);
         r.apply(j("{\"op\":\"split\",\"course\":\"other\",\"cp\":0,\"time_ms\":1}"), 1);
         assertNull(r.split(1));
-        r.apply(j("{\"op\":\"reset\"}"), 1); // reset needs the course
-        assertTrue(r.active(1));
         r.apply(j("{\"op\":\"reset\",\"course\":\"other\"}"), 1);
         assertTrue(r.active(1));
+        r.apply(j("{\"op\":\"reset\",\"course\":\"Bad Id\"}"), 1); // a broken course is not "no course"
+        assertTrue(r.active(1));
         r.apply(j("{\"op\":\"reset\",\"course\":\"easy_1\"}"), 1);
+        assertFalse(r.active(1));
+        r.apply(j(START), 0);
+        r.apply(j("{\"op\":\"reset\"}"), 1); // no course = whatever runs
         assertFalse(r.active(1));
         r.apply(j(START), 0);
         assertTrue(r.active(RunState.IDLE_DROP_MS - 1));

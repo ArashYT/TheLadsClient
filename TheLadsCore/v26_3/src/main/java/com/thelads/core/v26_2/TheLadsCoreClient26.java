@@ -34,6 +34,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper.registerKeyMapping(com.thelads.core.v26_2.feature.NativeKeyBindings.TOAST_DENY);
         com.thelads.core.security.AntiInjectDetector.init();
         com.thelads.core.v26_2.feature.paperdoll.PlayerActions.initialize();
+        com.thelads.core.client.hud.ServerHudElement.registerModules(); // minigame API server HUD + run timer modules, before the config loads
         ConfigManager.load();
         java.util.concurrent.CompletableFuture.runAsync(() -> com.thelads.core.client.util.LogPruner.pruneIfEnabled(new java.io.File("logs")));
         com.thelads.core.v26_2.render.Render26.init();
@@ -83,6 +84,8 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.v26_2.feature.NativeHypixel.initialize();
         com.thelads.core.v26_2.feature.NativeLadsApi.initialize();
         com.thelads.core.v26_2.feature.Spectate26.register(); // a server's spectator mode: camera hold, HUD, next/previous keys
+        com.thelads.core.v26_2.ladsapi.minigame.world.MinigameWorld26.register(); // minigame API world half: camera, fx, waypoint, telegraph, ghost
+        com.thelads.core.v26_2.ladsapi.ui.LadsApiUi26.register(); // minigame API input/2D half: lock, actions, dialogs, audio, profile, input, rumble
         com.thelads.core.v26_2.feature.QaProbe26.register();
         com.thelads.core.v26_2.feature.screenshots.ScreenshotViewer.register();
         com.thelads.core.v26_2.feature.clumps.NativeClumps.initialize();

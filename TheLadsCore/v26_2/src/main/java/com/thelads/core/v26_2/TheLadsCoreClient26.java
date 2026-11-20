@@ -26,6 +26,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         });
         com.thelads.core.security.AntiInjectDetector.init();
         com.thelads.core.v26_2.feature.paperdoll.PlayerActions.initialize();
+        com.thelads.core.client.hud.ServerHudElement.registerModules(); // minigame API server HUD + run timer modules, before the config loads
         ConfigManager.load();
         com.thelads.core.v26_2.feature.LocalSkins.initialize();
         com.thelads.core.config.ModuleSupport.registerBuiltIn("Threads");
@@ -44,6 +45,8 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.v26_2.feature.NativeBetterF3.register();
         com.thelads.core.v26_2.feature.NativeCustomFov.register();
         com.thelads.core.v26_2.feature.AddServerProbe.register();
+        com.thelads.core.v26_2.ladsapi.minigame.world.MinigameWorld26.register(); // minigame API world half: camera, fx, waypoint, telegraph, ghost
+        com.thelads.core.v26_2.ladsapi.ui.LadsApiUi26.register(); // minigame API input/2D half: lock, actions, dialogs, audio, profile, input, rumble
         com.thelads.core.v26_2.feature.QaProbe26.register();
         com.thelads.core.v26_2.feature.Renderer134Probe.register();
         com.thelads.core.v26_2.feature.Version134ReplayProbe.register();

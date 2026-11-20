@@ -99,6 +99,14 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
     private static final Identifier ICONS = Identifier.fromNamespaceAndPath(IconAtlas.NAMESPACE, IconAtlas.PATH);
 
     /** A glyph of the Flaticon atlas, its white tinted by {@code color}: the cell's square scaled to size by size (linear filter: lads_icons.png.mcmeta). */
+    /** An item by registry id ("minecraft:sand", or a bare vanilla name): Lads API widgets and dialogs name icons that way. */
+    @Override public void drawItemIcon(String itemKey, int x, int y) {
+        if (itemKey == null) return;
+        Identifier id = Identifier.tryParse(itemKey.indexOf(':') > 0 ? itemKey : "minecraft:" + itemKey);
+        var item = id == null ? java.util.Optional.<net.minecraft.world.item.Item>empty() : net.minecraft.core.registries.BuiltInRegistries.ITEM.getOptional(id);
+        g.item(new net.minecraft.world.item.ItemStack(item.orElse(net.minecraft.world.item.Items.COMPASS)), x, y);
+    }
+
     @Override public boolean drawIcon(int cell, int x, int y, int size, int color) {
         g.blit(RenderPipelines.GUI_TEXTURED, ICONS, x, y, IconAtlas.u(cell), IconAtlas.v(cell), size, size, IconAtlas.CELL, IconAtlas.CELL,
             IconAtlas.SIZE, IconAtlas.SIZE, color);

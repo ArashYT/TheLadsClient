@@ -26,6 +26,7 @@ public final class QaProbe26 {
 
     public static void register() {
         String script = System.getProperty("thelads.qaScript");
+        if (script == null || script.isBlank()) script = System.getenv("LADS_QA_SCRIPT");
         if (script == null || script.isBlank()) return;
         try {
             for (String line : Files.readAllLines(Path.of(script))) if (!line.isBlank() && !line.strip().startsWith("#")) steps.add(line.strip());
@@ -122,6 +123,7 @@ public final class QaProbe26 {
             }
             case "screen" -> {
                 mc.setScreenAndShow(switch (arg) {
+                    case "none" -> null;
                     case "title" -> new TitleScreen();
                     case "pause" -> new PauseScreen(true);
                     case "options" -> new net.minecraft.client.gui.screens.options.OptionsScreen(mc.gui.screen(), mc.options, false);
@@ -137,12 +139,24 @@ public final class QaProbe26 {
                     }
                     default -> throw new IllegalArgumentException("screen: title, pause, friends or screenshots");
                 });
-                LOGGER.info("Lads qa screen: {}", mc.gui.screen().children().stream().filter(Button.class::isInstance).map(c -> ((Button) c).getMessage().getString()).toList());
+                if (mc.gui.screen() != null) LOGGER.info("Lads qa screen: {}", mc.gui.screen().children().stream().filter(Button.class::isInstance).map(c -> ((Button) c).getMessage().getString()).toList());
             }
             case "press" -> mc.gui.screen().children().stream().filter(c -> c instanceof Button b && b.getMessage().getString().equals(arg))
                 .map(c -> (Button) c).findFirst().orElseThrow(() -> new IllegalArgumentException("press: no button " + arg))
                 .onPress(new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN, 0, 0));
             case "world" -> {} // tick() held the script until the QA world was up
+            case "disconnect" -> {
+                if (mc.level != null) mc.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE);
+                mc.setScreenAndShow(new TitleScreen());
+            }
+            case "connect" -> {
+                if (mc.level != null) mc.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE);
+                var data = new net.minecraft.client.multiplayer.ServerData("QA", arg, net.minecraft.client.multiplayer.ServerData.Type.OTHER);
+                net.minecraft.client.gui.screens.ConnectScreen.startConnecting(new TitleScreen(), mc, net.minecraft.client.multiplayer.resolver.ServerAddress.parseString(arg), data, false, null);
+            }
+            case "cmd" -> { if (mc.player != null && mc.player.connection != null) mc.player.connection.sendCommand(arg.replaceFirst("^/", "")); }
+            case "log" -> LOGGER.info("Lads qa log: {}", arg);
+            case "ladsapi" -> com.thelads.core.client.ladsapi.LadsApiQa.recordProbe(arg.isEmpty() ? ("step-" + index) : arg);
             case "notice" -> com.thelads.core.client.bridge.LadsGameBridge.get().displayChatMessage(arg);
             case "titlelayout" -> com.thelads.core.modules.TitleScreenModule.toggleLayout();
             case "titlepanorama" -> com.thelads.core.modules.TitleScreenModule.setPanorama(!"off".equals(arg)); // the title Panorama setting: titlepanorama on | off
@@ -209,6 +223,7 @@ public final class QaProbe26 {
                 mc.getProfileKeyPairManager().getClass().getSimpleName(), mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getSimpleName(),
                 mc.gui.screen() instanceof AccountSwitcherScreen26 a ? a.ui().getStatusMessage() : "");
             case "srv" -> ServerListQa26.step(mc, step.split("\\s+"));
+            case "ladsui" -> com.thelads.core.v26_2.ladsapi.ui.LadsApiUiQa26.step(mc, step.split("\\s+"));
             case "friendso" -> friendso(mc);
             case "seedshots" -> {
                 Path gd = FabricLoader.getInstance().getGameDir();

@@ -29,7 +29,7 @@ public final class RunState {
 
     private boolean active, running;
     private String course = "", name = "";
-    private int checkpoints;
+    private int checkpoints, reached;
     private List<Long> best = List.of();
     private long bestTotal = -1;
     private long baseMs, baseAt, lastMsg;
@@ -69,6 +69,11 @@ public final class RunState {
         return checkpoints;
     }
 
+    /** Checkpoints reached so far (the last split cp + 1; 0 = none yet). */
+    public int reached() {
+        return reached;
+    }
+
     /** The run clock now: counts up from the last server time, frozen on finish. */
     public long elapsedMs(long now) {
         return running ? baseMs + Math.max(0, now - baseAt) : finalMs;
@@ -91,7 +96,11 @@ public final class RunState {
     public void apply(JsonObject json, long now) {
         String op = Wire.str(json, "op");
         String c = Wire.id(json, "course", 32);
-        if (op == null || c == null) return;
+        if (op == null) return;
+        if (c == null) {
+            if (op.equals("reset") && !json.has("course") && active) clear(); // reset without a course = whatever runs
+            return;
+        }
         switch (op) {
             case "start" -> start(json, c, now);
             case "split" -> {
@@ -104,6 +113,7 @@ public final class RunState {
                 baseAt = now;
                 lastMsg = now;
                 boolean has = i < best.size();
+                reached = i + 1;
                 split = new Split(i, time, has ? time - best.get(i) : 0, has);
                 splitAt = now;
             }
@@ -130,6 +140,7 @@ public final class RunState {
         String n = Wire.text(json, "name", 24);
         name = n == null ? "" : n;
         checkpoints = Wire.whole(json, "checkpoints", 0, 255, 0);
+        reached = 0;
         List<Long> list = new ArrayList<>();
         JsonArray arr = Wire.arr(json, "best");
         if (arr != null) {

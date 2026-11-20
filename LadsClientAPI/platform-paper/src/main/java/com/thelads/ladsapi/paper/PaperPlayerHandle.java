@@ -64,6 +64,18 @@ public final class PaperPlayerHandle implements LadsPlayerHandle {
                 Set<String> channels = (Set<String>) rawSet;
                 channels.add(LadsCore.CHANNEL);
             }
+        } catch (NoSuchMethodException noMethod) {
+            // Paper 1.20.1 has no channels(): the same live set is the private CraftPlayer field "channels".
+            try {
+                java.lang.reflect.Field f = player.getClass().getDeclaredField("channels");
+                f.setAccessible(true);
+                if (f.get(player) instanceof Set<?> rawSet) {
+                    @SuppressWarnings("unchecked")
+                    Set<String> channels = (Set<String>) rawSet;
+                    channels.add(LadsCore.CHANNEL);
+                }
+            } catch (Throwable ignored) {
+            }
         } catch (Throwable ignored) {
         }
         player.sendPluginMessage(plugin, LadsCore.CHANNEL, payload);

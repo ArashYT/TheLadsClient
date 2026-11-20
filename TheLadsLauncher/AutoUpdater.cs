@@ -99,21 +99,25 @@ public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
         string version = asset.Version.ToString();
         // The signed statement first: a few hundred bytes decide whether up to ~250 MB are downloaded (and a delta rebuilt) at all.
         var statement = await FetchStatementAsync(asset);
+        string package = Path.Combine(VelopackLocator.Current.PackagesDir!, asset.FileName);
+        // A package left by an earlier run (closed before it was applied) may be a delta rebuild: Velopack reuses it without downloading.
+        bool leftover = File.Exists(package);
         try { await manager.DownloadUpdatesAsync(update, percent => report($"Downloading v{version}: {percent}%")); }
         catch (ChecksumFailedException ex) // the file on the server is not the one its feed (and so the signature) names
         {
             _rejected = statement;
             throw new UpdateRejectedException($"The v{version} package on the update server is damaged; it is not downloaded again.", ex);
         }
-        string package = Path.Combine(VelopackLocator.Current.PackagesDir!, asset.FileName);
         try
         {
             // Hashing ~250 MB (and decompressing every entry for the content hash) takes seconds: never on the UI thread.
-            await Task.Run(() => UpdateSignature.VerifyPackage(statement, package, delta));
+            await Task.Run(() => UpdateSignature.VerifyPackage(statement, package, delta || leftover));
         }
         catch (Exception ex)
         {
             try { File.Delete(package); } catch (IOException) { } // never leave an unsigned package to be applied later
+            if (ex is InvalidDataException && leftover && !File.Exists(package)) // a stale leftover says nothing about the server's package
+                return await DownloadAndVerifyAsync(manager, update, delta, report);
             if (ex is InvalidDataException && !delta) // the full package itself differs from the signed one
             {
                 _rejected = statement;

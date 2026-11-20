@@ -1,6 +1,8 @@
 package com.thelads.core.v26_2.feature;
 
 import com.thelads.core.client.ladsapi.LadsApiClient;
+import com.thelads.core.client.ladsapi.minigame.Minigame;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.minecraft.client.Minecraft;
@@ -34,6 +36,8 @@ public final class NativeLadsApi {
 
         LadsApiClient.install(NativeLadsApi::send, "26.2");
         NativeServerOptions.install(); // ServerOptionMixin answers "Minecraft" option rules (every option and keybind)
+        // Minigame.tick() once per client tick (audio fades/ends, dropped silent run); the minigame input/HUD port finds the tick here.
+        ClientTickEvents.START_CLIENT_TICK.register(client -> Minigame.tick());
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> LadsApiClient.reset());
         LOGGER.info("LadsClientAPI transport initialized for 26.2");
     }
