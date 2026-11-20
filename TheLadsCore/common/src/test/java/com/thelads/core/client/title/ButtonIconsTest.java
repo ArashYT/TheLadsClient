@@ -66,4 +66,11 @@ class ButtonIconsTest {
         assertTrue(TitleScreenTheme.iconFits(100, 40));
         assertFalse(TitleScreenTheme.iconFits(60, 40));
     }
+
+    @Test void packIconGlyphsAreSeen() {
+        org.junit.jupiter.api.Assertions.assertTrue(ButtonIcons.hasPackIcon(new String(Character.toChars(0xF0083)) + " Back to Game"));
+        org.junit.jupiter.api.Assertions.assertTrue(ButtonIcons.hasPackIcon("Options " + new String(Character.toChars(0xF0300))));
+        org.junit.jupiter.api.Assertions.assertFalse(ButtonIcons.hasPackIcon("Back to Game "));
+        org.junit.jupiter.api.Assertions.assertFalse(ButtonIcons.hasPackIcon(null));
+    }
 }

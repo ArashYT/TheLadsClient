@@ -22,6 +22,7 @@ public class GlobalButtonMixin {
     @Unique
     private static String ladsIcon(AbstractWidget button){
         if(button instanceof SpriteIconButton)return null; // already draws its own sprite beside (or instead of) its label
+        if(MessageIcons.packIcon(button.getMessage()))return null; // the resource pack draws its own icon in the label
         String icon=ButtonLift.icon(button);
         if(icon==null)icon=MessageIcons.of(button.getMessage());
         return icon!=null&&TitleScreenTheme.iconFits(button.getWidth(),Minecraft.getInstance().font.width(button.getMessage()))?icon:null;
