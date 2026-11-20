@@ -22,9 +22,11 @@ jobs:
         with:
           # 25 (last, so JAVA_HOME) runs the Gradle 9 Core build; 21 is the toolchain its build189 task starts the separate
           # Gradle 8.8 build of the Minecraft 1.8.9 (Forge) Core with (TheLadsCore/build.gradle, found through setup-java's
-          # toolchains.xml or provisioned by foojay). That build downloads its own Java 8 into ~/.gradle/jdks.
+          # toolchains.xml or provisioned by foojay). 8 is installed here too because foojay served a corrupt Java 8 zip for the
+          # 1.13.33 tag build (tag builds cannot see main's cache).
           distribution: temurin
           java-version: |
+            8
             21
             25
       # The 1.8.9 Core build: Essential Loom recompresses the Forge patches once (about 20 of a cold build's 22 minutes) into
