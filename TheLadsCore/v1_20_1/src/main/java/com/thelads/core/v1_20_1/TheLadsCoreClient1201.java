@@ -29,6 +29,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         LadsGameBridge.set(new VanillaGameBridge1201());
         SocialBridge.set(new SocialBridge1201());
         com.thelads.core.security.AntiInjectDetector.init();
+        com.thelads.core.client.hud.ServerHudElement.registerModules();
         ConfigManager.load();
         com.thelads.core.client.util.LogPruner.pruneIfEnabled(new java.io.File("logs"));
         NativeKeyBindings1201.init();
@@ -95,6 +96,8 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         com.thelads.core.v1_20_1.utility.Utility1201.register(); // Survival Guards, Breeding Timer, Ender Chest Peek, pack profiles, server drag
         com.thelads.core.v1_20_1.qol.Qol1201.register(); // Scrollable Tooltips, Crash Catcher, Quick Reconnect, Keep Cursor, Sound Volumes, GUI Scale, Chunk Borders
         com.thelads.core.v1_20_1.net.LadsApiTransport1201.init();
+        com.thelads.core.v1_20_1.ladsapi.minigame.world.MinigameWorld1201.register(); // minigame API: camera, fx, waypoints, telegraphs, ghosts
+        com.thelads.core.v1_20_1.ladsapi.ui.LadsApiUi1201.register(); // minigame API: input, lock, hud, audio, run, dialogs, profiles
 
         SocialHudToast1201.register();
         net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> SocialBridge1201.resetLoopbackState());

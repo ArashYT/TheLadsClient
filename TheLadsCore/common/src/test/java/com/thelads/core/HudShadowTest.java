@@ -68,6 +68,8 @@ class HudShadowTest {
     private static List<HudElement> elements() throws ReflectiveOperationException {
         List<HudElement> fresh = new ArrayList<>();
         for (HudElement registered : HudManager.getInstance().getElements()) {
+            // The Lads API server HUD and run timer are modules only the 26.3 client registers (ServerHudElement.registerModules).
+            if (ModuleManager.getInstance().getModule(registered.getModuleName()) == null) continue;
             HudElement element = registered.getClass().getDeclaredConstructor().newInstance();
             element.setModuleName(registered.getModuleName());
             fresh.add(element);

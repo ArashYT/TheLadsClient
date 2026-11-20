@@ -38,6 +38,7 @@ public final class TelegraphState {
 
     /** What to draw at {@code now}; expired ones are dropped. */
     public List<Telegraph> active(long now) {
+        if (map.isEmpty()) return List.of();
         prune(now);
         return new ArrayList<>(map.values());
     }

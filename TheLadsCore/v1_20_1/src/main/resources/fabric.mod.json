@@ -81,7 +81,9 @@
     "theladscore.v1_20_1.hudextras.mixins.json",
     "theladscore.v1_20_1.utility.mixins.json",
     "theladscore.v1_20_1.qol.mixins.json",
-    "theladscore.v1_20_1.social.mixins.json"
+    "theladscore.v1_20_1.social.mixins.json",
+    "theladscore.v1_20_1.mgworld.mixins.json",
+    "theladscore.v1_20_1.ladsapiui.mixins.json"
   ],
   "accessWidener": "theladscore.v1_20_1.accesswidener",
   "depends": {

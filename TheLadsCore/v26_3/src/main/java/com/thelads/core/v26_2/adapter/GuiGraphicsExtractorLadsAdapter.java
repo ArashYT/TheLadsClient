@@ -161,7 +161,13 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
             case "compass" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COMPASS);
             case "barrier" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BARRIER);
             case "nether_star" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.NETHER_STAR);
-            default -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COMPASS);
+            default -> {
+                // a registry id such as "minecraft:sand" (Lads API widgets and dialogs name items that way)
+                Identifier id = key.indexOf(':') > 0 ? Identifier.tryParse(key) : null;
+                var item = id == null ? java.util.Optional.<net.minecraft.world.item.Item>empty()
+                    : net.minecraft.core.registries.BuiltInRegistries.ITEM.getOptional(id);
+                yield new net.minecraft.world.item.ItemStack(item.orElse(net.minecraft.world.item.Items.COMPASS));
+            }
         };
     }
 

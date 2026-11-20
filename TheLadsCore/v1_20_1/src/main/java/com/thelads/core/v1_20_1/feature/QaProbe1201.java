@@ -114,7 +114,7 @@ public final class QaProbe1201 {
     public static void register() {
         if (registered) return;
         autoWorld = Boolean.getBoolean("thelads.verifyAutoWorld");
-        String script = System.getProperty("thelads.qaScript");
+        String script = (System.getProperty("thelads.qaScript") != null ? System.getProperty("thelads.qaScript") : System.getenv("LADS_QA_SCRIPT"));
         if (!autoWorld && (script == null || script.isBlank())) return;
         registered = true;
         Release113Qa1201.register();
@@ -142,7 +142,7 @@ public final class QaProbe1201 {
             save = System.getProperty("thelads.qaWorld", "LadsQA-" + gameDir.getFileName().toString().replace('.', '_').replaceAll("[^A-Za-z0-9_-]", "_"));
             active = true;
             phaseSince = System.nanoTime();
-            String script = System.getProperty("thelads.qaScript");
+            String script = (System.getProperty("thelads.qaScript") != null ? System.getProperty("thelads.qaScript") : System.getenv("LADS_QA_SCRIPT"));
             if (script != null && !script.isBlank()) steps = parse(Path.of(script));
             LOGGER.info("Lads auto-world QA BEGIN: game folder {}; world {}; script steps {}", gameDir, autoWorld ? save : "(none: title only)", steps.size());
         } catch (Exception e) {
@@ -389,6 +389,7 @@ public final class QaProbe1201 {
                 LOGGER.info("Lads qa hudcache: {}", com.thelads.core.v1_20_1.hud.HudCache1201.off ? "off" : "on");
             }
             case "ladsapi" -> com.thelads.core.client.ladsapi.LadsApiQa.recordProbe(s.length > 1 ? rest(s, 1) : ("step-" + index));
+            case "ladsui" -> com.thelads.core.v1_20_1.ladsapi.ui.LadsApiUiQa1201.step(mc, s);
             case "settings" -> {
                 Screen current = mc.screen;
                 LadsSettingsScreen1201 screen = new LadsSettingsScreen1201(current);

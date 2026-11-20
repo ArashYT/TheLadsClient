@@ -18,7 +18,7 @@ public final class IoniumFastRender189 {
     private static final Logger LOGGER = LogManager.getLogger("TheLadsCore-1.8.9");
     public static final boolean ENABLED = IoniumFastRender189.class.getClassLoader().getResource("org/taumc/ionium/launch/IoniumTweaker.class") != null
         && !"false".equalsIgnoreCase(System.getProperty("lads.fastRender"));
-    private static boolean needed;
+    private static boolean needed, scalingNeeded, fxNeeded;
 
     private IoniumFastRender189() {}
 
@@ -29,11 +29,23 @@ public final class IoniumFastRender189 {
 
     /** RenderScale189, every frame: Better Resolution scaling needs the main framebuffer. */
     public static void betterResolution(boolean scaling) {
+        scalingNeeded = scaling;
+        update();
+    }
+
+    /** FxShader189: a minigame screen-effect shader (blur, grayscale, sepia, invert) needs the main framebuffer while it runs. */
+    public static void shaderFx(boolean wanted) {
+        fxNeeded = wanted;
+        update();
+    }
+
+    private static void update() {
+        boolean scaling = scalingNeeded || fxNeeded;
         if (!ENABLED || scaling == needed) return;
         needed = scaling;
         Minecraft mc = Minecraft.getMinecraft();
         if (!scaling) mc.entityRenderer.stopUseShader(); // a shader effect made meanwhile would draw from a framebuffer that is gone
         mc.getFramebuffer().createBindFramebuffer(mc.displayWidth, mc.displayHeight); // made again, or left unused
-        LOGGER.info("Lads Fast Render (Ionium) " + (scaling ? "off for Better Resolution" : "back on"));
+        LOGGER.info("Lads Fast Render (Ionium) " + (scaling ? "off for " + (fxNeeded ? "a screen effect" : "Better Resolution") : "back on"));
     }
 }

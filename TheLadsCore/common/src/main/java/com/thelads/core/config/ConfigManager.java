@@ -923,7 +923,15 @@ public class ConfigManager {
     }
 
     /** Atomic replace; a snapshot older than one already written is skipped, so a late background write never undoes a newer save. */
+    private static volatile boolean suspendWrites;
+
+    /** While true nothing reaches the config file: a server's game profile (Lads API) lives in memory only and is restored on drop. */
+    public static void suspendWrites(boolean suspend) {
+        suspendWrites = suspend;
+    }
+
     private static synchronized void write(String json, long order, File explicitTestFile) {
+        if (suspendWrites && explicitTestFile == null) return;
         if (order < writtenOrder) return;
         writtenOrder = order;
         File configFile = explicitTestFile != null ? explicitTestFile : getConfigFile();

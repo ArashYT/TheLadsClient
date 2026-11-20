@@ -40,6 +40,7 @@ public final class LadsApiTransport1201 {
         LadsApiClient.install(LadsApiTransport1201::send, "1.20.1");
         NativeServerOptions.install(); // ServerOptionMixin answers "Minecraft" option rules (every option and keybind)
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> LadsApiClient.reset());
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.START_CLIENT_TICK.register(client -> com.thelads.core.client.ladsapi.minigame.Minigame.tick());
         LOGGER.debug("LadsApi 1.20.1 transport initialized.");
     }
 

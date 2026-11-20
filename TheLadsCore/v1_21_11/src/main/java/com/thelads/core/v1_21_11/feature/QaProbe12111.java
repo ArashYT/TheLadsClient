@@ -26,6 +26,7 @@ public final class QaProbe12111 {
 
     public static void register() {
         String script = System.getProperty("thelads.qaScript");
+        if (script == null || script.isBlank()) script = System.getenv("LADS_QA_SCRIPT");
         if (script == null || script.isBlank()) return;
         try {
             for (String line : Files.readAllLines(Path.of(script))) if (!line.isBlank() && !line.strip().startsWith("#")) steps.add(line.strip());
@@ -94,6 +95,7 @@ public final class QaProbe12111 {
             }
             case "screen" -> {
                 mc.setScreen(switch (arg) {
+                    case "none" -> null;
                     case "title" -> new TitleScreen();
                     case "pause" -> new PauseScreen(true);
                     case "options" -> new net.minecraft.client.gui.screens.options.OptionsScreen(mc.screen, mc.options);
@@ -107,12 +109,24 @@ public final class QaProbe12111 {
                         .newInstance(mc.screen);
                     default -> throw new IllegalArgumentException("screen: title, pause, options, video, controls, multiplayer or screenshots");
                 });
-                LOGGER.info("Lads qa screen: {}", mc.screen.children().stream().filter(Button.class::isInstance).map(c -> ((Button) c).getMessage().getString()).toList());
+                if (mc.screen != null) LOGGER.info("Lads qa screen: {}", mc.screen.children().stream().filter(Button.class::isInstance).map(c -> ((Button) c).getMessage().getString()).toList());
             }
             case "press" -> mc.screen.children().stream().filter(c -> c instanceof Button b && b.getMessage().getString().equals(arg))
                 .map(c -> (Button) c).findFirst().orElseThrow(() -> new IllegalArgumentException("press: no button " + arg))
                 .onPress(new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN, 0, 0));
             case "world" -> {} // tick() held the script until the QA world was up
+            case "disconnect" -> {
+                if (mc.level != null) mc.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE);
+                mc.setScreen(new TitleScreen());
+            }
+            case "connect" -> {
+                if (mc.level != null) mc.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE);
+                var data = new net.minecraft.client.multiplayer.ServerData("QA", arg, net.minecraft.client.multiplayer.ServerData.Type.OTHER);
+                net.minecraft.client.gui.screens.ConnectScreen.startConnecting(new TitleScreen(), mc, net.minecraft.client.multiplayer.resolver.ServerAddress.parseString(arg), data, false, null);
+            }
+            case "cmd" -> { if (mc.player != null && mc.player.connection != null) mc.player.connection.sendCommand(arg.replaceFirst("^/", "")); }
+            case "log" -> LOGGER.info("Lads qa log: {}", arg);
+            case "ladsapi" -> com.thelads.core.client.ladsapi.LadsApiQa.recordProbe(arg.isEmpty() ? ("step-" + index) : arg);
             case "hudedit" -> hudEdit = true; // the HUD editor's wheel and drags at several window sizes (HudEditorQa); needs the QA world
             case "textui" -> { // sidebar friends|messages, best <uuid>, pin <world folder>, party ...
                 String[] words = step.split("\\s+");
@@ -181,6 +195,7 @@ public final class QaProbe12111 {
                 mc.getProfileKeyPairManager().getClass().getSimpleName(), mc.screen == null ? "none" : mc.screen.getClass().getSimpleName(),
                 mc.screen instanceof AccountSwitcherScreen12111 a ? a.ui().getStatusMessage() : "");
             case "srv" -> ServerListQa12111.step(mc, step.split("\\s+"));
+            case "ladsui" -> com.thelads.core.v1_21_11.ladsapi.ui.LadsApiUiQa12111.step(mc, step.split("\\s+"));
             case "seedshots" -> com.thelads.core.client.qa.QaScreenshotFixtures.seed(FabricLoader.getInstance().getGameDir());
             case "restoreshots" -> com.thelads.core.client.qa.QaScreenshotFixtures.restore(FabricLoader.getInstance().getGameDir());
             case "assertshots" -> {

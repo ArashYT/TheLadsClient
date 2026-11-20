@@ -1,0 +1,16 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_21_11.ladsapi.ui.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "KeyMappingAccess12111",
+    "LockKeyMixin12111",
+    "LockMouseMixin12111",
+    "InputStampMixin12111",
+    "ServerKeysOptionsMixin12111",
+    "ServerKeyLangMixin12111",
+    "DialogHudMixin12111"
+  ],
+  "injectors": { "defaultRequire": 0 }
+}

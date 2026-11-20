@@ -117,6 +117,10 @@ public final class CoreProbe {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
             STEPS.addAll(RenderProbe189.STEPS);
+        } else if ("mgworld".equals(only)) { // the minigame API's world half, fed with server JSON (ProbeMgWorld189); it ends by leaving the world itself
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
+            STEPS.addAll(ProbeMgWorld189.STEPS);
         } else if ("cull".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
@@ -264,7 +268,7 @@ public final class CoreProbe {
             STEPS.addAll(Probe170F3Fov.STEPS);
             STEPS.addAll(Probe145.PACING);
         }
-        if (!"fixes".equals(only) && !"ofdefaults".equals(only) && !"p2p".equals(only)) { // p2p: the guest ends kicked, on the disconnected screen
+        if (!"fixes".equals(only) && !"ofdefaults".equals(only) && !"p2p".equals(only) && !"mgworld".equals(only)) { // p2p: the guest ends kicked, on the disconnected screen
             STEPS.add(CoreProbe::leaveWorld);
             STEPS.add(CoreProbe::leftWorld);
         }

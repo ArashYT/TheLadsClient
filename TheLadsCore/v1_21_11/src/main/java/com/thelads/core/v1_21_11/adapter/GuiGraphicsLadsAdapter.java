@@ -63,6 +63,13 @@ public class GuiGraphicsLadsAdapter implements LadsGraphics {
         }
     }
 
+    @Override public void drawItemIcon(String itemKey, int x, int y) {
+        if (itemKey == null) return;
+        Identifier id = Identifier.tryParse(itemKey.indexOf(':') > 0 ? itemKey : "minecraft:" + itemKey);
+        var item = id == null ? java.util.Optional.<net.minecraft.world.item.Item>empty() : net.minecraft.core.registries.BuiltInRegistries.ITEM.getOptional(id);
+        guiGraphics.renderItem(new net.minecraft.world.item.ItemStack(item.orElse(net.minecraft.world.item.Items.COMPASS)), x, y);
+    }
+
     @Override public void drawArmorItem(int index, int x, int y, boolean preview) {
         var stack = armorStack(index, preview);
         if (!stack.isEmpty()) { guiGraphics.renderItem(stack, x, y); guiGraphics.renderItemDecorations(font, stack, x, y); }
