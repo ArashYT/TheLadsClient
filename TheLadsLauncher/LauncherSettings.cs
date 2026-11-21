@@ -65,6 +65,8 @@ public class LauncherSettings
     public bool KeepClosedOnExit { get; set; } = false;   // don't re-open the launcher when the game closes
     public bool UseHorizon { get; set; } = false;     // experimental, at own risk: 26.3 Play starts Horizon (Dev Launcher or /experimental_invite only)
     public bool HorizonRiskAccepted { get; set; } = false; // the player pressed "I accept the risk" (UseHorizon needs it: LoadFrom)
+    /// <summary>When each profile's game launch last started (UTC), by profile id; the Play page's "Last played". Absent = never played.</summary>
+    public Dictionary<string, DateTime> ProfileLastPlayedUtc { get; set; } = new();
 
     // Gallery
     public List<string> GalleryFavorites { get; set; } = new();
@@ -148,6 +150,7 @@ public class LauncherSettings
                     // Before 1.12.0 Horizon could be saved on while its red risk question was still open (or never answered): without a
                     // recorded acceptance it starts off again, so the question comes back the next time it is ticked.
                     if (loaded.UseHorizon && !loaded.HorizonRiskAccepted) loaded.UseHorizon = false;
+                    loaded.ProfileLastPlayedUtc ??= new(); // an older file, or "null" in it
                     return loaded;
                 }
                 catch (IOException) { System.Threading.Thread.Sleep(100); }

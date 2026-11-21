@@ -61,8 +61,6 @@
                                     </Border>
                                 </Border>
                             </Grid>
-                            <Button x:Name="AspectLockBtn" Classes="window" c:Ico.Name="expand" Content="Aspect Ratio: Free" ToolTip.Tip="Toggle 16:9 aspect lock" Click="AspectLockBtn_Click" />
-                            <Button x:Name="ResetSizeBtn" Classes="window" c:Ico.Name="undo" Content="Reset Size" ToolTip.Tip="Reset window size" Click="ResetSizeBtn_Click" />
                             <Button x:Name="CheckUpdateBtn" Classes="window" c:Ico.Name="refresh" Content="Update" ToolTip.Tip="Check for launcher updates" Click="CheckUpdateBtn_Click" Padding="7,0" />
                             <Button x:Name="MinimizeBtn" Classes="window" c:Ico.Name="window-minimize" ToolTip.Tip="Minimize" Click="MinimizeBtn_Click" />
                             <Button x:Name="MaximizeBtn" Classes="window" c:Ico.Name="window-maximize" ToolTip.Tip="Maximize" Click="MaximizeBtn_Click" />
@@ -72,8 +70,9 @@
                 </Border>
                 <Border x:Name="Sidebar" Grid.Row="1" Background="#121315" BorderBrush="#303137" BorderThickness="0,0,1,0">
                     <Grid RowDefinitions="*,Auto">
-                        <ScrollViewer>
-                            <StackPanel Spacing="3" Margin="10,20,10,0">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Spacing="0" Margin="10,8,10,6">
+                                <TextBlock Text="PLAY" Classes="navGroup" Margin="0,0,0,2" />
                                 <Button x:Name="NavHome" AutomationProperties.Name="Play" Classes="nav active" Click="NavHome_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
                                         <c:Glyph Kind="play" Size="17" VerticalAlignment="Center" />
@@ -86,43 +85,6 @@
                                         <TextBlock Text="Experiences" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
-                                <Button x:Name="NavAccounts" AutomationProperties.Name="Accounts" Classes="nav" Click="NavAccounts_Click">
-                                    <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <c:Glyph Kind="user" Size="17" VerticalAlignment="Center" />
-                                        <TextBlock Text="Accounts" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                                <Button x:Name="NavSkins" AutomationProperties.Name="Skins" Classes="nav" Click="NavSkins_Click">
-                                    <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <c:Glyph Kind="shirt" Size="17" VerticalAlignment="Center" />
-                                        <TextBlock Text="Skins" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                                <Button x:Name="NavProfiles" AutomationProperties.Name="Profiles" Classes="nav" Click="NavProfiles_Click">
-                                    <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <c:Glyph Kind="computer" Size="17" VerticalAlignment="Center" />
-                                        <TextBlock Text="Profiles" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                                <Button x:Name="NavModpacks" AutomationProperties.Name="Modpacks" Classes="nav" Click="NavModpacks_Click">
-                                    <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <c:Glyph Kind="box-open" Size="17" VerticalAlignment="Center" />
-                                        <TextBlock Text="Modpacks" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                                <Border Height="1" Background="#28292E" Margin="12,12" />
-                                <Button x:Name="NavWorlds" AutomationProperties.Name="Worlds" Classes="nav" Click="NavWorlds_Click">
-                                    <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <c:Glyph Kind="globe" Size="17" VerticalAlignment="Center" />
-                                        <TextBlock Text="Worlds" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                                <Button x:Name="NavServers" AutomationProperties.Name="Servers" Classes="nav" Click="NavServers_Click">
-                                    <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <c:Glyph Kind="database" Size="17" VerticalAlignment="Center" />
-                                        <TextBlock Text="Servers" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
                                 <Button x:Name="NavFriends" AutomationProperties.Name="Friends" Classes="nav" Click="NavFriends_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
                                         <c:Glyph Kind="friends" Size="17" VerticalAlignment="Center" />
@@ -132,6 +94,19 @@
                                         </Border>
                                     </StackPanel>
                                 </Button>
+                                <Button x:Name="NavServers" AutomationProperties.Name="Servers" Classes="nav" Click="NavServers_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="13">
+                                        <c:Glyph Kind="database" Size="17" VerticalAlignment="Center" />
+                                        <TextBlock Text="Servers" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="NavWorlds" AutomationProperties.Name="Worlds" Classes="nav" Click="NavWorlds_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="13">
+                                        <c:Glyph Kind="globe" Size="17" VerticalAlignment="Center" />
+                                        <TextBlock Text="Worlds" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock Text="CONTENT" Classes="navGroup" Margin="0,10,0,2" />
                                 <Button x:Name="NavMods" AutomationProperties.Name="Mods" Classes="nav" Click="NavMods_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
                                         <c:Glyph Kind="puzzle-piece" Size="17" VerticalAlignment="Center" />
@@ -142,6 +117,18 @@
                                     <StackPanel Orientation="Horizontal" Spacing="13">
                                         <c:Glyph Kind="layers" Size="17" VerticalAlignment="Center" />
                                         <TextBlock Text="Packs" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="NavModpacks" AutomationProperties.Name="Modpacks" Classes="nav" Click="NavModpacks_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="13">
+                                        <c:Glyph Kind="box-open" Size="17" VerticalAlignment="Center" />
+                                        <TextBlock Text="Modpacks" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="NavSkins" AutomationProperties.Name="Skins" Classes="nav" Click="NavSkins_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="13">
+                                        <c:Glyph Kind="shirt" Size="17" VerticalAlignment="Center" />
+                                        <TextBlock Text="Skins" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                                 <Button x:Name="NavGallery" AutomationProperties.Name="Gallery" Classes="nav" Click="NavGallery_Click">
@@ -156,7 +143,19 @@
                                         <TextBlock Text="Files" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
-                                <Border Height="1" Background="#28292E" Margin="12,12" />
+                                <TextBlock Text="APP" Classes="navGroup" Margin="0,10,0,2" />
+                                <Button x:Name="NavAccounts" AutomationProperties.Name="Accounts" Classes="nav" Click="NavAccounts_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="13">
+                                        <c:Glyph Kind="user" Size="17" VerticalAlignment="Center" />
+                                        <TextBlock Text="Accounts" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="NavProfiles" AutomationProperties.Name="Profiles" Classes="nav" Click="NavProfiles_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="13">
+                                        <c:Glyph Kind="computer" Size="17" VerticalAlignment="Center" />
+                                        <TextBlock Text="Profiles" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
                                 <Button x:Name="NavSettings" AutomationProperties.Name="Settings" Classes="nav" Click="NavSettings_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
                                         <c:Glyph Kind="settings" Size="17" VerticalAlignment="Center" />
@@ -171,19 +170,19 @@
                                 </Button>
                             </StackPanel>
                         </ScrollViewer>
-                        <Border Grid.Row="1" BorderBrush="#303137" BorderThickness="0,1,0,0" Padding="18,18">
-                            <StackPanel Spacing="13">
+                        <Border Grid.Row="1" BorderBrush="#303137" BorderThickness="0,1,0,0" Padding="16,8,16,8">
+                            <StackPanel Spacing="5">
                                 <Grid ColumnDefinitions="Auto,*">
                                     <Ellipse x:Name="MiniSkinHead" Width="26" Height="26" Fill="#303137" />
-                                    <StackPanel Grid.Column="1" Margin="10,0,0,0" Spacing="2">
+                                    <StackPanel Grid.Column="1" Margin="10,0,0,0" Spacing="1" VerticalAlignment="Center">
                                         <TextBlock x:Name="MiniAccountName" Classes="notranslate" Text="No account" FontSize="11" TextTrimming="CharacterEllipsis" />
                                         <TextBlock Text="PLAYER ACCOUNT" Classes="caption" FontSize="8" LetterSpacing="0.7" />
                                     </StackPanel>
                                 </Grid>
-                                <Button c:Ico.Name="document" Content="Release notes" Click="ReleaseNotes_Click" Background="Transparent" FontSize="11" />
-                                <TextBlock x:Name="VersionText" Foreground="#8F919C" FontSize="10" />
+                                <Button c:Ico.Name="document" Content="Release notes" Click="ReleaseNotes_Click" Background="Transparent" FontSize="11" Height="28" Padding="6,0" Margin="-6,0,0,-2" HorizontalAlignment="Left" />
+                                <TextBlock x:Name="VersionText" Foreground="#8F919C" FontSize="10" TextTrimming="CharacterEllipsis" />
                                 <Button Classes="credit" ToolTip.Tip="Uicons by Flaticon, https://www.flaticon.com/uicons" Click="IconCredit_Click">
-                                    <TextBlock Text="Icons by Flaticon (flaticon.com)" TextWrapping="Wrap" />
+                                    <TextBlock Text="Icons by Flaticon (flaticon.com)" TextTrimming="CharacterEllipsis" />
                                 </Button>
                             </StackPanel>
                         </Border>
@@ -220,7 +219,7 @@
                                         </Border.Background>
                                     </Border>
                                     <Canvas x:Name="ParticleCanvas" IsHitTestVisible="False" Opacity="0.10" />
-                                    <StackPanel Margin="32,0,32,32" VerticalAlignment="Bottom" HorizontalAlignment="Left" Spacing="0">
+                                    <StackPanel Margin="32,0,32,32" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Spacing="0">
                                         <TextBlock Text="READY TO PLAY" Classes="caption" Foreground="#B8B9C2" />
                                         <TextBlock x:Name="HeroTitle" Text="Minecraft" Classes="notranslate" FontFamily="Bahnschrift SemiCondensed,Inter" FontSize="56" FontWeight="Bold" Margin="0,8,0,0" />
                                         <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,8,0,24">
@@ -228,8 +227,10 @@
                                             <TextBlock Text="&#183;" Foreground="#B8B9C2" FontSize="14" />
                                             <TextBlock Text="{Binding #ModCountText.Text}" FontFeatures="+tnum" Foreground="#B8B9C2" FontSize="14" />
                                             <TextBlock Text="mods" Foreground="#B8B9C2" FontSize="14" />
+                                            <TextBlock x:Name="HeroLastPlayedDot" Text="&#183;" Foreground="#B8B9C2" FontSize="14" IsVisible="False" />
+                                            <TextBlock x:Name="HeroLastPlayedText" Foreground="#B8B9C2" FontSize="14" IsVisible="False" />
                                         </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="16">
+                                        <Grid ColumnDefinitions="Auto,16,*,16,260" HorizontalAlignment="Stretch">
                                             <Button x:Name="LaunchButton" Classes="launch" FontSize="22" FontWeight="Bold" Foreground="White" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Right-click to launch with a different account" Click="LaunchButton_Click" Height="56" Width="210" VerticalAlignment="Bottom">
                                                 <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
                                                     <c:Glyph Kind="play" Size="18" Foreground="White" VerticalAlignment="Center" />
@@ -241,26 +242,26 @@
                                                     </ContextMenu>
                                                 </Button.ContextMenu>
                                             </Button>
-                                            <StackPanel Spacing="4" VerticalAlignment="Bottom">
+                                            <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Bottom">
                                                 <TextBlock Text="PROFILE" Classes="caption" Foreground="#B8B9C2" />
-                                                <ComboBox x:Name="LaunchProfileSelector" Classes="launchPicker notranslate" FontSize="14" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" ToolTip.Tip="Choose the Minecraft profile to launch" SelectionChanged="LaunchProfileSelector_SelectionChanged" Height="56" Width="210" />
+                                                <ComboBox x:Name="LaunchProfileSelector" Classes="launchPicker notranslate" FontSize="14" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" HorizontalAlignment="Stretch" ToolTip.Tip="Choose the Minecraft profile to launch" SelectionChanged="LaunchProfileSelector_SelectionChanged" Height="56" MinWidth="120" />
                                             </StackPanel>
-                                            <StackPanel Spacing="4" VerticalAlignment="Bottom">
+                                            <StackPanel Grid.Column="4" Spacing="4" VerticalAlignment="Bottom">
                                                 <TextBlock Text="PLAYING AS" Classes="caption" Foreground="#B8B9C2" />
-                                                <ComboBox x:Name="LaunchAccountSelector" Classes="launchPicker" PlaceholderText="Select an account" FontSize="14" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" ToolTip.Tip="Launch with this account (does not change your main account)" SelectionChanged="LaunchAccountSelector_SelectionChanged" Height="56" Width="210">
+                                                <ComboBox x:Name="LaunchAccountSelector" Classes="launchPicker" PlaceholderText="Select an account" FontSize="14" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" HorizontalAlignment="Stretch" ToolTip.Tip="Launch with this account (does not change your main account)" SelectionChanged="LaunchAccountSelector_SelectionChanged" Height="56">
                                                     <ComboBox.ItemTemplate>
                                                         <DataTemplate x:DataType="models:AccountChoice">
                                                             <StackPanel Orientation="Horizontal" Spacing="10">
                                                                 <Border Width="24" Height="24" CornerRadius="4" ClipToBounds="True" Background="#303137">
                                                                     <Image Source="{Binding Head}" Width="24" Height="24" RenderOptions.BitmapInterpolationMode="None" />
                                                                 </Border>
-                                                                <TextBlock Text="{Binding Label}" Classes="notranslate" VerticalAlignment="Center" />
+                                                                <TextBlock Text="{Binding Label}" Classes="notranslate" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                                             </StackPanel>
                                                         </DataTemplate>
                                                     </ComboBox.ItemTemplate>
                                                 </ComboBox>
                                             </StackPanel>
-                                        </StackPanel>
+                                        </Grid>
                                     </StackPanel>
                                     <ProgressBar x:Name="ProgressBar" Height="2" Minimum="0" Maximum="100" Value="0" VerticalAlignment="Bottom" />
                                 </Grid>
@@ -270,10 +271,10 @@
                                     <TextBlock Text="JUMP IN" Classes="caption" VerticalAlignment="Center" />
                                     <TextBlock x:Name="StatusText" Grid.Column="1" Text="Ready to play" Foreground="#B8B9C2" FontSize="12" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                 </Grid>
-                                <Grid Grid.Row="1" ColumnDefinitions="*,*,*,*">
-                                    <Border Grid.Column="0" Margin="0,0,8,0" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" Padding="8">
+                                <Grid x:Name="HomeCards" Grid.Row="1" ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
+                                    <Border x:Name="HomeNetworkCard" Grid.Column="0" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" Padding="8">
                                         <Grid RowDefinitions="Auto,*,Auto">
-                                            <Border Height="48" CornerRadius="3" Background="#191A1E"><c:Glyph Kind="globe" Size="24" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                                            <Border Height="48" CornerRadius="3" Background="#191A1E" ClipToBounds="True"><Image Source="avares://TheLadsLauncher/Assets/logo.png" Width="132" Height="30" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
                                             <StackPanel Grid.Row="1" Margin="4,6,4,6" Spacing="2" VerticalAlignment="Center">
                                                 <TextBlock Text="The Lads Network" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" />
                                                 <StackPanel Orientation="Horizontal" Spacing="6">
@@ -284,25 +285,34 @@
                                             <Button x:Name="NetworkPlayButton" Grid.Row="2" Classes="action" Background="Transparent" Content="Join" HorizontalAlignment="Stretch" Height="32" ToolTip.Tip="Launch and join The Lads Network (mc.arashyt.ca)" IsEnabled="{Binding #LaunchButton.IsEnabled}" Click="NetworkPlay_Click" />
                                         </Grid>
                                     </Border>
-                                    <Border Grid.Column="1" Margin="4,0,4,0" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" Padding="8">
+                                    <Border x:Name="HomeLadsSmpCard" Grid.Column="1" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" Padding="8">
                                         <Grid RowDefinitions="Auto,*,Auto">
-                                            <Border Height="48" CornerRadius="3" Background="#191A1E"><Image Source="avares://TheLadsLauncher/Assets/lads_smp_reborn_icon.png" Width="36" Height="36" HorizontalAlignment="Center" /></Border>
-                                            <StackPanel Grid.Row="1" Margin="4,6,4,6" VerticalAlignment="Center"><TextBlock Text="Lads SMP Reborn" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" /></StackPanel>
-                                            <Button Grid.Row="2" Classes="action" Background="Transparent" Content="Launch" HorizontalAlignment="Stretch" Height="32" ToolTip.Tip="Open Experiences" Click="NavExperiences_Click" />
+                                            <Border Height="48" CornerRadius="3" Background="#191A1E" ClipToBounds="True"><Image Source="avares://TheLadsLauncher/Assets/lads_smp_reborn_icon.png" Width="36" Height="36" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" RenderOptions.BitmapInterpolationMode="None" /></Border>
+                                            <StackPanel Grid.Row="1" Margin="4,6,4,6" Spacing="2" VerticalAlignment="Center">
+                                                <TextBlock Text="Lads SMP Reborn" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock x:Name="HomeLadsSmpStatus" Foreground="#B8B9C2" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <Button x:Name="HomeLadsSmpBtn" Grid.Row="2" Classes="action" Background="Transparent" Content="Play" HorizontalAlignment="Stretch" Height="32" ToolTip.Tip="Play or install Lads SMP Reborn" Click="HomeLadsSmp_Click" />
                                         </Grid>
                                     </Border>
-                                    <Border Grid.Column="2" Margin="4,0,4,0" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" Padding="8">
+                                    <Border x:Name="HomeZeroSmpCard" Grid.Column="2" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" Padding="8">
                                         <Grid RowDefinitions="Auto,*,Auto">
-                                            <Border Height="48" CornerRadius="3" Background="#191A1E"><Image Source="avares://TheLadsLauncher/Assets/zero_smp_icon.png" Width="72" Height="36" HorizontalAlignment="Center" /></Border>
-                                            <StackPanel Grid.Row="1" Margin="4,6,4,6" VerticalAlignment="Center"><TextBlock Text="Zero SMP" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" /></StackPanel>
-                                            <Button Grid.Row="2" Classes="action" Background="Transparent" Content="Launch" HorizontalAlignment="Stretch" Height="32" ToolTip.Tip="Open Experiences" Click="NavExperiences_Click" />
+                                            <Border Height="48" CornerRadius="3" Background="#191A1E" ClipToBounds="True"><Image Source="avares://TheLadsLauncher/Assets/zero_smp_icon.png" Width="72" Height="36" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" RenderOptions.BitmapInterpolationMode="None" /></Border>
+                                            <StackPanel Grid.Row="1" Margin="4,6,4,6" Spacing="2" VerticalAlignment="Center">
+                                                <TextBlock Text="Zero SMP" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock x:Name="HomeZeroSmpStatus" Foreground="#B8B9C2" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <Button x:Name="HomeZeroSmpBtn" Grid.Row="2" Classes="action" Background="Transparent" Content="Play" HorizontalAlignment="Stretch" Height="32" ToolTip.Tip="Play or install Zero SMP" Click="HomeZeroSmp_Click" />
                                         </Grid>
                                     </Border>
-                                    <Border Grid.Column="3" Margin="8,0,0,0" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" Padding="8">
+                                    <Border x:Name="HomeHorizonCard" Grid.Column="3" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" Padding="8">
                                         <Grid RowDefinitions="Auto,*,Auto">
-                                            <Border Height="48" CornerRadius="3" Background="#191A1E"><c:Glyph Kind="sparkles" Size="24" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
-                                            <StackPanel Grid.Row="1" Margin="4,6,4,6" VerticalAlignment="Center"><TextBlock Text="Lads Horizon" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" /></StackPanel>
-                                            <Button Grid.Row="2" Classes="action" Background="Transparent" Content="Launch" HorizontalAlignment="Stretch" Height="32" ToolTip.Tip="Open Experiences" Click="NavExperiences_Click" />
+                                            <Border Height="48" CornerRadius="3" Background="#191A1E" ClipToBounds="True"><Image Source="avares://TheLadsLauncher/Assets/lads_horizon_icon.png" Width="36" Height="36" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                                            <StackPanel Grid.Row="1" Margin="4,6,4,6" Spacing="2" VerticalAlignment="Center">
+                                                <TextBlock Text="Lads Horizon" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock x:Name="HomeHorizonStatus" Foreground="#B8B9C2" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <Button x:Name="HomeHorizonBtn" Grid.Row="2" Classes="action" Background="Transparent" Content="Open" HorizontalAlignment="Stretch" Height="32" ToolTip.Tip="Open Settings, where Lads Horizon is switched on (experimental)" Click="HomeHorizon_Click" />
                                         </Grid>
                                     </Border>
                                 </Grid>
@@ -406,6 +416,25 @@
                                                 </Grid>
                                                 <CheckBox x:Name="ReducedMotionCheck" Content="Reduce motion (page, button and notification animations)" Margin="0,0,0,8" />
                                     <CheckBox x:Name="ParticleCheckbox" Content="Show background particles" IsChecked="True" />
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Background="#1D1E22" CornerRadius="4" Padding="20" BorderBrush="#303137" BorderThickness="1">
+                                            <StackPanel Spacing="12">
+                                                <TextBlock Text="WINDOW" Foreground="{DynamicResource LadsAccent}" FontSize="12" FontWeight="Bold" LetterSpacing="1" />
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <StackPanel Spacing="3" VerticalAlignment="Center" Margin="0,0,16,0">
+                                                        <TextBlock Text="Aspect ratio" Foreground="#CCCCCC" FontSize="14" />
+                                                        <TextBlock Text="Lock the launcher window to 16:9 while you resize it." Foreground="#868994" FontSize="11" TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                    <Button x:Name="AspectLockBtn" Grid.Column="1" Classes="action" c:Ico.Name="expand" Content="Aspect Ratio: Free" Height="36" MinWidth="190" ToolTip.Tip="Toggle 16:9 aspect lock" Click="AspectLockBtn_Click" />
+                                                </Grid>
+                                                <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                                                    <StackPanel Spacing="3" VerticalAlignment="Center" Margin="0,0,16,0">
+                                                        <TextBlock Text="Window size" Foreground="#CCCCCC" FontSize="14" />
+                                                        <TextBlock Text="Go back to the default launcher window size." Foreground="#868994" FontSize="11" TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                    <Button x:Name="ResetSizeBtn" Grid.Column="1" Classes="action" c:Ico.Name="undo" Content="Reset Size" Height="36" MinWidth="190" ToolTip.Tip="Reset window size" Click="ResetSizeBtn_Click" />
+                                                </Grid>
                                             </StackPanel>
                                         </Border>
                                         <Border Background="#1D1E22" CornerRadius="4" Padding="20" BorderBrush="#303137" BorderThickness="1">
@@ -842,27 +871,27 @@
                         </Border>
                     </Grid>
                     <!-- Usage metrics: a status bar along the bottom of every page. -->
-                    <Border Grid.Row="1" Background="#121315" BorderBrush="#303137" BorderThickness="0,1,0,0" Padding="28,8">
-                        <Grid ColumnDefinitions="*,*,*,*,Auto">
-                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                                <TextBlock Classes="caption" Text="CPU" VerticalAlignment="Center" />
-                                <TextBlock x:Name="CpuText" Text="&#8212;" FontFeatures="+tnum" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
+                    <Border Grid.Row="1" Height="24" Background="#121315" BorderBrush="#303137" BorderThickness="0,1,0,0" Padding="28,0">
+                        <Grid ColumnDefinitions="*,*,0,*,Auto" VerticalAlignment="Center">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                                <TextBlock Classes="caption" Text="CPU" FontSize="9" VerticalAlignment="Center" />
+                                <TextBlock x:Name="CpuText" Text="&#8212;" FontFeatures="+tnum" FontSize="10" Foreground="#9FA1AB" VerticalAlignment="Center" />
                             </StackPanel>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                                <TextBlock Classes="caption" Text="MEMORY" VerticalAlignment="Center" />
-                                <TextBlock x:Name="RamText" Text="&#8212;" FontFeatures="+tnum" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                <TextBlock Classes="caption" Text="MEMORY" FontSize="9" VerticalAlignment="Center" />
+                                <TextBlock x:Name="RamText" Text="&#8212;" FontFeatures="+tnum" FontSize="10" Foreground="#9FA1AB" VerticalAlignment="Center" />
                             </StackPanel>
-                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-                                <TextBlock Classes="caption" Text="MODS" VerticalAlignment="Center" />
-                                <TextBlock x:Name="ModCountText" Text="&#8212;" FontFeatures="+tnum" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" IsVisible="False">
+                                <TextBlock Classes="caption" Text="MODS" FontSize="9" VerticalAlignment="Center" />
+                                <TextBlock x:Name="ModCountText" Text="&#8212;" FontFeatures="+tnum" FontSize="10" Foreground="#9FA1AB" VerticalAlignment="Center" />
                             </StackPanel>
-                            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8">
-                                <TextBlock Classes="caption" Text="GAME" VerticalAlignment="Center" />
-                                <TextBlock x:Name="GameStateText" Text="&#8212;" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6">
+                                <TextBlock Classes="caption" Text="GAME" FontSize="9" VerticalAlignment="Center" />
+                                <TextBlock x:Name="GameStateText" Text="&#8212;" FontFeatures="+tnum" FontSize="10" Foreground="#9FA1AB" VerticalAlignment="Center" />
                             </StackPanel>
-                            <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8">
-                                <TextBlock Classes="caption" Text="DOWNLOAD" VerticalAlignment="Center" />
-                                <TextBlock x:Name="DownloadSpeedText" Text="&#8212;" FontFeatures="+tnum" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6">
+                                <TextBlock Classes="caption" Text="DOWNLOAD" FontSize="9" VerticalAlignment="Center" />
+                                <TextBlock x:Name="DownloadSpeedText" Text="&#8212;" FontFeatures="+tnum" FontSize="10" Foreground="#9FA1AB" VerticalAlignment="Center" />
                             </StackPanel>
                         </Grid>
                     </Border>

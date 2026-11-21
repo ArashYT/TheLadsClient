@@ -590,9 +590,51 @@ public partial class MainWindow : Window
         // Version display
         VersionText.Text = $"v{Program.Version}";
         UpdateMinecraftVersionDisplay();
+        ExperiencesPage.StateChanged += RefreshHomeCards;
+        ExperiencesPage.RefreshState();
+        RefreshHomeCards();
         InitializeSearchMcVersions();
         ReloadModsInventory();
         _ = TriggerDefaultSearchesAsync();
+    }
+
+    // The Play page's JUMP IN cards: a real one-line status from launcher data, and the Experiences page's own handlers behind the buttons.
+    private void RefreshHomeCards()
+    {
+        if (HomeCards == null || ExperiencesPage == null) return;
+        void Fill(ExperienceDefinition exp, Border card, TextBlock status, Button button)
+        {
+            var st = ExperiencesPage.GetHomeState(exp);
+            card.IsVisible = st.Visible;
+            status.Text = LastPlayed.ExperienceLine(st.Installed, st.Running, st.Busy, st.PackVersion, st.Message);
+            button.Content = LastPlayed.ButtonLabel(st.Installed, st.Button.IsEnabled, st.Button.Text);
+            button.IsEnabled = st.Button.IsEnabled;
+            ToolTip.SetTip(button, st.Button.Hint);
+        }
+        Fill(ExperiencesService.LadsSmpReborn, HomeLadsSmpCard, HomeLadsSmpStatus, HomeLadsSmpBtn);
+        Fill(ExperiencesService.ZeroSmp, HomeZeroSmpCard, HomeZeroSmpStatus, HomeZeroSmpBtn);
+        bool horizonReady = HorizonEngine.IsPrepared(_pathService.BaseDirectory);
+        HomeHorizonStatus.Text = LastPlayed.HorizonLine(horizonReady, settings.UseHorizon);
+        // Reborn is invite-only, so it is hidden unless allowed: lay the visible cards out in order.
+        var cards = new[] { HomeNetworkCard, HomeLadsSmpCard, HomeZeroSmpCard, HomeHorizonCard }.Where(c => c.IsVisible).ToList();
+        HomeCards.ColumnDefinitions.Clear();
+        for (int i = 0; i < cards.Count; i++)
+        {
+            HomeCards.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
+            Grid.SetColumn(cards[i], i);
+        }
+    }
+
+    private void HomeLadsSmp_Click(object? sender, RoutedEventArgs e) => ExperiencesPage.StartExperience(ExperiencesService.LadsSmpReborn);
+    private void HomeZeroSmp_Click(object? sender, RoutedEventArgs e) => ExperiencesPage.StartExperience(ExperiencesService.ZeroSmp);
+    // Horizon is not an experience: it is switched on in Settings (opt-in, at own risk), then Play starts it.
+    private void HomeHorizon_Click(object? sender, RoutedEventArgs e) => NavigateTo("Settings");
+
+    private void UpdateHeroLastPlayed()
+    {
+        string? text = LastPlayed.HeroText(settings.ProfileLastPlayedUtc, _profileService.GetActiveProfile()?.Id, DateTime.UtcNow);
+        HeroLastPlayedText.Text = text;
+        HeroLastPlayedText.IsVisible = HeroLastPlayedDot.IsVisible = text != null;
     }
 
     // ═══════════════════════════════════════
@@ -3818,6 +3860,7 @@ public partial class MainWindow : Window
         HeroTitle.Text = $"Minecraft {mcVersion}";
         HeroLoaderText.Text = loader;
         GameLaunchVersionText.Text = $"Minecraft {mcVersion} · {loader}";
+        UpdateHeroLastPlayed();
     }
 
     // ═══════════════════════════════════════
@@ -5062,6 +5105,7 @@ public partial class MainWindow : Window
         } finally {
             LaunchButton.IsEnabled = true;
             GameLaunchOverlay.IsVisible = false;
+            RefreshHomeCards();
         }
     }
 
@@ -5248,6 +5292,9 @@ public partial class MainWindow : Window
             void Mark(string step) { long now = launchClock.ElapsedMilliseconds; Log($"[Launch timing] {step}: {now - lastMark} ms (total {now} ms)"); lastMark = now; }
 
             var activeProfile = _profileService.GetActiveProfile();
+            settings.ProfileLastPlayedUtc[activeProfile.Id] = DateTime.UtcNow;
+            settings.Save();
+            Dispatcher.UIThread.Post(UpdateHeroLastPlayed);
             string gameDirectory = _pathService.GetProfileDirectory(activeProfile);
             UsageStatsReporter.RecordClientVersionUsed(settings, activeProfile.MinecraftVersion);
             string launchVersionId = GameVersionPolicy.ResolveVersionId(activeProfile);

@@ -249,6 +249,8 @@ public static class HorizonEngine
                 var keys = new Dictionary<string, string>(StringComparer.Ordinal);
                 foreach (var (key, value) in SharedControls.Read(File.ReadAllText(sharedOptionsFile, System.Text.Encoding.Latin1)))
                     if (key.StartsWith("key_", StringComparison.Ordinal) && SharedControls.ToVersion(key, value, MinecraftVersion) is { } stored) keys[key] = stored;
+                // A file with key binds but no "version" line is read as the oldest format and the game drops the binds: seed the data version.
+                if (keys.Count > 0 && !File.Exists(options)) File.WriteAllText(options, "version:5023\n");
                 if (keys.Count > 0) GameOptionsService.SetOptions(options, keys);
             }
             File.WriteAllText(marker, Tag);
