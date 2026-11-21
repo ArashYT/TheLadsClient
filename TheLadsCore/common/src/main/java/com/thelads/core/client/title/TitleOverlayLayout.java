@@ -22,9 +22,14 @@ public final class TitleOverlayLayout {
      * every screen edge, as tall as the rows need and no taller than the room below the button (it then scrolls).
      */
     public static Dropdown dropdown(int sw, int sh, Rect anchor, int rows) {
+        return dropdown(sw, sh, anchor, rows, MAX_DROPDOWN_WIDTH);
+    }
+
+    /** As above, no wider than maxWidth (a short list of short names). */
+    public static Dropdown dropdown(int sw, int sh, Rect anchor, int rows, int maxWidth) {
         sw = Math.max(MIN_WIDTH, sw);
         sh = Math.max(MIN_HEIGHT, sh);
-        int width = Math.min(MAX_DROPDOWN_WIDTH, sw - 2 * EDGE);
+        int width = Math.min(maxWidth, sw - 2 * EDGE);
         int x = Math.max(EDGE, Math.min(anchor.x() + anchor.width() - width, sw - width - EDGE));
         int y = anchor.y() + anchor.height() + GAP;
         int content = Math.max(1, rows) * ROW;

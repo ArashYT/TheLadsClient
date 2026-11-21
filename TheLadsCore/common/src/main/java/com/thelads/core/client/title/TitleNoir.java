@@ -234,6 +234,7 @@ public final class TitleNoir {
     private static void renderWordmark(LadsGraphics g, Layout l) {
         Rect logo = logoBox(l, TitleScreenModule.logoScale());
         if (g.drawImage(TitleScreenTheme.LOGO, logo.x(), logo.y(), logo.width(), logo.height())) {
+            if (waveEnabled) TitleScreenTheme.logoGlow(g, TitleScreenTheme.LOGO_GLOW, logo.x(), logo.y(), logo.width(), logo.height());
             if (logo.y() + logo.height() + 14 <= l.wordY() + l.wordRoom())
                 g.drawCenteredText(TitleScreenTheme.TAGLINE, logo.x() + logo.width() / 2, logo.y() + logo.height() + 4, RED_TEXT, false);
             return;
@@ -319,12 +320,14 @@ public final class TitleNoir {
         if (frame == null) return false;
         int index = frame.buttons().indexOf(new Rect(x, y, width, height));
         if (index < 0) return false;
+        TitleScreenTheme.hoverScale(g, x, y, width, height, hover);
         switch (frame.tiers().get(index)) {
             case PRIMARY -> hero(g, x, y, width, height, label, icon, true, focused, active, hover);
             case HERO -> hero(g, x, y, width, height, label, icon, false, focused, active, hover);
             case NETWORK -> networkRow(g, x, y, width, height, label, icon, focused, active, hover);
             default -> link(g, x, y, width, height, label, icon, focused, active, hover);
         }
+        g.popPose();
         return true;
     }
 
@@ -360,8 +363,11 @@ public final class TitleNoir {
         } else {
             g.drawText(TitleScreenTheme.fit(g, label, room), textX, y + (faceHeight - g.fontHeight()) / 2 + 1, color, true);
         }
-        int cx = x + w - 11 + Math.round(hover * 2), cy = y + faceHeight / 2;
+        int cx = x + w - 11, cy = y + faceHeight / 2;
+        g.pushPose();
+        g.translate(hover * hover * (3 - 2 * hover) * 2, 0); // smooth, frame-time eased, not whole-pixel steps
         for (int i = 0; i < 4; i++) g.fill(cx + i, cy - 3 + i, cx + i + 1, cy + 4 - i, color);
+        g.popPose();
     }
 
     private static void networkRow(LadsGraphics g, int x, int y, int w, int h, String label, String icon, boolean focused, boolean active, float hover) {
@@ -401,6 +407,7 @@ public final class TitleNoir {
     /** During this layout's frame: a hard-edged compact button (header controls, Switch). False: no frame. */
     static boolean renderCompact(LadsGraphics g, int x, int y, int w, int h, String icon, String label, boolean focused, boolean active, float hover) {
         if (frame == null) return false;
+        TitleScreenTheme.hoverScale(g, x, y, w, h, hover);
         g.fill(x, y, x + w, y + h, mix(0xE6160D10, 0xF0301319, hover));
         outline(g, x, y, w, h, focused && active ? FOCUS : hover > .5f ? LINE_ACCENT : LINE);
         int color = active ? TEXT : DISABLED;
@@ -410,6 +417,7 @@ public final class TitleNoir {
             TitleScreenTheme.icon(g, icon, x + 6, y + (h - 10) / 2, 10, color);
             g.drawText(TitleScreenTheme.fit(g, label, w - TitleScreenTheme.COMPACT_PADDING), x + 20, y + (h - g.fontHeight()) / 2 + 1, color, false);
         }
+        g.popPose();
         return true;
     }
 

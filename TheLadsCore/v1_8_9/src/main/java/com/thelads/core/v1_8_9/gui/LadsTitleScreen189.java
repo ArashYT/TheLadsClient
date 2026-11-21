@@ -143,9 +143,9 @@ public final class LadsTitleScreen189 {
         buttons.add(fullscreenButton = CompactButton189.fullscreen(LADS_ID + 3, screen.width));
         buttons.add(languageButton = new CompactButton189(LADS_ID + 5, screen.width - 50, 6, 20, 20, "Language", () -> "globe",
             () -> Minecraft.getMinecraft().displayGuiScreen(new GuiLanguage(title, Minecraft.getMinecraft().gameSettings, Minecraft.getMinecraft().getLanguageManager()))));
-        buttons.add(layoutToggle = new CompactButton189(LADS_ID + 7, 0, 6, 20, 20, TitleScreenTheme.layoutToggleLabel(), () -> "layout", TitleScreenModule::toggleLayout));
+        buttons.add(layoutToggle = new CompactButton189(LADS_ID + 7, 0, 6, 20, 20, TitleScreenTheme.layoutToggleLabel(), () -> "layout", this::openLayoutList));
         buttons.add(panoramaButton = new CompactButton189(LADS_ID + 9, 0, 6, 20, 20, TitleScreenTheme.CHANGE_PANORAMA, () -> "mountain", this::openPanoramaList));
-        buttons.add(updateButton = new CompactButton189(LADS_ID + 11, 0, 6, 20, 20, TitleScreenTheme.UPDATE, () -> "download",
+        buttons.add(updateButton = new CompactButton189(LADS_ID + 11, 0, 6, 20, 20, TitleScreenTheme.UPDATE, () -> "refresh",
             () -> com.thelads.core.client.LauncherUpdate.press(() -> Minecraft.getMinecraft().shutdown())));
         updateButton.visible = false;
         com.thelads.core.client.title.TitleOverlay.reset(); // the Panorama list and the chat sidebar start closed
@@ -200,7 +200,7 @@ public final class LadsTitleScreen189 {
         int languageX = TitleScreenTheme.languageX(targetW, fullscreenWidth);
         place(languageButton, languageX, 6, 20, 20, ms);
         net.minecraft.client.gui.FontRenderer font = Minecraft.getMinecraft().fontRendererObj;
-        int toggleWidth = TitleScreenTheme.layoutToggleWidth(targetW, Math.max(font.getStringWidth(TitleScreenTheme.NEW_LAYOUT), font.getStringWidth(TitleScreenTheme.LEGACY_LAYOUT)));
+        int toggleWidth = TitleScreenTheme.layoutToggleWidth(targetW, font.getStringWidth(TitleScreenTheme.LAYOUT));
         layoutToggle.displayString = TitleScreenTheme.layoutToggleLabel();
         place(layoutToggle, languageX - TitleScreenTheme.HEADER_GAP - toggleWidth, 6, toggleWidth, 20, ms);
         int panoramaWidth = TitleScreenTheme.panoramaButtonWidth(targetW, font.getStringWidth(TitleScreenTheme.CHANGE_PANORAMA), legacyMode);
@@ -474,6 +474,13 @@ public final class LadsTitleScreen189 {
             case org.lwjgl.input.Keyboard.KEY_NEXT: return 267;
             default: return -1;
         }
+    }
+
+    /** The Layout button: its Legacy / New list opens under it. */
+    private void openLayoutList() {
+        float ms = matrixScale();
+        com.thelads.core.client.title.TitleOverlay.openLayout(Math.round(layoutToggle.xPosition / ms), Math.round(layoutToggle.yPosition / ms),
+            Math.round(layoutToggle.width / ms), Math.round(layoutToggle.height / ms));
     }
 
     /** The Panorama button: its list opens under it (the button's place in layout pixels). */

@@ -17,42 +17,85 @@ final class PanoramaMenu {
     static final int KEY_ESC = 256, KEY_ENTER = 257, KEY_KP_ENTER = 335, KEY_UP = 265, KEY_DOWN = 264, KEY_HOME = 268, KEY_END = 269,
         KEY_PAGE_UP = 266, KEY_PAGE_DOWN = 267;
 
+    /** One row: its name, the muted text at its right edge (may be empty) and whether it is the current choice. */
+    record Row(String name, String detail, boolean current) {}
+
+    /** What a dropdown lists and does: re-read after every pick, so the current mark follows. */
+    interface Source {
+        List<Row> rows();
+        void pick(int index);
+    }
+
+    /** The Panorama list. */
+    static final Source PANORAMAS = new Source() {
+        @Override public List<Row> rows() {
+            String now = PanoramaPicker.current();
+            return PanoramaPicker.entries().stream().map(e -> new Row(e.name(), e.version(), PanoramaPicker.isCurrent(e, now))).toList();
+        }
+        @Override public void pick(int index) {
+            List<PanoramaPicker.Entry> entries = PanoramaPicker.entries();
+            if (index >= 0 && index < entries.size()) PanoramaPicker.pick(entries.get(index).choice());
+        }
+    };
+
+    /** How far past the button and list the pointer may stray, and for how long (seconds), before the list closes by itself. */
+    static final int GRACE = 14;
+    static final double GRACE_SECONDS = .3;
+
     private boolean open;
     private Rect anchor = new Rect(0, 0, 0, 0);
-    private List<PanoramaPicker.Entry> rows = List.of();
-    private String current = PanoramaPicker.DEFAULT;
+    private Source source = PANORAMAS;
+    private int maxWidth = TitleOverlayLayout.MAX_DROPDOWN_WIDTH;
+    private List<Row> rows = List.of();
     private int selected;
     private double scroll, target;
     private Dropdown layout;
     private double lastMouseX = -1, lastMouseY = -1;
+    private double outside;
+    private boolean seenInside;
 
     boolean isOpen() { return open; }
 
-    /** Opens under the button at anchor; false (nothing opens, the title shows its note) while the release list is still loading. */
+    /** Opens the Panorama list under the button at anchor; false (nothing opens, the title shows its note) while the release list is still loading. */
     boolean open(Rect anchor) {
         if (!PanoramaPicker.ready()) {
             PanoramaPicker.notifyLoading();
             return false;
         }
+        return open(anchor, PANORAMAS, TitleOverlayLayout.MAX_DROPDOWN_WIDTH);
+    }
+
+    /** Opens a list of source under the button at anchor, at most maxWidth wide. */
+    boolean open(Rect anchor, Source source, int maxWidth) {
         this.anchor = anchor;
-        rows = PanoramaPicker.entries();
-        current = PanoramaPicker.current();
+        this.source = source;
+        this.maxWidth = maxWidth;
+        rows = source.rows();
         selected = 0;
-        for (int i = 0; i < rows.size(); i++) if (PanoramaPicker.isCurrent(rows.get(i), current)) selected = i;
+        for (int i = 0; i < rows.size(); i++) if (rows.get(i).current()) selected = i;
         scroll = target = 0;
         layout = null;
         lastMouseX = lastMouseY = -1;
+        outside = 0;
+        seenInside = false;
         open = true;
         return true;
     }
 
     void close() { open = false; }
 
+    /** Whether the pointer is on the button or the list, or within GRACE of either. */
+    static boolean near(Rect button, Rect panel, double x, double y) {
+        return TitleOverlayLayout.inside(grow(button, GRACE), x, y) || TitleOverlayLayout.inside(grow(panel, GRACE), x, y);
+    }
+
+    private static Rect grow(Rect r, int by) { return new Rect(r.x() - by, r.y() - by, r.width() + 2 * by, r.height() + 2 * by); }
+
     /** Whether a click here is on the button that opened it (a second press on it closes the list). */
     private boolean onAnchor(double x, double y) { return TitleOverlayLayout.inside(anchor, x, y); }
 
     private void layout(int sw, int sh) {
-        layout = TitleOverlayLayout.dropdown(sw, sh, anchor, rows.size());
+        layout = TitleOverlayLayout.dropdown(sw, sh, anchor, rows.size(), maxWidth);
         target = TitleOverlayLayout.clampScroll((int) target, layout.contentHeight(), layout.list().height());
     }
 
@@ -66,6 +109,13 @@ final class PanoramaMenu {
         if (!open) return;
         layout(sw, sh);
         Rect p = layout.panel(), l = layout.list();
+        if (near(anchor, p, mx, my)) { // it stays open while the pointer is on or close to the button and the list, and closes a moment after it leaves
+            seenInside = true;
+            outside = 0;
+        } else if (seenInside && (outside += Math.min(0.1f, dt)) >= GRACE_SECONDS) {
+            close();
+            return;
+        }
         if (mx != lastMouseX || my != lastMouseY) { // the pointer moved: it chooses the row, the keys take over again when it rests
             if (lastMouseX >= 0 && TitleOverlayLayout.inside(l, mx, my)) {
                 int at = TitleOverlayLayout.rowAt(heights(), (int) Math.round(scroll), my - l.y());
@@ -86,17 +136,17 @@ final class PanoramaMenu {
             for (int i = 0; i < rows.size(); i++) {
                 int y = l.y() + i * TitleOverlayLayout.ROW - shown;
                 if (y + TitleOverlayLayout.ROW <= l.y() || y >= l.y() + l.height()) continue;
-                PanoramaPicker.Entry row = rows.get(i);
-                boolean isCurrent = PanoramaPicker.isCurrent(row, current);
+                Row row = rows.get(i);
+                boolean isCurrent = row.current();
                 if (i == selected) g.fill(l.x(), y, l.x() + l.width() - barRoom, y + TitleOverlayLayout.ROW - 1, HOVER);
                 if (isCurrent) g.fill(l.x(), y + 3, l.x() + 2, y + TitleOverlayLayout.ROW - 4, ACCENT);
                 int textY = y + (TitleOverlayLayout.ROW - 1 - g.fontHeight()) / 2 + 1;
                 int right = l.x() + l.width() - 8 - barRoom;
-                int versionWidth = g.textWidth(row.version());
+                int versionWidth = row.detail().isEmpty() ? 0 : g.textWidth(row.detail());
                 if (isCurrent) TitleScreenTheme.icon(g, "check", l.x() + 7, y + (TitleOverlayLayout.ROW - 1 - 9) / 2, 9, ACCENT);
                 int nameX = l.x() + 20;
-                g.drawText(MenuGraphics.fit(g, row.name(), right - versionWidth - 8 - nameX), nameX, textY, isCurrent || i == selected ? TEXT : MUTED, false);
-                g.drawText(row.version(), right - versionWidth, textY, MUTED, false);
+                g.drawText(MenuGraphics.fit(g, row.name(), right - versionWidth - (versionWidth > 0 ? 8 : 0) - nameX), nameX, textY, isCurrent || i == selected ? TEXT : MUTED, false);
+                if (versionWidth > 0) g.drawText(row.detail(), right - versionWidth, textY, MUTED, false);
             }
             g.disableScissor();
             if (layout.maxScroll() > 0) { // a slim scrollbar on the right
@@ -124,9 +174,10 @@ final class PanoramaMenu {
         return true;
     }
 
+    /** A pick applies the choice and leaves the list open: it closes on a click outside or when the pointer leaves it. */
     private void pick(int index) {
-        PanoramaPicker.pick(rows.get(index).choice());
-        close();
+        source.pick(index);
+        rows = source.rows();
     }
 
     boolean wheel(double amount) {

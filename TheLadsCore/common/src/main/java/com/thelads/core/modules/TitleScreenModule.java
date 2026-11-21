@@ -68,6 +68,14 @@ public class TitleScreenModule extends Module {
         }
     }
 
+    /** Sets the title layout (the Layout dropdown): the screen follows on its next frame, and the choice is kept. */
+    public static void setLegacyLayout(boolean legacy) {
+        if (layoutOption() instanceof DropdownOption layout) {
+            layout.setIndex(legacy ? 1 : 0);
+            ConfigManager.save();
+        }
+    }
+
     /** Whether the new layout renders a rotating 3D panorama (default true); when false, a simple backdrop is drawn. */
     public static boolean panorama() {
         Module module = ModuleManager.getInstance().getModule("TitleScreen");
