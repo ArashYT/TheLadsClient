@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.feature.packs.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "DownloadQueueParallelMixin",
+    "JsonEventLogLockMixin",
+    "PackSelectionScreenIconMixin"
+  ],
+  "injectors": { "defaultRequire": 1 }
+}
