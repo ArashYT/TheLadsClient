@@ -4,6 +4,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.renderpearl.api.GpuFormat;
 import com.mojang.renderpearl.api.commands.GpuFence;
 import com.mojang.renderpearl.api.textures.GpuTexture;
+import com.thelads.core.modules.ExtraModules;
 import com.thelads.core.perf.FramePacer;
 import com.thelads.core.perf.LatencyMeter;
 import net.fabricmc.loader.api.FabricLoader;
@@ -52,7 +53,7 @@ public final class InputLatency26 {
                 LOGGER.info("Lads input: Reflex AntiLag is installed ({}); its built-in remake stands down.", id);
             }
         }
-        LOGGER.info("Lads input: input-latency pacing {}; buffered raw mouse input is SDL3's own on 26.x", reflex ? "on" : "off");
+        LOGGER.info("Lads input: input-latency pacing {}; buffered raw mouse input is SDL3's own on 26.x; Low Latency module / Input Optimizer options read per frame", reflex ? "on" : "off");
     }
 
     static LatencyMeter meter() {
@@ -73,7 +74,9 @@ public final class InputLatency26 {
 
     private static void pace() {
         if (!reflex || qaPaused || fast || Thread.currentThread() != renderThread) return; // fences belong to the submitting thread
+        if (!ExtraModules.INPUT_OPTIMIZER.latePoll()) return; // the wait exists to read input later in the frame
         try {
+            PACER.tuner(ExtraModules.LOW_LATENCY.activeTuner()); // the Low Latency module's offset, back-off and cap, when it is on
             PACER.frameStart(() -> done(previous), () -> done(older));
         } catch (Throwable t) {
             stop(t);

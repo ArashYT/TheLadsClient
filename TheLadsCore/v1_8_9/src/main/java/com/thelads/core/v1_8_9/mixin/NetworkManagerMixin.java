@@ -67,6 +67,17 @@ public abstract class NetworkManagerMixin implements SignalLoss189.PacketActivit
         }
     }
 
+    /** Packet Flush Batching: one socket flush per event-loop pass on the client channel (not LocalChannel; krypton does it itself). */
+    @Inject(method = "channelActive", at = @At("HEAD"))
+    private void ladsFlushBatching(ChannelHandlerContext context, CallbackInfo ci) {
+        io.netty.channel.Channel channel = context.channel();
+        if (direction != EnumPacketDirection.CLIENTBOUND || channel instanceof io.netty.channel.local.LocalChannel) return;
+        if (!com.thelads.core.perf.FlushBatching.shouldInstall(net.minecraftforge.fml.common.Loader.isModLoaded("krypton"))) return;
+        if (channel.pipeline().get("lads_flush_batch") != null) return;
+        channel.pipeline().addFirst("lads_flush_batch", new com.thelads.core.v1_8_9.perf.FlushBatchHandler189());
+        org.apache.logging.log4j.LogManager.getLogger("TheLadsCore").info("[Lads] Packet Flush Batching: lads_flush_batch installed on {}", channel.pipeline().names());
+    }
+
     @Override
     public long ladsLastPacketNanos() { return ladsLastPacketNanos; }
 

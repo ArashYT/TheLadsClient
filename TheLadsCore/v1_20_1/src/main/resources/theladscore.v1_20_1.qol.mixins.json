@@ -14,6 +14,7 @@
     "MinecraftQolMixin1201",
     "MouseHandlerAccessor1201",
     "MouseHandlerQolMixin1201",
-    "SoundEngineQolMixin1201"
+    "SoundEngineQolMixin1201",
+    "AudioEngineMixin1201"
   ]
 }

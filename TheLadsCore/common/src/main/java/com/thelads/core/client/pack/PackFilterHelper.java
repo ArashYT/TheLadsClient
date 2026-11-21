@@ -12,6 +12,9 @@ public final class PackFilterHelper {
 
     private PackFilterHelper() {}
 
+    /** MemoryGuard: the stripped-name cache refills on demand. */
+    public static void trimCache() { STRIPPED_LOWER_CACHE.clear(); }
+
     public static String stripFormatting(String input) {
         if (input == null) return "";
         return FORMAT_CODE_PATTERN.matcher(input).replaceAll("");

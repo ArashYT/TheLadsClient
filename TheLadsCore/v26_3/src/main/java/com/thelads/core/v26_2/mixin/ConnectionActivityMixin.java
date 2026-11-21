@@ -24,6 +24,17 @@ public class ConnectionActivityMixin implements PacketActivitySource {
         if (receiving == PacketFlow.CLIENTBOUND) lads$lastPacketNanos = System.nanoTime();
     }
 
+    /** Packet Flush Batching: one socket flush per event-loop pass on the client channel (not LocalChannel; krypton does it itself). */
+    @Inject(method = "channelActive", at = @At("HEAD"))
+    private void lads$flushBatching(ChannelHandlerContext context, CallbackInfo callback) {
+        io.netty.channel.Channel channel = context.channel();
+        if (receiving != PacketFlow.CLIENTBOUND || channel instanceof io.netty.channel.local.LocalChannel) return;
+        if (!com.thelads.core.perf.FlushBatching.shouldInstall(net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("krypton"))) return;
+        if (channel.pipeline().get("lads_flush_batch") != null) return;
+        channel.pipeline().addFirst("lads_flush_batch",
+            new io.netty.handler.flush.FlushConsolidationHandler(com.thelads.core.perf.FlushBatching.EXPLICIT_FLUSH_AFTER, true));
+    }
+
     @Override
     public long lads$lastPacketNanos() { return lads$lastPacketNanos; }
 }

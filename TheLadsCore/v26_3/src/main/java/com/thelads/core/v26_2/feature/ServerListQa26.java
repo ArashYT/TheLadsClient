@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 final class ServerListQa26 {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     private static int lastX, lastY;
+    private static final List<byte[]> HOG = new ArrayList<>();
 
     private ServerListQa26() {}
 
@@ -161,6 +162,83 @@ final class ServerListQa26 {
                     if (good != null) {
                         Files.createDirectories(base.resolve("QA Good"));
                         Files.copy(good.resolve("level.dat"), base.resolve("QA Good").resolve("level.dat"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    }
+                }
+            }
+            case "clip" -> mc.keyboardHandler.setClipboard(String.join(" ", java.util.Arrays.copyOfRange(s, 2, s.length))); // clip <text>: the clipboard
+            case "ctrl" -> { // ctrl v|c|a|del: that shortcut through the open screen's keyPressed
+                int key = switch (s[2]) { case "v" -> InputConstants.KEY_V; case "c" -> InputConstants.KEY_C; case "a" -> InputConstants.KEY_A; default -> InputConstants.KEY_DELETE; };
+                boolean del = s[2].equals("del");
+                boolean used = screen(mc).keyPressed(new KeyEvent(key, del ? 0 : s[2].charAt(0), del ? 0 : InputConstants.MOD_CONTROL));
+                LOGGER.info("Lads qa srv: key {} used={} screen={}", s[2], used, screen(mc).getClass().getSimpleName());
+            }
+            case "focus" -> { // the open screen's focused widget and its edit boxes
+                Screen sc = screen(mc);
+                LOGGER.info("Lads qa srv: focus screen={} focused={} boxes={}", sc.getClass().getSimpleName(), sc.getFocused() == null ? "none" : sc.getFocused().getClass().getSimpleName() + (sc.getFocused() instanceof net.minecraft.client.gui.components.EditBox e ? "[" + e.getValue() + "]" : ""),
+                    sc.children().stream().filter(c -> c instanceof net.minecraft.client.gui.components.EditBox).map(c -> ((net.minecraft.client.gui.components.EditBox) c).getValue() + (c == sc.getFocused() ? "*" : "")).toList());
+            }
+            case "mod" -> { // mod <module name> on|off, or mod <module>|<bool option>|true|false
+                String[] part = String.join(" ", java.util.Arrays.copyOfRange(s, 2, s.length)).split("\\|");
+                if (part.length == 1) {
+                    int sp = part[0].lastIndexOf(' ');
+                    ModuleManager.getInstance().getModule(part[0].substring(0, sp)).setEnabled(part[0].substring(sp + 1).equals("on"));
+                    LOGGER.info("Lads qa srv: module {} set", part[0]);
+                } else {
+                    ((com.thelads.core.config.BoolOption) ModuleManager.getInstance().getModule(part[0]).getOption(part[1])).set(Boolean.parseBoolean(part[2]));
+                    LOGGER.info("Lads qa srv: option {} / {} = {}", part[0], part[1], part[2]);
+                }
+            }
+            case "memhog" -> { // memhog <percent of max heap>: holds memory until that much is used (MemoryGuard QA); memhog 0 frees it
+                HOG.clear();
+                int pct = Integer.parseInt(s[2]);
+                Runtime r = Runtime.getRuntime();
+                while (pct > 0 && (r.totalMemory() - r.freeMemory()) < r.maxMemory() / 100 * pct) HOG.add(new byte[8 << 20]);
+                LOGGER.info("Lads qa srv: memhog {} blocks, used {} / {} MB", HOG.size(), (r.totalMemory() - r.freeMemory()) >> 20, r.maxMemory() >> 20);
+            }
+            case "swing" -> { // swing: swings the main hand and logs swingTime / attack progress on the next 8 ticks (HasteAnimFix QA)
+                mc.player.swing(net.minecraft.world.InteractionHand.MAIN_HAND, net.minecraft.world.item.component.SwingAnimation.DEFAULT, false);
+                int[] left = {8};
+                net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(new net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.EndTick() {
+                    @Override public void onEndTick(Minecraft m) {
+                        if (left[0] > 0 && m.player != null) LOGGER.info("Lads qa swing: tick {} swinging={} duration={} progress={}", 9 - left[0], m.player.isSwinging(), m.player.getCurrentSwing() == null ? -1 : m.player.getCurrentSwing().durationTicks(), m.player.getSwingAnimation(0f));
+                        left[0]--;
+                    }
+                });
+            }
+            case "f3" -> mc.debugEntries.setOverlayVisible(!"off".equals(s[2])); // f3 on|off: the debug overlay
+            case "look" -> { // look <yaw> <pitch>
+                mc.player.setYRot(Float.parseFloat(s[2]));
+                mc.player.setXRot(Float.parseFloat(s[3]));
+                mc.player.yRotO = mc.player.getYRot();
+                mc.player.xRotO = mc.player.getXRot();
+            }
+            case "spam" -> { // spam left|use <ticks> <every>: that mouse button clicked every <every> ticks for <ticks> ticks, as a player clicking
+                var map = s[2].equals("use") ? mc.options.keyUse : mc.options.keyAttack;
+                int[] t = {Integer.parseInt(s[3])};
+                int every = Integer.parseInt(s[4]);
+                net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(new net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.EndTick() {
+                    @Override public void onEndTick(Minecraft m) {
+                        if (t[0] > 0 && t[0]-- % every == 0) map.clickCount++;
+                    }
+                });
+            }
+            case "mouse" -> { // mouse <events> <xrel>: SDL motion events pushed into SDL's queue, as a real mouse; logs the yaw now (and "yaw" later)
+                if (!mc.mouseHandler.isMouseGrabbed()) mc.mouseHandler.grabMouse();
+                int window = org.lwjgl.sdl.SDLVideo.SDL_GetWindowID(mc.getWindow().handle());
+                try (var event = org.lwjgl.sdl.SDL_Event.calloc()) {
+                    event.motion().type(org.lwjgl.sdl.SDLEvents.SDL_EVENT_MOUSE_MOTION).windowID(window).x(100).y(100).xrel(Float.parseFloat(s[3])).yrel(0);
+                    for (int i = 0; i < Integer.parseInt(s[2]); i++) { event.motion().timestamp(0); org.lwjgl.sdl.SDLEvents.SDL_PushEvent(event); }
+                }
+                LOGGER.info("Lads qa mouse: pushed {} events, yaw {} grabbed={}", s[2], mc.player.getYRot(), mc.mouseHandler.isMouseGrabbed());
+            }
+            case "yaw" -> LOGGER.info("Lads qa yaw: {} pitch {} fps {}", mc.player.getYRot(), mc.player.getXRot(), mc.getFps());
+            case "pipeline" -> { // the netty handler names of the game connection (Packet Flush Batching QA)
+                var conn = mc.getConnection().getConnection();
+                for (java.lang.reflect.Field f : net.minecraft.network.Connection.class.getDeclaredFields()) {
+                    if (io.netty.channel.Channel.class.isAssignableFrom(f.getType())) {
+                        f.setAccessible(true);
+                        io.netty.channel.Channel ch = (io.netty.channel.Channel) f.get(conn);
+                        LOGGER.info("Lads qa pipeline: channel {} handlers {}", ch.getClass().getSimpleName(), ch.pipeline().names());
                     }
                 }
             }

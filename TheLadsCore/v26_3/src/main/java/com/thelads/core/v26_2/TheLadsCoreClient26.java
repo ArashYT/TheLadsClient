@@ -17,6 +17,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         LadsGameBridge.set(new VanillaGameBridge26());
         com.thelads.core.client.social.SocialBridge.set(new com.thelads.core.v26_2.social.SocialBridge26());
         com.thelads.core.v26_2.social.SocialBridge26.registerToasts();
+        com.thelads.core.v26_2.rentities.RentitiesRenderer.init();
         com.thelads.core.v26_2.social.HostPacks26.init();
         net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             com.thelads.core.v26_2.social.SocialBridge26.onWorldDisconnect();
@@ -35,6 +36,8 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.security.AntiInjectDetector.init();
         com.thelads.core.v26_2.feature.paperdoll.PlayerActions.initialize();
         com.thelads.core.client.hud.ServerHudElement.registerModules(); // minigame API server HUD + run timer modules, before the config loads
+        com.thelads.core.modules.ExtraModules.registerAll(com.thelads.core.config.ModuleManager.getInstance()); // 1.14.4 optimizer modules, before the config loads
+        com.thelads.core.config.ModuleSupport.registerBuiltIn("Mace Optimizer", "Pearl Optimizer", "Sword Optimizer", "Low Latency", "Input Optimizer", "Audio Engine", "Rentities");
         ConfigManager.load();
         java.util.concurrent.CompletableFuture.runAsync(() -> com.thelads.core.client.util.LogPruner.pruneIfEnabled(new java.io.File("logs")));
         com.thelads.core.v26_2.render.Render26.init();
@@ -108,7 +111,9 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         LOGGER.info("TheLadsCore 26.3 initialized successfully.");
         com.thelads.core.mods.NativeCatalogProbe.log();
         // The launcher lists Lads modules from this catalog; late registrations (Minimap) bump the revision on a later tick.
+        com.thelads.core.perf.MemoryGuard.registerDefaults();
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            com.thelads.core.perf.MemoryGuard.tick(client.level);
             com.thelads.core.client.bridge.LadsGameBridge.get().tickClient();
             com.thelads.core.client.Nicknames.tick();
             com.thelads.core.mods.CoreCatalogExporter.exportIfChanged();
