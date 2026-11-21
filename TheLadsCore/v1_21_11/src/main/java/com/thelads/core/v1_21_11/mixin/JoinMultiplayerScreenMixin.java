@@ -56,7 +56,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
             ServerListColumns.cycle(width);
             serverSelectionList.setScrollAmount(serverSelectionList.scrollAmount());
             ladsUpdateColumns();
-        }).bounds(8, 8, 36, 20).build());
+        }).bounds(8, 8, 84, 20).build());
         ladsUpdateColumns();
     }
 
@@ -71,7 +71,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
         if (ladsColumnsButton == null) return;
         int columns = ServerListColumns.fit(ServerListColumns.wanted(), width);
         ladsColumnsButton.visible = ServerListColumns.most(width) > 1;
-        ladsColumnsButton.setMessage(Component.literal("    " + columns));
+        ladsColumnsButton.setMessage(Component.literal("    Columns: " + columns));
         ladsColumnsButton.setTooltip(Tooltip.create(Component.literal("Server list columns: " + columns + ". Click to change.")));
     }
 

@@ -31,6 +31,19 @@ class TitleScreenThemeTest {
         }
     }
 
+    /** The legacy logo never reaches the top-right control row: it is pushed below it when it would. */
+    @Test void narrowLogoClearsTheControlRow() {
+        for (int[] size : new int[][] {{427, 240}, {640, 360}, {480, 270}, {960, 540}})
+          for (boolean update : new boolean[] {false, true}) {
+            var l = TitleScreenTheme.layout(size[0], size[1], 12);
+            int left = TitleScreenTheme.headerLeft(size[0], 40, true, update);
+            int[] b = TitleScreenTheme.narrowLogoBox(size[0], size[1], l.menuY(), l.menuWidth(), 100, 1f, left);
+            boolean overRow = b[1] < 28 && b[0] + b[2] > left - 4;
+            assertFalse(overRow, "logo over the control row at " + size[0] + "x" + size[1] + " update=" + update);
+            assertTrue(b[1] + b[3] <= l.menuY(), "logo above the menu");
+          }
+    }
+
     /** The title's own controls (menu, fullscreen top right, Switch after the account name) never overlap. */
     @Test void titleControlsStayApartFromSmallWindowsToLargeOnes() {
         for (int w = 260; w <= 1000; w += 20) // 260: the build label grew a character with 1.13.10 and no longer fits beside a Switch at 240
@@ -46,7 +59,7 @@ class TitleScreenThemeTest {
                 int fsWidth = TitleScreenTheme.fullscreenWidth(w, Math.max(g.textWidth(TitleScreenTheme.FULLSCREEN), g.textWidth(TitleScreenTheme.WINDOWED)));
                 boxes.add(new TitleScreenTheme.Rect(TitleScreenTheme.fullscreenX(w, fsWidth), 6, fsWidth, 20));
                 boxes.add(new TitleScreenTheme.Rect(TitleScreenTheme.languageX(w, fsWidth), 6, 20, 20));
-                int toggleWidth = TitleScreenTheme.layoutToggleWidth(w, g.textWidth(TitleScreenTheme.LEGACY_LAYOUT));
+                int toggleWidth = TitleScreenTheme.layoutToggleWidth(w, g.textWidth(TitleScreenTheme.LAYOUT));
                 boxes.add(new TitleScreenTheme.Rect(TitleScreenTheme.languageX(w, fsWidth) - TitleScreenTheme.HEADER_GAP - toggleWidth, 6, toggleWidth, 20));
                 boxes.add(switchBox);
                 for (int i = 0; i < boxes.size(); i++) {
@@ -123,12 +136,43 @@ class TitleScreenThemeTest {
             assertTrue(TitleOverlay.keyPressed(257)); // Enter
             assertEquals("26.3", option.getValue());
             assertEquals(1, kept[0], "the pick is saved");
+            assertTrue(TitleOverlay.active(), "a pick leaves the list open");
+            assertTrue(TitleOverlay.keyPressed(256));
             assertFalse(TitleOverlay.active());
             TitleOverlay.openPanorama(150, 6, 20, 20);
             TitleOverlay.render(g, w, h, 0, 0, 0.016f, false);
             assertTrue(TitleOverlay.mouseClicked(list.x() + 10, list.y() + 3 * com.thelads.core.client.title.TitleOverlayLayout.ROW + 5, 0, w, h));
             assertEquals("1.20.6", option.getValue(), "a click on the fourth row");
             assertEquals(2, kept[0]);
+            assertTrue(TitleOverlay.active(), "a click on a row leaves the list open too");
+            // The pointer resting on the list keeps it; away from button and list for a moment closes it.
+            TitleOverlay.render(g, w, h, list.x() + 10, list.y() + 5, 0.5f, false);
+            assertTrue(TitleOverlay.active());
+            TitleOverlay.render(g, w, h, 5, 170, 0.2f, false);
+            assertTrue(TitleOverlay.active(), "a short stray does not close it");
+            TitleOverlay.render(g, w, h, 5, 170, 0.2f, false);
+            TitleOverlay.render(g, w, h, 5, 170, 0.2f, false); // each frame counts at most 0.1 s
+            assertFalse(TitleOverlay.active(), "it closes after the pointer stays away");
+            // Layout list: Legacy and New, current marked, a pick applies and keeps it open.
+            var layoutOption = (DropdownOption) ModuleManager.getInstance().getModule("TitleScreen").getOption("Layout");
+            int ownLayout = layoutOption.getOwnIndex();
+            try {
+                TitleScreenModule.setLegacyLayout(false);
+                TitleOverlay.openLayout(100, 6, 50, 20);
+                assertTrue(TitleOverlay.active());
+                g.drawCalls.clear();
+                TitleOverlay.render(g, w, h, 0, 0, 0.016f, false);
+                String layoutDrawn = String.join("|", g.drawCalls);
+                assertTrue(layoutDrawn.contains("text:Legacy@") && layoutDrawn.contains("text:New@"), layoutDrawn);
+                var layoutList = com.thelads.core.client.title.TitleOverlayLayout.dropdown(w, h, new com.thelads.core.client.title.TitleScreenTheme.Rect(100, 6, 50, 20), 2, 120).list();
+                assertTrue(TitleOverlay.mouseClicked(layoutList.x() + 10, layoutList.y() + 5, 0, w, h));
+                assertTrue(TitleScreenModule.legacyLayout(), "the Legacy row switches to the legacy layout");
+                assertTrue(TitleOverlay.active(), "the Layout list stays open after a pick");
+                assertTrue(TitleOverlay.mouseClicked(5, 170, 0, w, h));
+                assertFalse(TitleOverlay.active(), "a click outside closes it");
+            } finally {
+                layoutOption.setIndex(ownLayout);
+            }
 
             TitleOverlay.enableChat();
             // Chat sidebar: the tab at the right edge opens it, typing filters, Escape or an outside click closes it.
@@ -211,7 +255,7 @@ class TitleScreenThemeTest {
                 assertTrue(box.y() >= l.stripTop() && box.y() + box.height() <= h, "Switch inside the strip, " + at);
                 int fsWidth = TitleScreenTheme.fullscreenWidth(w, 9 * 6);
                 int languageX = TitleScreenTheme.languageX(w, fsWidth);
-                int toggleWidth = TitleScreenTheme.layoutToggleWidth(w, g.textWidth(TitleScreenTheme.LEGACY_LAYOUT));
+                int toggleWidth = TitleScreenTheme.layoutToggleWidth(w, g.textWidth(TitleScreenTheme.LAYOUT));
                 boxes.add(new TitleScreenTheme.Rect(TitleScreenTheme.fullscreenX(w, fsWidth), 6, fsWidth, 20));
                 boxes.add(new TitleScreenTheme.Rect(languageX, 6, 20, 20));
                 boxes.add(new TitleScreenTheme.Rect(languageX - TitleScreenTheme.HEADER_GAP - toggleWidth, 6, toggleWidth, 20));
@@ -304,10 +348,14 @@ class TitleScreenThemeTest {
         try {
             option.reset();
             assertFalse(TitleScreenModule.legacyLayout(), "the new layout is the default");
-            assertEquals(TitleScreenTheme.LEGACY_LAYOUT, TitleScreenTheme.layoutToggleLabel());
+            assertEquals(TitleScreenTheme.LAYOUT, TitleScreenTheme.layoutToggleLabel());
             option.setIndex(1);
             assertTrue(TitleScreenModule.legacyLayout());
-            assertEquals(TitleScreenTheme.NEW_LAYOUT, TitleScreenTheme.layoutToggleLabel());
+            assertEquals(TitleScreenTheme.LAYOUT, TitleScreenTheme.layoutToggleLabel(), "the button is always labelled Layout");
+            TitleScreenModule.setLegacyLayout(false);
+            assertFalse(TitleScreenModule.legacyLayout(), "the Layout list's New row");
+            TitleScreenModule.setLegacyLayout(true);
+            assertTrue(TitleScreenModule.legacyLayout(), "the Layout list's Legacy row");
             var saved = option.save();
             option.reset();
             option.load(saved);

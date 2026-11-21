@@ -192,7 +192,10 @@ public partial class FriendsView : UserControl
             Fill = f.State switch { "offline" => IdleDot, "menu" => OnlineDot, _ => PlayingDot },
         });
         grid.Children.Add(head);
-        var text = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+        // An offline friend is dimmed; the buttons stay at full contrast so they never vanish.
+        double dim = f.Online ? 1 : 0.6;
+        head.Opacity = dim;
+        var text = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center, Opacity = dim };
         var nameLine = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
         nameLine.Children.Add(new TextBlock { Text = f.Shown, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
         if (_chat?.Unread(f.Uuid) is > 0 and var unread)
@@ -207,6 +210,9 @@ public partial class FriendsView : UserControl
         grid.Children.Add(text);
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
+        var chat = Icon("chat", $"Chat with {f.Shown}");
+        chat.Click += (_, _) => Select(f.Uuid);
+        actions.Children.Add(chat);
         if (JoinButton(f, snap, gameRunning, compact: true) is { } join) actions.Children.Add(join);
         if (InviteButton(f, snap, gameRunning, compact: true) is { } invite) actions.Children.Add(invite);
         if (PartyButton(f, compact: true) is { } party) actions.Children.Add(party);
@@ -216,7 +222,7 @@ public partial class FriendsView : UserControl
         bool picked = f.Uuid == SelectedUuid;
         var row = new Border
         {
-            Child = grid, Padding = new Thickness(10, 8), Opacity = f.Online ? 1 : 0.6, Cursor = new Cursor(StandardCursorType.Hand),
+            Child = grid, Padding = new Thickness(10, 8), Cursor = new Cursor(StandardCursorType.Hand),
             Background = picked ? Selected : Brush.Parse("#1B1C20"), BorderBrush = picked ? SelectedBorder : Brush.Parse("#2A2B31"),
             BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8),
         };

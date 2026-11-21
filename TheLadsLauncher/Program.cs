@@ -130,7 +130,10 @@ class Program
         }
 
         // A launcher that is killed or crashes leaves no line; every on-purpose exit does (ExitBreadcrumb), this catches the other normal ones.
-        AppDomain.CurrentDomain.ProcessExit += (_, _) => ExitBreadcrumb("process exit (no other reason was logged)");
+        // Environment.Exit paths (update restart, previews) and fatal exceptions end here without closing the window: the tray icon must go too,
+        // or Windows keeps a ghost icon of the dead process in the tray until the mouse passes over it.
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => { ExitBreadcrumb("process exit (no other reason was logged)"); MainWindow.RemoveTrayIcon(); };
+        AppDomain.CurrentDomain.UnhandledException += (_, _) => MainWindow.RemoveTrayIcon();
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

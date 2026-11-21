@@ -61,7 +61,8 @@ public final class MenuGraphics {
         iconLabel(g, label, icon, cx, y, width, color, com.thelads.core.config.HudSettings.getInstance().isTextShadow());
     }
     public static void iconLabel(LadsGraphics g, String label, String icon, int cx, int y, int width, int color, boolean shadow) {
-        if (icon == null) icon = ButtonIcons.of(null, label);
+        if (ButtonIcons.hasPackIcon(label)) icon = null; // the resource pack's own icon is in the label already
+        else if (icon == null) icon = ButtonIcons.of(null, label);
         int textWidth = g.textWidth(label), size = g.fontHeight(), gap = TitleScreenTheme.LABEL_ICON_GAP;
         if (icon == null || label.isEmpty() || !TitleScreenTheme.iconFits(width, textWidth)) {
             g.drawCenteredText(label, cx, y, color, shadow);

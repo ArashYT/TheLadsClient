@@ -159,6 +159,19 @@ public final class ButtonIcons {
         return WRAPPERS.contains(key);
     }
 
+    /**
+     * Whether text carries a resource pack's own icon glyph (supplementary private use, U+F0000 and up, as menu icon packs use): the
+     * pack draws the icon then, so the Lads one is left out (no doubled icons). Allocation-free, safe every frame.
+     */
+    public static boolean hasPackIcon(String text) {
+        if (text == null) return false;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c >= 0xDB80 && c <= 0xDBFF) return true;
+        }
+        return false;
+    }
+
     private static final Map<String, String> LITERALS = Map.ofEntries(
         Map.entry("Done", "check"), Map.entry("Cancel", "cross"), Map.entry("Back", "arrow-left"), Map.entry("Apply", "check"), Map.entry("Confirm", "check"),
         Map.entry("Yes", "check"), Map.entry("No", "cross"), Map.entry("OK", "check"), Map.entry("Save", "save"), Map.entry("Save drawing", "save"),

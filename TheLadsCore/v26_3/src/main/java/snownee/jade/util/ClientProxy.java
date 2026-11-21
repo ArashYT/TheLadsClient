@@ -212,7 +212,9 @@ public final class ClientProxy implements ClientModInitializer {
 		}
 		int i = Minecraft.getInstance().getWindow().getGuiScaledWidth();
 		int k = i / 2 - 91;
-		return new Rect2f(k, 0, 182, bossbarHeight - 12);
+		// Lads: bars are drawn shifted below the API toast and bossbarHeight is the unshifted bottom; keep Jade under the real bottom
+		int shift = com.thelads.core.client.hud.ServerRulesNotice.clearOf(k, k + 182, 12) - 12;
+		return new Rect2f(k, 0, 182, bossbarHeight - 12 + Math.max(0, shift));
 	}
 
 	public static boolean isShowDetailsPressed() {

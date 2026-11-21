@@ -66,7 +66,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
             ServerListColumns.cycle(width);
             serverSelectionList.setScrollAmount(serverSelectionList.getScrollAmount());
             ladsUpdateColumns();
-        }).bounds(8, 8, 36, 20).build());
+        }).bounds(8, 8, 84, 20).build());
         ladsUpdateColumns();
         org.slf4j.LoggerFactory.getLogger("TheLadsCore-1.20.1").info("Discover Servers button added to the multiplayer screen at {},{}", width - 124, 8);
     }
@@ -77,7 +77,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
         if (ladsColumnsButton == null) return;
         int columns = ServerListColumns.fit(ServerListColumns.wanted(), width);
         ladsColumnsButton.visible = ServerListColumns.most(width) > 1;
-        ladsColumnsButton.setMessage(Component.literal("    " + columns));
+        ladsColumnsButton.setMessage(Component.literal("    Columns: " + columns));
         ladsColumnsButton.setTooltip(Tooltip.create(Component.literal("Server list columns: " + columns + ". Click to change.")));
     }
 
@@ -133,6 +133,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
             if (child instanceof Button b && b != d && b != ladsColumnsButton && b.visible
                 && b.getX() < d.getX() + d.getWidth() && d.getX() < b.getX() + b.getWidth()
                 && b.getY() < d.getY() + d.getHeight() && d.getY() < b.getY() + b.getHeight()) {
+                b.setY(8); // same row as ours (ViaFabricPlus sits a few px higher)
                 return true;
             }
         }

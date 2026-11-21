@@ -46,7 +46,27 @@ class DmMediaTest {
     }
 
     @Test
+    void screenshotsSavedInTheSharedFolderAreListedToo() throws Exception {
+        Path game = Files.createDirectories(dir.resolve("game"));
+        Path ownShots = Files.createDirectories(game.resolve("screenshots"));
+        Path sharedShots = Files.createDirectories(dir.resolve("shared/screenshots"));
+        Path old = Files.write(ownShots.resolve("old.png"), png(8, 8));
+        Path fresh = Files.write(sharedShots.resolve("fresh.png"), png(8, 8));
+        Files.setLastModifiedTime(old, FileTime.fromMillis(1_000));
+        Files.setLastModifiedTime(fresh, FileTime.fromMillis(2_000));
+        com.thelads.core.shared.SharedContentPaths.setRootForTests(dir.resolve("shared"));
+        try {
+            assertEquals(List.of(fresh, old), DmMedia.screenshots(game));
+            assertTrue(DmMedia.isScreenshot(game, fresh));
+            assertTrue(DmMedia.isScreenshot(game, old));
+        } finally {
+            com.thelads.core.shared.SharedContentPaths.setRootForTests(null);
+        }
+    }
+
+    @Test
     void onlyFilesDirectlyInTheScreenshotsFolder() throws Exception {
+        com.thelads.core.shared.SharedContentPaths.setRootForTests(dir.resolve("noshared"));
         Path shots = Files.createDirectories(dir.resolve("screenshots"));
         Path older = Files.write(shots.resolve("2026-11-10_01.png"), png(64, 36));
         Path newer = Files.write(shots.resolve("2026-11-11_02.png"), png(64, 36));
@@ -65,6 +85,7 @@ class DmMediaTest {
         assertFalse(DmMedia.isScreenshot(dir, shots.resolve("notes.txt")));
         assertFalse(DmMedia.isScreenshot(dir, shots.resolve("missing.png")));
         assertEquals(List.of(), DmMedia.screenshots(dir.resolve("nowhere")));
+        com.thelads.core.shared.SharedContentPaths.setRootForTests(null);
     }
 
     @Test

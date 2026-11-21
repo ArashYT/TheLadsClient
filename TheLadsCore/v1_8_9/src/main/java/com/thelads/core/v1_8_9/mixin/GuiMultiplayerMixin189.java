@@ -60,7 +60,7 @@ public abstract class GuiMultiplayerMixin189 extends GuiScreen {
         ladsMenu.close();
         ladsDiscoverButton = new GuiButton(0x4C414453 + 20, width - 124, 8, 116, 20, "Discover Servers");
         buttonList.add(ladsDiscoverButton);
-        ladsColumnsButton = new GuiButton(0x4C414453 + 21, 8, 8, 36, 20, "");
+        ladsColumnsButton = new GuiButton(0x4C414453 + 21, 8, 8, 84, 20, "");
         buttonList.add(ladsColumnsButton);
         ladsUpdateColumns();
     }
@@ -69,7 +69,7 @@ public abstract class GuiMultiplayerMixin189 extends GuiScreen {
     @Unique
     private void ladsUpdateColumns() {
         ladsColumnsButton.visible = ServerListColumns.most(width) > 1;
-        ladsColumnsButton.displayString = "    " + ServerListColumns.fit(ServerListColumns.wanted(), width);
+        ladsColumnsButton.displayString = "    Columns: " + ServerListColumns.fit(ServerListColumns.wanted(), width);
     }
 
     @Inject(method = "drawScreen", at = @At("HEAD"))
