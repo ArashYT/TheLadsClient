@@ -12,9 +12,11 @@
     "ConnectScreenQolMixin26",
     "GuiGraphicsQolMixin26",
     "GuiQolMixin26",
+    "FrontendRenderPassAccessor26",
     "JeiStartGuardMixin26",
     "MinecraftQolMixin26",
     "MouseHandlerQolMixin26",
+    "RenderNullPipelineGuardMixin26",
     "SoundEngineQolMixin26"
   ]
 }

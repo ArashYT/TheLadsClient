@@ -50,9 +50,13 @@ import org.joml.Vector2ic;
 import org.slf4j.Logger;
 
 public class ScreenshotViewerUtils {
+   static { System.setProperty("java.awt.headless", "false"); } // flag only; the AWT toolkit stays unstarted until the first copy
    private static final Logger LOGGER = LogUtils.getLogger();
    @Nullable
-   private static final Clipboard AWT_CLIPBOARD = tryGetAWTClipboard();
+   /** AWT is started on the first copy, not at launch: a toolkit alive for the whole session crashed awt.dll on display changes. */
+   private static final class AwtClipboardHolder {
+      static final Clipboard AWT_CLIPBOARD = tryGetAWTClipboard();
+   }
    private static final SystemToastId COPY_SCREENSHOT = new SystemToastId(3000L);
    private static Field TOOLTIP_DRAWER_FIELD;
    private static final Identifier DEFAULT_TOOLTIP_BACKGROUND_TEXTURE = Identifier.withDefaultNamespace("tooltip/background");
@@ -114,6 +118,7 @@ public class ScreenshotViewerUtils {
          return null;
       } else {
          try {
+            System.setProperty("java.awt.headless", "false");
             return Toolkit.getDefaultToolkit().getSystemClipboard();
          } catch (Throwable var1) {
             LOGGER.error("Unable to retrieve Java AWT Clipboard instance!", var1);
@@ -128,14 +133,15 @@ public class ScreenshotViewerUtils {
          catch (Throwable failure) { fileError("Copy", screenshotFile, failure); }
          return;
       }
-      if (AWT_CLIPBOARD == null) { fileError("Copy", screenshotFile, new IllegalStateException("System image clipboard unavailable")); return; }
+      Clipboard clipboard = AwtClipboardHolder.AWT_CLIPBOARD;
+      if (clipboard == null) { fileError("Copy", screenshotFile, new IllegalStateException("System image clipboard unavailable")); return; }
       CompletableFuture.runAsync(() -> {
          try {
             BufferedImage image = ScreenshotFileIO.read(screenshotFile.toPath());
             BufferedImage rgb = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
             var graphics = rgb.createGraphics();
             try { graphics.drawImage(image, 0, 0, null); } finally { graphics.dispose(); image.flush(); }
-            AWT_CLIPBOARD.setContents(new ImageTransferable(rgb), null);
+            clipboard.setContents(new ImageTransferable(rgb), null);
             Minecraft client = Minecraft.getInstance();
             client.execute(() -> SystemToast.addOrUpdate(client.gui.toastManager(), COPY_SCREENSHOT,
                ScreenshotViewerTexts.TOAST_COPY_SUCCESS, Component.literal(screenshotFile.getName())));
