@@ -12,7 +12,7 @@ public partial class MainWindow
     private Stopwatch? _updateDownloadClock;
     private int _updateDownloadStartPercent;
 
-    private const string InstallingSentence = "Closing the launcher and swapping in the new files; it reopens by itself";
+    private const string InstallingSentence = "Swapping in the new files; the launcher reopens by itself";
 
     /// <summary>The line under the startup bar says what the updater is doing right now. It follows the full updater message
     /// (UpdateBannerText gets every one, see ReportUpdate), so the installing snapshot the bridge shows carries it too.</summary>
