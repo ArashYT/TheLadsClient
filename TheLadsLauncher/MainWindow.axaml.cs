@@ -5959,7 +5959,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (VersionSwitch.Apply(gameDirectory, _profileService, Log) is not { } targetProfile) return false;
+            if (VersionSwitch.Apply(gameDirectory, _profileService, Log, out string? joinServer) is not { } targetProfile) return false;
             ApplyProfile(targetProfile, true);
             PopulateLaunchProfileSelector();
             LoadProfilesUI();
@@ -5969,7 +5969,8 @@ public partial class MainWindow : Window
             _ = Dispatcher.UIThread.InvokeAsync(async () =>
             {
                 await Task.Delay(500);
-                await StartLaunchAsync(afterVersionSwitch: true);
+                // The game asked to be joined again (a wrong-version player moved off the Lads Network): back onto that server.
+                await StartLaunchAsync(afterVersionSwitch: true, relaunch: joinServer == null ? null : new GraphicsRenderer.Relaunch("Network", null, joinServer));
             });
             return true;
         }

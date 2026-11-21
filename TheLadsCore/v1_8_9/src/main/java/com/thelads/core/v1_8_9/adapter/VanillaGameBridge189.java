@@ -604,6 +604,9 @@ public class VanillaGameBridge189 implements LadsGameBridge {
     }
 
     @Override
+    public void quitGame() { mc().shutdown(); }
+
+    @Override
     public void showToast(String title, String message) {
         if (mc().isCallingFromMinecraftThread()) {
             if (mc().thePlayer != null) {

@@ -44,6 +44,20 @@ public class VersionSwitchTests
     }
 
     [Fact]
+    public void RequestCarriesTheServerToJoinAgain()
+    {
+        using var dir = new TestDirectory();
+        Request(dir.Path, """{"version":"26.3","server":" mc.arashyt.ca ","requested":"2026-11-20T04:40:48Z"}""");
+
+        Assert.Equal("26.3", VersionSwitch.TakeRequest(dir.Path, _ => { }, out var server));
+        Assert.Equal("mc.arashyt.ca", server);
+
+        Request(dir.Path, """{"version":"26.3","server":"bad host"}""");
+        Assert.Equal("26.3", VersionSwitch.TakeRequest(dir.Path, _ => { }, out server));
+        Assert.Null(server);
+    }
+
+    [Fact]
     public void RequestIsReadOnceAndDeleted()
     {
         using var dir = new TestDirectory();

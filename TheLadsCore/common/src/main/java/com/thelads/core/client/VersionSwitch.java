@@ -28,6 +28,9 @@ public final class VersionSwitch {
     /** What the launcher's Play screen offers, newest first (26.2 is dropped): the list when the launcher wrote none (a dev run). */
     public static final List<String> SUPPORTED = Collections.unmodifiableList(Arrays.asList("26.3", "1.20.1", "1.8.9"));
 
+    /** The version the Lads Network wants its players on. */
+    public static final String LATEST = SUPPORTED.get(0);
+
     private VersionSwitch() {}
 
     /** The running version as the launcher names it ("26.3", "Zero SMP"); {@code running} (this adapter's own) when the launcher wrote no file. */
@@ -66,10 +69,16 @@ public final class VersionSwitch {
     }
 
     public static boolean request(Path dir, String version) {
+        return request(dir, version, null);
+    }
+
+    /** {@link #request(Path, String)} that also asks the launcher to join {@code server} ("host[:port]") once that version has started. */
+    public static boolean request(Path dir, String version, String server) {
         if (version == null || version.trim().isEmpty()) return false;
         try {
             JsonObject obj = new JsonObject();
             obj.addProperty("version", version.trim());
+            if (server != null && !server.trim().isEmpty()) obj.addProperty("server", server.trim());
             obj.addProperty("requested", Instant.now().toString());
             Files.createDirectories(dir);
             Path target = dir.resolve(REQUEST_FILE);
@@ -84,6 +93,12 @@ public final class VersionSwitch {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /** True when the launcher says this game is not the regular {@link #LATEST} client (an older version or a modpack); false without its file (a dev run). */
+    public static boolean isOffLatest(Path dir) {
+        JsonObject root = read(dir);
+        return root != null && root.has("current") && !LATEST.equals(root.get("current").getAsString().trim());
     }
 
     private static JsonObject read(Path dir) {
