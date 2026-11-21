@@ -91,6 +91,9 @@ public sealed class FriendsService : IDisposable
     /// <summary>A link is held or being retried (false once it ended for good: no account, or our game took it over).</summary>
     public bool Running => _run is { } run && _ended != run;
 
+    /// <summary>The last link ended because another link of this account (a game) replaced it. Cleared by the next <see cref="Start"/>.</summary>
+    public bool TakenOver { get; private set; }
+
     public Snapshot Current
     {
         get
@@ -109,6 +112,7 @@ public sealed class FriendsService : IDisposable
     public void Start(Func<CancellationToken, Task<(string Name, string Uuid, string Token)?>> session)
     {
         if (Running) return;
+        TakenOver = false;
         _run?.Cancel();
         var run = _run = new CancellationTokenSource();
         _ = Task.Run(async () =>
@@ -122,6 +126,7 @@ public sealed class FriendsService : IDisposable
     {
         var run = _run;
         _run = null;
+        TakenOver = false;
         if (run == null) return;
         run.Cancel();
         try { _ws?.Abort(); } catch (Exception) { }
@@ -157,6 +162,7 @@ public sealed class FriendsService : IDisposable
                 {
                     // Our game signed in with this account and took the link over: reconnecting would throw it off again
                     lock (_lock) _connected = false;
+                    TakenOver = true;
                     SetStatus("Your game took over the friends link");
                     _log("[Friends] The game took over the friends link.");
                     return;

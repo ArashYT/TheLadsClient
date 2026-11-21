@@ -186,26 +186,78 @@ public final class TitleScreenTheme {
         return withSwitch ? new Rect(switchX, h - 25, switchWidth, 16) : null;
     }
 
+    static final String LEGACY_LOGO_GLOW = "/assets/theladscore/logo/lads_client_1line_glow.png", LOGO_GLOW = "/assets/theladscore/logo/lads_client_2line_glow.png";
+    private static final double GLOW_SWEEP = 3.2, GLOW_PERIOD = 8.5; // seconds: one top-left to bottom-right pass, then the pause
+
+    /**
+     * A very faint, slightly brighter red band sweeping slowly across the logo from its top-left to its bottom-right, then a pause. The glow
+     * picture holds only the logo's own pixels (low alpha), so the band shows on the letters and nowhere else. Frame-time (nanoTime) based.
+     */
+    static void logoGlow(LadsGraphics g, String glow, int x, int y, int width, int height) {
+        double t = (System.nanoTime() / 1e9) % GLOW_PERIOD / GLOW_SWEEP;
+        if (t >= 1 || width < 8 || height < 4) return;
+        double eased = t * t * (3 - 2 * t), reach = width + height, band = Math.max(8, reach * .22);
+        double centre = -band + (reach + 2 * band) * eased; // the band's x + y position
+        int steps = Math.max(1, Math.min(height, 24)); // horizontal strips follow the diagonal edge: each is clipped to its slice of the band
+        for (int i = 0; i < steps; i++) {
+            int y0 = y + height * i / steps, y1 = y + height * (i + 1) / steps;
+            double mid = (y0 + y1) / 2.0 - y;
+            int left = (int) Math.round(x + centre - band / 2 - mid), right = (int) Math.round(x + centre + band / 2 - mid);
+            left = Math.max(x, left);
+            right = Math.min(x + width, right);
+            if (right <= left) continue;
+            g.enableScissor(left, y0, right, y1);
+            g.drawImage(glow, x, y, width, height);
+            g.disableScissor();
+        }
+    }
+
     /** The pre-1.13.3 one-line logo left of the legacy layout's menu panel, its width from Logo Scale within the room. False: the version could not draw it (the text artwork instead). */
     private static boolean wideLogo(LadsGraphics g, Layout l, int left) {
         int roomWidth = l.menuX() - 28 - left, top = 30, roomHeight = l.height() - 34 - top; // the panel; the header; the account line
         int width = Math.min(legacyLogoWidth(roomWidth, roomHeight - 14), Math.round(260 * com.thelads.core.modules.TitleScreenModule.logoScale())), height = legacyLogoHeight(width);
         int x = left + (roomWidth - width) / 2, y = top + (roomHeight - height - 14) / 2;
         if (!g.drawImage(LEGACY_LOGO, x, y, width, height)) return false;
+        logoGlow(g, LEGACY_LOGO_GLOW, x, y, width, height);
         g.drawCenteredText(TAGLINE, x + width / 2, y + height + 5, MUTED);
         return true;
     }
 
+    /** Left edge of the title's top-right control row in the legacy layout (icon Panorama and Update, labelled Layout, globe, fullscreen). */
+    public static int headerLeft(int screenWidth, int layoutLabelWidth, boolean panoramaShown, boolean updateShown) {
+        int left = languageX(screenWidth, HEADER_SIZE) - HEADER_GAP - layoutToggleWidth(screenWidth, layoutLabelWidth);
+        if (panoramaShown) left -= HEADER_GAP + HEADER_SIZE;
+        if (updateShown) left -= HEADER_GAP + HEADER_SIZE;
+        return left;
+    }
+
+    /** The narrow legacy logo box {x, y, width, height, under, beside}: centred over the menu, and pushed below the control row (never over it) when it would reach it. */
+    public static int[] narrowLogoBox(int sw, int sh, int menuY, int menuWidth, int taglineWidth, float scale, int toolbarLeft) {
+        int top = 4;
+        int[] box = null;
+        for (int pass = 0; pass < 2; pass++) {
+            int room = menuY - 4 - top, logoRoom = room >= 36 ? room - 14 : room;
+            int width = Math.max(1, Math.round(legacyLogoWidth(menuWidth, logoRoom) * Math.min(1f, scale))), height = legacyLogoHeight(width);
+            boolean under = room - height >= 14, beside = !under && sh >= 220 && width + 8 + taglineWidth <= menuWidth;
+            int x = (sw - width - (beside ? 8 + taglineWidth : 0)) / 2, y = top + (room - height - (under ? 14 : 0)) / 2;
+            if (pass == 1 && width < 24) break; // no room under the row: keep the first box
+            box = new int[] {x, y, width, height, under ? 1 : 0, beside ? 1 : 0};
+            if (pass == 1 || x + width <= toolbarLeft - 4 || top > 4) break;
+            top = 6 + HEADER_SIZE + 2;
+        }
+        return box;
+    }
+
     /** The pre-1.13.3 one-line logo over the legacy layout's narrow menu, the tagline under it or, where only a row fits, beside it. False: the version could not draw it. */
     private static boolean narrowLogo(LadsGraphics g, Layout l) {
-        int room = l.menuY() - 8, logoRoom = room >= 36 ? room - 14 : room;
-        int width = Math.max(1, Math.round(legacyLogoWidth(l.menuWidth(), logoRoom) * Math.min(1f, com.thelads.core.modules.TitleScreenModule.logoScale()))), height = legacyLogoHeight(width);
+        int left = headerLeft(l.width(), g.textWidth(LAYOUT), com.thelads.core.modules.TitleScreenModule.panorama(), com.thelads.core.client.LauncherUpdate.available() != null);
         int text = g.textWidth(TAGLINE);
-        boolean under = room - height >= 14, beside = !under && l.height() >= 220 && width + 8 + text <= l.menuWidth();
-        int x = (l.width() - width - (beside ? 8 + text : 0)) / 2, y = 4 + (room - height - (under ? 14 : 0)) / 2;
+        int[] b = narrowLogoBox(l.width(), l.height(), l.menuY(), l.menuWidth(), text, com.thelads.core.modules.TitleScreenModule.logoScale(), left);
+        int x = b[0], y = b[1], width = b[2], height = b[3];
         if (!g.drawImage(LEGACY_LOGO, x, y, width, height)) return false;
-        if (under) g.drawCenteredText(TAGLINE, x + width / 2, y + height + 5, MUTED);
-        if (beside) g.drawText(TAGLINE, x + width + 8, y + (height - g.fontHeight()) / 2, MUTED);
+        logoGlow(g, LEGACY_LOGO_GLOW, x, y, width, height);
+        if (b[4] == 1) g.drawCenteredText(TAGLINE, x + width / 2, y + height + 5, MUTED);
+        if (b[5] == 1) g.drawText(TAGLINE, x + width + 8, y + (height - g.fontHeight()) / 2, MUTED);
         return true;
     }
 
@@ -244,6 +296,9 @@ public final class TitleScreenTheme {
     }
 
 
+    private static final boolean QA_ARROW = System.getenv("LADS_QA_ARROW") != null;
+    /** QA only (env LADS_QA_ARROW): one log line per rendered frame with the arrow's eased x offset. */
+    static void qaArrow(String layout, float dx) { if (QA_ARROW && dx > 0) System.out.println("Lads QA arrow " + layout + " t=" + (System.nanoTime() / 1000000L) + " dx=" + dx); }
     public static void renderButtonSurface(LadsGraphics g,int x,int y,int width,int height,boolean hovered,boolean focused,boolean active,float opacity) {
         renderButtonSurface(g,x,y,width,height,hovered,focused,active,opacity,0);
     }
@@ -288,10 +343,14 @@ public final class TitleScreenTheme {
         String caption = fit(g, label, width - inset - iconSize - 24);
         g.drawText(caption, x + inset + iconSize + 8, y + (height - g.fontHeight()) / 2 + 1, color);
         if (width >= 150) {
-            int arrowX = x + width - 15 + (int)(hover * 2), arrowY = y + height / 2;
+            int arrowX = x + width - 15, arrowY = y + height / 2;
+            g.pushPose();
+            qaArrow("legacy", lift * 2);
+            g.translate(lift * 2, 0); // eased by the frame-time hover, not rounded to whole pixels
             g.fill(arrowX - 3, arrowY - 2, arrowX - 2, arrowY + 3, color);
             g.fill(arrowX - 2, arrowY - 1, arrowX - 1, arrowY + 2, color);
             g.fill(arrowX - 1, arrowY, arrowX, arrowY + 1, color);
+            g.popPose();
         }
         g.popPose();
     }
@@ -315,6 +374,10 @@ public final class TitleScreenTheme {
     public static void renderCompactButton(LadsGraphics g, int x, int y, int width, int height, String icon, String label,
                                            boolean focused, boolean active, float hoverProgress) {
         float hover = active ? Math.max(0, Math.min(1, hoverProgress)) : 0;
+        if (UPDATE.equals(label) && "refresh".equals(icon)) {
+            renderUpdateButton(g, x, y, width, height, focused, active, hover);
+            return;
+        }
         if (TitleNoir.renderCompact(g, x, y, width, height, icon, label, focused, active, hover)) return;
         float lift = hover * hover * (3 - 2 * hover), scale = 1 + 2 * LIFT * lift;
         g.pushPose();
@@ -331,6 +394,31 @@ public final class TitleScreenTheme {
             icon(g, icon, x + 6, y + (height - 10) / 2, 10, color);
             g.drawText(fit(g, label, width - COMPACT_PADDING), x + 20, y + (height - g.fontHeight()) / 2 + 1, color);
         }
+        g.popPose();
+    }
+
+    /** How much bigger a hovered title button draws in the Noir layout (eased with the frame-time hover). */
+    public static final float HOVER_SCALE = .03f;
+
+    /** Starts the subtle hover scale about the button's centre; pair with g.popPose(). */
+    static void hoverScale(LadsGraphics g, int x, int y, int width, int height, float hover) {
+        float eased = hover * hover * (3 - 2 * hover), scale = 1 + HOVER_SCALE * eased;
+        g.pushPose();
+        g.translate(x + width / 2f, y + height / 2f);
+        g.scale(scale, scale);
+        g.translate(-(x + width / 2f), -(y + height / 2f));
+    }
+
+    /** The Update button as the launcher draws its own: a dark rounded outlined button, the circular refresh icon left of the label. */
+    static void renderUpdateButton(LadsGraphics g, int x, int y, int width, int height, boolean focused, boolean active, float hover) {
+        hoverScale(g, x, y, width, height, hover);
+        if (focused && active) roundRect(g, x - 2, y - 2, width + 4, height + 4, 7, ACCENT);
+        roundRect(g, x, y, width, height, 5, active ? mix(0xFF34353B, 0xFF55565D, hover) : LadsPalette.DISABLED);
+        roundRect(g, x + 1, y + 1, width - 2, height - 2, 4, active ? mix(0xFF141416, 0xFF25262A, hover) : LadsPalette.PANEL);
+        int color = active ? mix(0xFF9B9CA3, 0xFFFFFFFF, hover) : LadsPalette.DISABLED;
+        int content = 10 + 5 + g.textWidth(UPDATE), left = x + Math.max(4, (width - content) / 2);
+        icon(g, "refresh", left, y + (height - 10) / 2, 10, color);
+        g.drawText(fit(g, UPDATE, width - (left - x) - 15 - 4), left + 15, y + (height - g.fontHeight()) / 2 + 1, color);
         g.popPose();
     }
 
@@ -357,12 +445,12 @@ public final class TitleScreenTheme {
         return fullscreenX(screenWidth, fullscreenWidth) - HEADER_GAP - HEADER_SIZE;
     }
 
-    /** The title's layout toggle, labelled by what pressing it does; below TOGGLE_LABEL_MIN wide a square icon, left of the language globe. */
-    public static final String NEW_LAYOUT = "New layout", LEGACY_LAYOUT = "Legacy layout";
+    /** The title's layout toggle, labelled Layout, it opens a Legacy / New list; below TOGGLE_LABEL_MIN wide a square icon, left of the language globe. */
+    public static final String LAYOUT = "Layout", LAYOUT_LEGACY = "Legacy", LAYOUT_NEW = "New";
     public static final int TOGGLE_LABEL_MIN = 400;
 
     public static String layoutToggleLabel() {
-        return com.thelads.core.modules.TitleScreenModule.legacyLayout() ? NEW_LAYOUT : LEGACY_LAYOUT;
+        return LAYOUT;
     }
 
     public static int layoutToggleWidth(int screenWidth, int widestLabel) {

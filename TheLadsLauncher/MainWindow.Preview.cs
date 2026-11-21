@@ -34,7 +34,7 @@ public partial class MainWindow
         {
             case "Home": NavHome_Click(null, none); break;
             case "PlayPicker": NavHome_Click(null, none); LaunchProfileSelector.IsDropDownOpen = true; break;
-            case "Experiences": NavHome_Click(null, none); PlaySubTabs.SelectedItem = PlayExperiencesTab; break;
+            case "Experiences": NavExperiences_Click(null, none); break;
             case "Accounts": NavAccounts_Click(null, none); break;
             case "Skins": NavSkins_Click(null, none); break;
             case "Profiles": NavProfiles_Click(null, none); break;

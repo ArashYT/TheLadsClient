@@ -109,6 +109,37 @@ public static class SharedControls
         return options.ToString();
     }
 
+    /// <summary>In a new game folder (a modpack): the key binds it takes from the shared controls at its first launch.</summary>
+    public const string ImportFile = "lads-import-controls.txt";
+
+    /// <summary>Remembers the shared key binds (vanilla and mod ones, modern names) for the game folder's first launch, when
+    /// <see cref="ApplyQueued"/> writes them into its options.txt. False when there are none.</summary>
+    public static bool QueueImport(string sharedOptionsFile, string gameDirectory)
+    {
+        if (!File.Exists(sharedOptionsFile)) return false;
+        var keys = Read(ReadText(sharedOptionsFile)).Where(k => k.Key.StartsWith("key_", StringComparison.Ordinal)).ToList();
+        if (keys.Count == 0) return false;
+        Directory.CreateDirectory(gameDirectory);
+        WriteText(Path.Combine(gameDirectory, ImportFile), string.Join("\n", keys.Select(k => k.Key + ":" + k.Value)) + "\n");
+        return true;
+    }
+
+    /// <summary>Puts the queued key binds into the folder's options.txt (translated to the version's format) and removes the queue.
+    /// Waits, keeping the queue, while there is no options.txt (the game has not made one yet). True when it applied them.</summary>
+    public static bool ApplyQueued(string gameDirectory, string minecraftVersion)
+    {
+        var queue = Path.Combine(gameDirectory, ImportFile);
+        var optionsFile = Path.Combine(gameDirectory, "options.txt");
+        if (!File.Exists(queue) || !File.Exists(optionsFile)) return false;
+        var options = GameOptionsFile.Parse(ReadText(optionsFile));
+        bool legacy = GameOptionsService.IsLegacy18(minecraftVersion);
+        foreach (var (key, value) in GameOptionsService.ParseOptions(ReadText(queue)))
+            if (ToVersion(key, value, minecraftVersion) is { } stored) options.Set(OptionKey(key, legacy), stored);
+        WriteText(optionsFile, options.ToString());
+        File.Delete(queue);
+        return true;
+    }
+
     /// <summary>Profiles the shared controls apply to: every launcher profile that is not isolated.</summary>
     public static IReadOnlyList<LauncherProfile> Targets(IEnumerable<LauncherProfile> profiles) => profiles.Where(p => !p.IsIsolated).ToList();
 

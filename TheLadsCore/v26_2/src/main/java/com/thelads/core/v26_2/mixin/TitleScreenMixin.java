@@ -104,14 +104,14 @@ public abstract class TitleScreenMixin extends Screen {
         ladsLanguageButton.setTabOrderGroup(202);
 
         ladsLayoutToggle = addRenderableWidget(new CompactButton26(0, 6, 20, 20, Component.literal(TitleScreenTheme.layoutToggleLabel()),
-            () -> "layout", button -> TitleScreenModule.toggleLayout()));
+            () -> "layout", button -> com.thelads.core.client.title.TitleOverlay.openLayout(button.getX(), button.getY(), button.getWidth(), button.getHeight())));
         ladsLayoutToggle.setTabOrderGroup(203);
 
         ladsPanoramaButton = addRenderableWidget(new CompactButton26(0, 6, 20, 20, Component.literal(TitleScreenTheme.CHANGE_PANORAMA),
             () -> "mountain", button -> com.thelads.core.client.title.TitleOverlay.openPanorama(button.getX(), button.getY(), button.getWidth(), button.getHeight())));
         ladsPanoramaButton.setTabOrderGroup(204);
         ladsUpdateButton = addRenderableWidget(new CompactButton26(0, 6, 20, 20, Component.literal(TitleScreenTheme.UPDATE),
-            () -> "download", button -> com.thelads.core.client.LauncherUpdate.press(() -> minecraft.stop())));
+            () -> "refresh", button -> com.thelads.core.client.LauncherUpdate.press(() -> minecraft.stop())));
         ladsUpdateButton.setTabOrderGroup(205);
         ladsUpdateButton.setTooltip(Tooltip.create(Component.literal(TitleScreenTheme.UPDATE_TOOLTIP)));
         ladsUpdateButton.visible = false;
@@ -204,7 +204,7 @@ public abstract class TitleScreenMixin extends Screen {
         ladsFullscreenButton.setRectangle(20, 20, targetW - 26, 6);
         ladsLanguageButton.setRectangle(20, 20, targetW - 50, 6);
         Component toggleLabel = Component.literal(TitleScreenTheme.layoutToggleLabel());
-        int toggleWidth = TitleScreenTheme.layoutToggleWidth(targetW, Math.max(font.width(TitleScreenTheme.NEW_LAYOUT), font.width(TitleScreenTheme.LEGACY_LAYOUT)));
+        int toggleWidth = TitleScreenTheme.layoutToggleWidth(targetW, font.width(TitleScreenTheme.LAYOUT));
         ladsLayoutToggle.setMessage(toggleLabel);
         ladsLayoutToggle.setRectangle(toggleWidth, 20, targetW - 50 - TitleScreenTheme.HEADER_GAP - toggleWidth, 6);
         ladsLayoutToggle.setTooltip(toggleWidth <= 20 ? Tooltip.create(toggleLabel) : null);

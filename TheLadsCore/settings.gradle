@@ -8,6 +8,15 @@ pluginManagement {
 plugins {
     id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
 }
+// ../VERSION is the one version (launcher + game); keep gradle.properties' mod_version line equal to it for builds that read that file.
+def versionFile = new File(settingsDir, '../VERSION')
+def propsFile = new File(settingsDir, 'gradle.properties')
+if (versionFile.exists() && propsFile.exists()) {
+    def v = versionFile.text.trim()
+    def text = propsFile.text
+    def synced = text.replaceAll(/(?m)^mod_version=.*$/, "mod_version=${v}")
+    if (synced != text) propsFile.text = synced
+}
 rootProject.name = 'TheLadsCore'
 include 'common'
 include 'v1_20_1'

@@ -91,7 +91,10 @@ public partial class MainWindow
         {
             if (_friendsAccount != _selectedAccount) _friends.Stop();
             _friendsAccount = _selectedAccount;
-            if (!_friends.Running) _friends.Start(FriendsSessionAsync);
+            // A modpack or experience game is not in _runningProcesses: once its link has replaced ours, starting ours again
+            // would throw the game off, and the two would take the link from each other until Mojang rate-limits the sign-ins.
+            bool gameHoldsLink = _friends.TakenOver && ExperiencesPage.RunningGames.Concat(ModpacksPage.RunningGames).Any(IsGameRunning);
+            if (!_friends.Running && !gameHoldsLink) _friends.Start(FriendsSessionAsync);
             snap = string.IsNullOrEmpty(_selectedAccount) && Environment.GetEnvironmentVariable("LADS_QA_SOCIAL_UUID") == null ? FriendsService.Empty with { Status = "Sign in to see your friends" } : _friends.Current;
         }
         KeepChats(snap);

@@ -1,4 +1,6 @@
 package com.thelads.core.v1_20_1.mixin;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 
 import com.thelads.core.v1_20_1.feature.NativeFeatures1201;
 import net.minecraft.client.gui.GuiGraphics;
@@ -16,5 +18,15 @@ public class BossBarMixin {
         if (NativeFeatures1201.enabled("BossBar") || com.thelads.core.client.hud.HudCover.bossBarsCovered(g.guiWidth(), com.thelads.core.client.bridge.LadsGameBridge.get().bossBarCount())) {
             ci.cancel();
         }
+    }
+
+    /** While the Lads API notification is up the bars start below it (slides with it). */
+    @WrapMethod(method = "render")
+    private void ladsBelowToast(GuiGraphics g, Operation<Void> original) {
+        int shift = com.thelads.core.client.hud.ServerRulesNotice.clearOf(g.guiWidth() / 2 - 91, g.guiWidth() / 2 + 91, 12) - 12;
+        if (shift <= 0) { original.call(g); return; }
+        g.pose().pushPose();
+        g.pose().translate(0, shift, 0);
+        try { original.call(g); } finally { g.pose().popPose(); }
     }
 }

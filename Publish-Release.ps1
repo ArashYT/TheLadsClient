@@ -89,9 +89,8 @@ function Assert-ReleaseSignature {
 }
 Push-Location -LiteralPath $PSScriptRoot
 try {
-    [xml]$project = Get-Content -LiteralPath 'TheLadsLauncher/TheLadsLauncher.csproj' -Raw
-    $version = [string]$project.Project.PropertyGroup.Version
-    if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Use a stable major.minor.patch version in the launcher csproj.' }
+    $version = (Get-Content -LiteralPath 'VERSION' -Raw).Trim()
+    if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Use a stable major.minor.patch version in the VERSION file.' }
     $tag = "v$version"
     $notes = Join-Path $PSScriptRoot "docs/releases/$version.md"
     if (-not (Test-Path -LiteralPath $notes)) { throw "Missing reviewed release notes: $notes" }

@@ -232,6 +232,8 @@ public final class QaProbe26 {
         switch (verb) {
             case "wait" -> waitTicks = duration(arg(s, 1));
             case "shot" -> { pendingShot = arg(s, 1); waitTicks = 3; }
+            case "shotfast" -> { pendingShot = arg(s, 1); waitTicks = 1; } // a shot one tick on: catches an eased hover mid-way
+            case "bar" -> com.thelads.core.client.qa.QaProgress.hide("off".equals(arg(s, 1))); // bar on|off: the QA progress bar over the top of the screen
             case "hudedit" -> { hudEdit = true; HudLayoutCapture.scriptShots = true; } // the HUD editor's wheel and drags at several window sizes (HudEditorQa); needs the QA world
             case "ladsapi" -> LadsApiQa.recordProbe(s.length > 1 ? rest(s, 1) : ("step-" + index));
             case "import113" -> com.thelads.core.client.gui.ClientImportQa.step(((LadsSettingsScreen26) mc.gui.screen()).ui(), s);
@@ -320,6 +322,29 @@ public final class QaProbe26 {
                 pointer("xpos", Double.parseDouble(arg(s, 1)));
                 pointer("ypos", Double.parseDouble(arg(s, 2)));
             }
+            case "click" -> qaClick(mc, Double.parseDouble(arg(s, 1)), Double.parseDouble(arg(s, 2))); // click x y: GUI pixels, through the open screen's own mouse handlers
+            case "titlerow" -> { // titlerow layout|panorama <i>: a click on that row of the open title list
+                int[] at = com.thelads.core.client.title.TitleOverlay.qaRow("layout".equals(arg(s, 1)), Integer.parseInt(arg(s, 2)));
+                if (at == null) throw new IllegalStateException("titlerow: list closed");
+                qaClick(mc, at[0], at[1]);
+            }
+            case "titlekey" -> com.thelads.core.client.title.TitleOverlay.keyPressed(Integer.parseInt(arg(s, 1))); // titlekey <GLFW code>: a key for the open title list (264 Down, 257 Enter)
+            case "widgets" -> { // log every widget of the open screen: class, label, x y w h in GUI pixels
+                var scr = mc.gui.screen();
+                LOGGER.info("Lads qa widgets: screen={} gui={}x{} scale={} window={}x{}", scr.getClass().getSimpleName(), scr.width, scr.height, mc.getWindow().getGuiScale(), mc.getWindow().getWidth(), mc.getWindow().getHeight());
+                for (var c : scr.children()) if (c instanceof net.minecraft.client.gui.components.AbstractWidget w)
+                    LOGGER.info("Lads qa widget: {} '{}' x={} y={} w={} h={} active={}", w.getClass().getSimpleName(), w.getMessage().getString(), w.getX(), w.getY(), w.getWidth(), w.getHeight(), w.active);
+            }
+            case "toast" -> { // toast <title>|<notice>: the policy toast as the rules notice shows it
+                String[] parts = rest(s, 1).split("\\|", 2);
+                com.thelads.core.client.hud.ServerRulesNotice.showPolicyToast(parts[0].trim(), parts.length > 1 ? parts[1].trim() : "");
+            }
+            case "updatenotice" -> { // updatenotice on|off: the launcher's lads_update.json, naming this game's own (live) process
+                Path notice = com.thelads.core.client.util.ClientPaths.getBaseDir().resolve(com.thelads.core.client.LauncherUpdate.NOTICE_FILE);
+                if ("off".equals(arg(s, 1))) Files.deleteIfExists(notice);
+                else Files.writeString(notice, "{\"version\":\"9.9.9\",\"launcher\":" + ProcessHandle.current().pid() + "}");
+                LOGGER.info("Lads qa updatenotice {}: {}", arg(s, 1), notice);
+            }
             case "titlelayout" -> com.thelads.core.modules.TitleScreenModule.toggleLayout(); // what the title's layout toggle does
             case "titlepanorama" -> com.thelads.core.modules.TitleScreenModule.setPanorama(!"off".equals(arg(s, 1))); // the title Panorama setting: titlepanorama on | off
             case "panoramaversion" -> {
@@ -348,6 +373,12 @@ public final class QaProbe26 {
                 String text = rest(s, 1);
                 text.codePoints().forEach(c -> screen.charTyped(new net.minecraft.client.input.CharacterEvent(c)));
                 LOGGER.info("Lads qa settingstype: '{}' query='{}'", text, screen.ui().getSearchQuery());
+            }
+            case "f2" -> Screenshot.grab(gameDir.toFile(), null, mc.gameRenderer.mainRenderTarget(), 1, m -> LOGGER.info("Lads 26.3 qa f2: {}", m.getString()));
+            case "dmshots" -> {
+                var all = com.thelads.core.client.social.DmMedia.screenshots(gameDir);
+                LOGGER.info("Lads 26.3 qa dmshots: count={}", all.size());
+                for (int i = 0; i < Math.min(3, all.size()); i++) LOGGER.info("Lads 26.3 qa dmshots: [{}] {} mtime={}", i, all.get(i), all.get(i).toFile().lastModified());
             }
             case "wintitle" -> {
                 new Thread(() -> {
@@ -408,6 +439,13 @@ public final class QaProbe26 {
             }
             default -> LOGGER.warn("Lads 26.3 qa: unknown step '{}'", verb);
         }
+    }
+
+    private static void qaClick(Minecraft mc, double x, double y) {
+        var ev = new net.minecraft.client.input.MouseButtonEvent(x, y, new net.minecraft.client.input.MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0));
+        mc.gui.screen().mouseClicked(ev, false);
+        mc.gui.screen().mouseReleased(ev);
+        LOGGER.info("Lads qa click: {},{} screen={}", x, y, mc.gui.screen().getClass().getSimpleName());
     }
 
     private static void pointer(String field, double value) throws ReflectiveOperationException {

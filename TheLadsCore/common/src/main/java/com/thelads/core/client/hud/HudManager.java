@@ -200,6 +200,14 @@ public class HudManager {
      */
     public boolean coverChanged() {
         if (game == null) return false;
+        // The Boss Bar slides with the toast, drawn from the capped build: rebuild every frame while it moves and once as it stops.
+        var boss = get("BossBar");
+        var bossAt = boss == null || !boss.isEnabled() ? null : lastPlaced.get("BossBar");
+        boolean shifted = bossAt != null && bossShift(bossAt, unit) > 0;
+        if (shifted || shifted != bossShifted) {
+            bossShifted = shifted;
+            return true;
+        }
         if (coverMoved) {
             coverMoved = false;
             return true;
@@ -234,7 +242,30 @@ public class HudManager {
             return;
         }
         if (name != null) coverMoved |= covered.remove(name);
-        element.renderAt(g, at.x(), at.y(), false);
+        // The Lads Boss Bar clears the policy toast like vanilla's does; only where its box meets the toast's span.
+        if (element instanceof BossBarHudElement && game != null && game.bossBarCount() > 0) {
+            int sy = bossShift(at, unit);
+            bossBox = new int[] {(int) (at.x() / unit), (int) ((at.y() + sy) / unit), (int) Math.ceil(at.right() / unit), (int) Math.ceil((at.bottom() + sy) / unit)};
+            bossBoxAt = System.nanoTime();
+        }
+        element.renderAt(g, at.x(), at.y() + (element instanceof BossBarHudElement ? bossShift(at, unit) : 0), false);
+    }
+
+    private static volatile int[] bossBox;
+    private static volatile long bossBoxAt;
+
+    /** Where the Lads Boss Bar was last drawn, {left, top, right, bottom} in GUI units (shift under the toast included), null when no bar showed lately: Jade stays under it. */
+    public static int[] bossBarBox() {
+        return System.nanoTime() - bossBoxAt < 700_000_000L ? bossBox : null;
+    }
+
+    private boolean bossShifted;
+
+    /** How far (Lads HUD units) the toast pushes a HUD placed at {@code at} down, 0 when it is away or the HUD is beside it. */
+    static int bossShift(HudGroupLayout.Rect at, double unit) {
+        int y = (int) Math.round(at.y() / unit);
+        int shift = ServerRulesNotice.clearOf((int) Math.round(at.x() / unit), (int) Math.round(at.right() / unit), y) - y;
+        return shift <= 0 ? 0 : (int) Math.round(shift * unit);
     }
 
     private boolean isExempt(HudElement element) {

@@ -35,8 +35,13 @@ public static class VersionSwitch
 
     /// <summary>The game's request, read and deleted: the version it asks for, or null when there is none or it is refused
     /// (<paramref name="log"/> says why). Only the versions the Play screen offers can be switched to.</summary>
-    public static string? TakeRequest(string gameDirectory, Action<string> log)
+    public static string? TakeRequest(string gameDirectory, Action<string> log) => TakeRequest(gameDirectory, log, out _);
+
+    /// <summary>As above; <paramref name="server"/> is the "host[:port]" the game asked to be joined once that version has started
+    /// (the Lads Network moving a wrong-version player to the latest), or null.</summary>
+    public static string? TakeRequest(string gameDirectory, Action<string> log, out string? server)
     {
+        server = null;
         string file = Path.Combine(gameDirectory, RequestFile);
         if (!File.Exists(file)) return null;
         string version;
@@ -44,6 +49,8 @@ public static class VersionSwitch
         {
             using var doc = JsonDocument.Parse(File.ReadAllText(file));
             version = doc.RootElement.GetProperty("version").GetString()?.Trim() ?? "";
+            if (doc.RootElement.TryGetProperty("server", out var s) && s.ValueKind == JsonValueKind.String)
+                server = s.GetString()?.Trim() is { Length: > 0 and <= 255 } host && !host.Any(char.IsWhiteSpace) ? host : null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or KeyNotFoundException or InvalidOperationException)
         {
@@ -59,15 +66,20 @@ public static class VersionSwitch
             : $"Minecraft {version} is not offered on the Play screen";
         if (refusal == null) return version;
         log($"[Launcher] Version switch refused: {refusal}.");
+        server = null;
         return null;
     }
 
     /// <summary>After a game exited from <paramref name="gameDirectory"/>: when it asked for another version, that version's profile
     /// (the first launchable one saved, else the standard profile, made again with Core's loader and Java when it was deleted) becomes
     /// the active one. Returns it; null when the game asked for nothing (or something refused).</summary>
-    public static LauncherProfile? Apply(string gameDirectory, IProfileService profiles, Action<string> log)
+    public static LauncherProfile? Apply(string gameDirectory, IProfileService profiles, Action<string> log) =>
+        Apply(gameDirectory, profiles, log, out _);
+
+    /// <summary>As above; <paramref name="server"/> is the server the game asked to be joined at that version's start, or null.</summary>
+    public static LauncherProfile? Apply(string gameDirectory, IProfileService profiles, Action<string> log, out string? server)
     {
-        if (TakeRequest(gameDirectory, log) is not { } version) return null;
+        if (TakeRequest(gameDirectory, log, out server) is not { } version) return null;
         var profile = profiles.GetProfiles().FirstOrDefault(p => p.MinecraftVersion == version && Launchable(p))
             ?? profiles.CreateProfile($"The Lads Client {version}", version, GameVersionPolicy.GetRequiredJavaMajor(version), false,
                 GameVersionPolicy.UsesForge(version) ? null : "0.19.5");

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -229,12 +230,39 @@ public static class HorizonEngine
             throw new InvalidOperationException($"Horizon's preparation failed (exit {process.ExitCode}). See {log}");
     }
 
+    public const string ControlsMarker = "lads-controls-imported.txt";
+
+    /// <summary>The first time Horizon starts in <paramref name="home"/>: the player's shared key binds (Settings, Controls) go into its
+    /// options.txt, in the 26.3 key names, so it plays with the same controls as the Lads Client with no question. Only when that file has no
+    /// key binds yet; once done (or skipped because the player already set their own) a marker stops it, so later changes in Horizon are
+    /// never overwritten. Whatever does not map to a 26.3 key bind is skipped. Never throws.</summary>
+    public static void ImportControlsOnce(string home, string sharedOptionsFile)
+    {
+        try
+        {
+            var marker = Path.Combine(home, ControlsMarker);
+            if (File.Exists(marker)) return;
+            var options = Path.Combine(home, "options.txt");
+            bool hasKeys = File.Exists(options) && GameOptionsService.ParseOptions(File.ReadAllText(options)).Keys.Any(k => k.StartsWith("key_", StringComparison.Ordinal));
+            if (!hasKeys && File.Exists(sharedOptionsFile))
+            {
+                var keys = new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (var (key, value) in SharedControls.Read(File.ReadAllText(sharedOptionsFile, System.Text.Encoding.Latin1)))
+                    if (key.StartsWith("key_", StringComparison.Ordinal) && SharedControls.ToVersion(key, value, MinecraftVersion) is { } stored) keys[key] = stored;
+                if (keys.Count > 0) GameOptionsService.SetOptions(options, keys);
+            }
+            File.WriteAllText(marker, Tag);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+    }
+
     /// <summary>Starts horizon-client.exe; a Microsoft account goes over as Horizon's one-shot session file (read, then deleted).</summary>
     public static Process Start(string baseDirectory, string game, string resources, MSession session, bool offline, Func<bool>? sendCrashReports = null)
     {
         string home = Home(baseDirectory);
         Directory.CreateDirectory(home);
         RemoveLadsMods(home);
+        ImportControlsOnce(home, PathService.Instance.SharedOptionsFile);
         var psi = new ProcessStartInfo(ClientExe(baseDirectory, game, AuthService.IsDevOfflineAllowed))
         {
             WorkingDirectory = home,

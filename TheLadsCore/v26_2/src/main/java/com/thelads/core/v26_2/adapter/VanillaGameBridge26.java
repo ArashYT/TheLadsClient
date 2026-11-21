@@ -422,6 +422,8 @@ public class VanillaGameBridge26 implements LadsGameBridge {
         return user == null ? null : new Session(user.getProfileId(), user.getName(), user.getAccessToken());
     }
 
+    @Override public void quitGame() { Minecraft.getInstance().stop(); }
+
     @Override public String getServerAddress() {
         var server = Minecraft.getInstance().getCurrentServer();
         return server == null ? "Singleplayer" : server.ip;

@@ -66,7 +66,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
             ServerListColumns.cycle(width);
             serverSelectionList.setScrollAmount(serverSelectionList.scrollAmount());
             ladsUpdateColumns();
-        }).bounds(8, 8, 36, 20).build());
+        }).bounds(8, 8, 84, 20).build());
         ladsUpdateColumns();
         ladsPlaceDiscover();
     }
@@ -85,7 +85,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
         if (ladsColumnsButton == null) return;
         int columns = ServerListColumns.fit(ServerListColumns.wanted(), width);
         ladsColumnsButton.visible = ServerListColumns.most(width) > 1;
-        ladsColumnsButton.setMessage(Component.literal("    " + columns));
+        ladsColumnsButton.setMessage(Component.literal("    Columns: " + columns));
         ladsColumnsButton.setTooltip(Tooltip.create(Component.literal("Server list columns: " + columns + ". Click to change.")));
     }
 
@@ -108,6 +108,8 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
             if (child instanceof Button b && b != d && b != ladsColumnsButton && b.visible
                 && b.getX() < d.getX() + d.getWidth() && d.getX() < b.getX() + b.getWidth()
                 && b.getY() < d.getY() + d.getHeight() && d.getY() < b.getY() + b.getHeight()) {
+                b.setY(8); // same row and height as ours (ViaFabricPlus sits a few px higher)
+                b.setHeight(20);
                 return true;
             }
         }

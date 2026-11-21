@@ -16,7 +16,17 @@ import java.util.UUID;
  */
 public final class TitleOverlay {
     private static final PanoramaMenu PANORAMA = new PanoramaMenu();
+    private static final PanoramaMenu LAYOUT = new PanoramaMenu();
     private static ChatSidebar sidebar;
+
+    /** The Layout list: Legacy and New, the current one marked. */
+    private static final PanoramaMenu.Source LAYOUTS = new PanoramaMenu.Source() {
+        @Override public List<PanoramaMenu.Row> rows() {
+            boolean legacy = com.thelads.core.modules.TitleScreenModule.legacyLayout();
+            return List.of(new PanoramaMenu.Row(TitleScreenTheme.LAYOUT_LEGACY, "", legacy), new PanoramaMenu.Row(TitleScreenTheme.LAYOUT_NEW, "", !legacy));
+        }
+        @Override public void pick(int index) { com.thelads.core.modules.TitleScreenModule.setLegacyLayout(index == 0); }
+    };
 
     private TitleOverlay() {}
 
@@ -47,6 +57,7 @@ public final class TitleOverlay {
     /** A title screen was (re)built: both popups close. */
     public static void reset() {
         PANORAMA.close();
+        LAYOUT.close();
         if (sidebar != null) sidebar.close();
     }
 
@@ -59,37 +70,49 @@ public final class TitleOverlay {
 
     /** The Panorama button was pressed: toggles the list under it (a note instead while the release list is still loading). */
     public static void openPanorama(int x, int y, int width, int height) {
+        LAYOUT.close();
         if (PANORAMA.isOpen()) PANORAMA.close();
         else PANORAMA.open(new Rect(x, y, width, height));
     }
+
+    /** The Layout button was pressed: toggles its Legacy / New list under it. */
+    public static void openLayout(int x, int y, int width, int height) {
+        PANORAMA.close();
+        if (LAYOUT.isOpen()) LAYOUT.close();
+        else LAYOUT.open(new Rect(x, y, width, height), LAYOUTS, 120);
+    }
+
+    /** QA scripts: where row i of the Layout or Panorama list is, canvas pixels (null while that list is closed). */
+    public static int[] qaRow(boolean layoutMenu, int i) { return (layoutMenu ? LAYOUT : PANORAMA).qaRow(i); }
 
     /** Last in the title's frame, mouse in canvas pixels, dt seconds since the last frame. */
     public static void render(LadsGraphics g, int sw, int sh, int mx, int my, float dt, boolean reducedMotion) {
         if (socialOn()) sidebar().render(g, sw, sh, mx, my, dt, reducedMotion);
         PANORAMA.render(g, sw, sh, mx, my, dt);
+        LAYOUT.render(g, sw, sh, mx, my, dt);
     }
 
     /** True when a popup took the press: the title must not pass it on. */
     public static boolean mouseClicked(double x, double y, int button, int sw, int sh) {
-        if (PANORAMA.click(x, y, button)) return true;
+        if (PANORAMA.click(x, y, button) || LAYOUT.click(x, y, button)) return true;
         return socialOn() && sidebar().click(x, y, button, sw, sh);
     }
 
     public static boolean mouseScrolled(double amount) {
-        return PANORAMA.wheel(amount) || (sidebar != null && sidebar.wheel(amount));
+        return PANORAMA.wheel(amount) || LAYOUT.wheel(amount) || (sidebar != null && sidebar.wheel(amount));
     }
 
     public static boolean keyPressed(int glfwKey) {
-        return PANORAMA.key(glfwKey) || (sidebar != null && sidebar.key(glfwKey));
+        return PANORAMA.key(glfwKey) || LAYOUT.key(glfwKey) || (sidebar != null && sidebar.key(glfwKey));
     }
 
     public static boolean charTyped(char c) {
-        return PANORAMA.isOpen() || (sidebar != null && sidebar.typed(c));
+        return PANORAMA.isOpen() || LAYOUT.isOpen() || (sidebar != null && sidebar.typed(c));
     }
 
     /** A popup is out: input belongs to it (the sidebar's filter takes typed text). */
     public static boolean active() {
-        return PANORAMA.isOpen() || (sidebar != null && sidebar.isOpen());
+        return PANORAMA.isOpen() || LAYOUT.isOpen() || (sidebar != null && sidebar.isOpen());
     }
 
     /** The sidebar's filter box has the keyboard: the game's own single-key shortcuts (Friends on O...) must wait. */

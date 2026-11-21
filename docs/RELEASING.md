@@ -1,10 +1,10 @@
 # Publishing The Lads Client
 
-The launcher version in `TheLadsLauncher/TheLadsLauncher.csproj` is the single release version. Windows x64 packages use Velopack 1.2.158 (pinned in both NuGet and `.config/dotnet-tools.json`). The update source is the public `ArashYT/TheLadsClient` GitHub repository; no token ships in the launcher.
+The `VERSION` file at the repo root (one line) is the single release version: the launcher csproj and `TheLadsCore/build.gradle` both read it, so the game's title bar and the launcher always show the same number. Windows x64 packages use Velopack 1.2.158 (pinned in both NuGet and `.config/dotnet-tools.json`). The update source is the public `ArashYT/TheLadsClient` GitHub repository; no token ships in the launcher.
 
 ## Each release
 
-1. Increase the csproj version (for example 1.2.1 to 1.2.2).
+1. Increase the number in `VERSION` (for example 1.2.1 to 1.2.2). Nothing else holds a version.
 2. Write `docs/releases/1.2.2.md`. Explain actual changes, fixes, installation changes, and known limitations. Keep all previous notes. The release script refuses missing or placeholder notes.
 3. Commit the intended source and notes, and push the commit. Review the worktree before committing; it may include unrelated work.
 4. Create and push a matching tag: `git tag v1.2.2`, then `git push origin v1.2.2`.

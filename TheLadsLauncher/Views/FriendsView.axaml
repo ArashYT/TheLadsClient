@@ -69,8 +69,8 @@
             <TextBlock x:Name="ChatError" Grid.Row="2" Foreground="#E5484D" FontSize="12" Margin="14,0,14,6" TextWrapping="Wrap" IsVisible="False" />
             <Border Grid.Row="3" BorderBrush="#2A2B31" BorderThickness="0,1,0,0" Padding="10">
               <Grid ColumnDefinitions="Auto,Auto,*,Auto" >
-                <Button x:Name="PictureButton" Classes="action" c:Ico.Name="picture" Height="34" Width="38" Padding="0" ToolTip.Tip="Send a screenshot or picture" />
-                <Button x:Name="GifButton" Grid.Column="1" Classes="action" Content="GIF" Height="34" Padding="10,0" Margin="6,0,0,0"
+                <Button x:Name="PictureButton" Classes="action" c:Ico.Name="picture" Height="34" Width="38" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Send a screenshot or picture" />
+                <Button x:Name="GifButton" Grid.Column="1" Classes="action" Content="GIF" Height="34" Width="46" Padding="0" Margin="6,0,0,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                         ToolTip.Tip="Send a GIF: paste a Tenor or Giphy link in the message box">
                   <Button.Flyout>
                     <Flyout Placement="TopEdgeAlignedLeft">
@@ -84,9 +84,9 @@
                     </Flyout>
                   </Button.Flyout>
                 </Button>
-                <TextBox x:Name="ChatInput" Grid.Column="2" Margin="8,0" MaxLength="256" VerticalContentAlignment="Center" MinHeight="34"
+                <TextBox x:Name="ChatInput" Grid.Column="2" Margin="8,0" MaxLength="256" VerticalAlignment="Center" VerticalContentAlignment="Center" Height="34" MinHeight="34"
                          Watermark="Message (Enter sends; a Tenor or Giphy link sends a GIF)" />
-                <Button x:Name="SendButton" Grid.Column="3" Classes="launch" c:Ico.Name="send" Content="Send" Height="34" Padding="14,0" />
+                <Button x:Name="SendButton" Grid.Column="3" Classes="launch" c:Ico.Name="send" Content="Send" Height="34" Padding="14,0" VerticalAlignment="Center" />
               </Grid>
             </Border>
           </Grid>

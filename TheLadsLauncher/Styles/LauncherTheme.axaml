@@ -50,6 +50,7 @@
     <Setter Property="Foreground" Value="#D6D6D9"/>
     <Setter Property="BorderBrush" Value="#37383D"/>
     <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
   </Style>
   <Style Selector="Window.motion Button">
     <Setter Property="Opacity" Value="0.92" />

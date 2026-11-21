@@ -332,7 +332,7 @@ public partial class ModpacksView : UserControl
 
     internal void ShowCreate()
     {
-        CreateName.Text = "";
+        CreateName.Text = ""; CreateImportControls.IsChecked = true;
         CreateNameError.IsVisible = false;
         SetCreateStatus(null);
         CreatePanel.IsVisible = true;
@@ -400,6 +400,11 @@ public partial class ModpacksView : UserControl
             instance.Loader = loader;
             instance.LoaderVersion = loaderVersion;
             Modpacks.Save(instance);
+            if (CreateImportControls.IsChecked == true)
+            {
+                try { SharedControls.QueueImport(PathService.Instance.SharedOptionsFile, instance.GameDirectory); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { } // the modpack just starts with the game's default controls
+            }
             CreatePanel.IsVisible = false;
             await LoadAsync();
             OpenManage(instance);

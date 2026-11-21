@@ -310,6 +310,9 @@ public final class QaProbe189 {
             case "srv":
                 ServerListQa189.step(mc, s);
                 break;
+            case "titlelayoutlist": // the title's Layout button pressed (its Legacy / New list opens)
+                com.thelads.core.v1_8_9.gui.LadsTitleScreen189.INSTANCE.qaOpenLayoutList();
+                break;
             case "titlelayout": // what the title's layout toggle does
                 com.thelads.core.modules.TitleScreenModule.toggleLayout();
                 break;
