@@ -472,7 +472,7 @@ public partial class MainWindow : Window
         };
         logTimer.Start();
         LogSearchBox.TextChanged += (_, _) => { _logDirty = true; UpdateLogDisplay(); };
-        Closed += (_, _) => { Program.ExitBreadcrumb(_exitReason); _windowClosed = true; _updateCheckTimer?.Stop(); _usageHeartbeatTimer?.Stop(); _updateNowPulse?.Stop(); _particleTimer?.Stop(); _statSmoothTimer?.Stop(); _modSearchDebounce?.Stop(); _filesMeasureCts?.Cancel(); logTimer.Stop(); _authCts?.Cancel(); _galleryScanCancellation?.Cancel(); ++_galleryGeneration; };
+        Closed += (_, _) => { Program.ExitBreadcrumb(_exitReason); RemoveTrayIcon(); _windowClosed = true; _updateCheckTimer?.Stop(); _usageHeartbeatTimer?.Stop(); _updateNowPulse?.Stop(); _particleTimer?.Stop(); _statSmoothTimer?.Stop(); _modSearchDebounce?.Stop(); _filesMeasureCts?.Cancel(); logTimer.Stop(); _authCts?.Cancel(); _galleryScanCancellation?.Cancel(); ++_galleryGeneration; };
         // Stats timer (1 second)
         StartNetworkStatus();
         _statsTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
@@ -997,10 +997,15 @@ public partial class MainWindow : Window
     private void NavigateTo(string page)
     {
         DiscordPresence.Page(page);
+        // Experiences has its own sidebar entry; it shows in the Play page's second panel.
+        bool experiences = page == "Experiences";
+        if (experiences) page = "Home";
         HomePage.IsVisible = page == "Home";
-        if (page == "Home" && PlaySubTabs?.SelectedItem == PlayExperiencesTab)
+        if (page == "Home")
         {
-            ExperiencesPage?.RefreshState();
+            HomeTitle.Text = experiences ? "Experiences" : "Play";
+            PlaySubTabs.SelectedItem = experiences ? PlayExperiencesTab : PlayStandardTab;
+            if (experiences) ExperiencesPage?.RefreshState();
         }
         WorldsPage.IsVisible = page == "Worlds";
         NavWorlds.Classes.Set("active", page == "Worlds");
@@ -1028,7 +1033,8 @@ public partial class MainWindow : Window
         LogsPage.IsVisible = page == "Logs";
 
         // Update nav button styles
-        NavHome.Classes.Set("active", page == "Home");
+        NavHome.Classes.Set("active", page == "Home" && !experiences);
+        NavExperiences.Classes.Set("active", experiences);
         NavProfiles.Classes.Set("active", page == "Profiles");
         NavAccounts.Classes.Set("active", page == "Accounts");
         NavSkins.Classes.Set("active", page == "Skins");
@@ -1045,6 +1051,7 @@ public partial class MainWindow : Window
     private async void NavServers_Click(object? sender, RoutedEventArgs e) { NavigateTo("Servers"); await ServersPage.LoadAsync(); }
 
     private void NavHome_Click(object? sender, RoutedEventArgs e) => NavigateTo("Home");
+    private void NavExperiences_Click(object? sender, RoutedEventArgs e) => NavigateTo("Experiences");
     private async void PlaySubTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (PlayStandardPanel == null || ExperiencesPage == null) return;
@@ -6549,8 +6556,9 @@ public partial class MainWindow : Window
 
     private void SetupTrayIcon()
     {
+        if (_trayIcon != null) return; // one icon per launcher process
         string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "icon.ico");
-        _trayIcon = new TrayIcon
+        _trayIcon = _liveTrayIcon = new TrayIcon
         {
             Icon = File.Exists(iconPath) ? new WindowIcon(iconPath) : this.Icon,
             ToolTipText = "The Lads Client",
@@ -6569,6 +6577,17 @@ public partial class MainWindow : Window
         menu.Items.Add(showItem);
         menu.Items.Add(exitItem);
         _trayIcon.Menu = menu;
+    }
+
+    private static TrayIcon? _liveTrayIcon;
+
+    /// <summary>Takes the tray icon away. Windows keeps the icon of a process that ends without doing this until the mouse passes
+    /// over it, so every exit path (window closed, process exit, a crash) calls it. Safe to call twice and from any thread.</summary>
+    internal static void RemoveTrayIcon()
+    {
+        var tray = System.Threading.Interlocked.Exchange(ref _liveTrayIcon, null);
+        if (tray == null) return;
+        try { tray.IsVisible = false; tray.Dispose(); } catch (Exception) { }
     }
 }
 

@@ -439,6 +439,7 @@ public static class GameOptionsService
                 done.Add(VideoDefaultsStep);
                 changed = true;
             }
+            SharedControls.ApplyQueued(gameDirectory, mcVersion); // key binds a new modpack asked to take from the shared controls
             if (IsLegacy18(mcVersion) && !done.Contains(LegacyVignetteStep) && SetLegacyVignetteOff(gameDirectory))
             {
                 done.Add(LegacyVignetteStep);

@@ -8,7 +8,8 @@ plugins {
 
 allprojects {
     group = project.findProperty('maven_group') ?: 'com.thelads.core'
-    version = project.findProperty('mod_version') ?: '1.0.0'
+    // One version for the launcher and every Core jar: VERSION at the repo root.
+    version = file("${rootDir}/../VERSION").text.trim()
 
     repositories {
         mavenCentral()

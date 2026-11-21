@@ -80,6 +80,12 @@
                                         <TextBlock Text="Play" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
+                                <Button x:Name="NavExperiences" AutomationProperties.Name="Experiences" Classes="nav" Click="NavExperiences_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="13">
+                                        <c:Glyph Kind="sparkles" Size="17" VerticalAlignment="Center" />
+                                        <TextBlock Text="Experiences" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
                                 <Button x:Name="NavAccounts" AutomationProperties.Name="Accounts" Classes="nav" Click="NavAccounts_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
                                         <c:Glyph Kind="user" Size="17" VerticalAlignment="Center" />
@@ -186,8 +192,8 @@
                 <Grid Grid.Row="1" Grid.Column="1" RowDefinitions="*,Auto">
                     <Grid x:Name="HomePage" Margin="28,16,28,16" RowDefinitions="Auto,*">
                         <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,0,0,10">
-                            <TextBlock Text="Play" FontSize="24" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,20,0" />
-                            <TabControl x:Name="PlaySubTabs" Classes="pills" Padding="0" Grid.Column="1" SelectionChanged="PlaySubTabs_SelectionChanged" VerticalAlignment="Center">
+                            <TextBlock x:Name="HomeTitle" Text="Play" FontSize="24" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,20,0" />
+                            <TabControl x:Name="PlaySubTabs" IsVisible="False" Classes="pills" Padding="0" Grid.Column="1" SelectionChanged="PlaySubTabs_SelectionChanged" VerticalAlignment="Center">
                                 <TabItem x:Name="PlayStandardTab" Header="Client" />
                                 <TabItem x:Name="PlayExperiencesTab" Header="Experiences" />
                             </TabControl>

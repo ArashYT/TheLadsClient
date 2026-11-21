@@ -43,8 +43,8 @@ jobs:
       - name: Check tag version
         shell: pwsh
         run: |
-          [xml]$p = Get-Content TheLadsLauncher/TheLadsLauncher.csproj
-          if ($env:GITHUB_REF_NAME -ne "v$($p.Project.PropertyGroup.Version)") { throw 'Tag and launcher version differ.' }
+          $v = (Get-Content VERSION -Raw).Trim()
+          if ($env:GITHUB_REF_NAME -ne "v$v") { throw 'Tag and VERSION differ.' }
       - name: Verify automatic update and restart
         shell: pwsh
         run: ./tools/Test-AutomaticUpdate.ps1
