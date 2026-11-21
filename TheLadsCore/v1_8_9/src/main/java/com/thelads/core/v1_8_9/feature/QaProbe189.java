@@ -41,6 +41,7 @@ public final class QaProbe189 {
     private static String pendingShot;
     /** "hold tab": regaining focus reads every key from the keyboard again (KeyBinding.updateKeyBindState), so it is set each tick. */
     private static boolean holdTab;
+    private static net.minecraft.client.entity.EntityOtherPlayerMP qaFake;
     private static long nextStopCheck;
 
     public QaProbe189() {}
@@ -379,6 +380,33 @@ public final class QaProbe189 {
                 if (server == null) throw new IllegalStateException("srvcmd: no integrated server");
                 final String command = rest(s, 1).replaceFirst("^/", "");
                 server.addScheduledTask(() -> server.getCommandManager().executeCommand(server, command));
+                break;
+            }
+            case "look": mc.thePlayer.rotationYaw = Float.parseFloat(arg(s, 1)); mc.thePlayer.rotationPitch = Float.parseFloat(arg(s, 2)); break;
+            case "lookat": { // face the fake player
+                if (qaFake == null) throw new IllegalStateException("no fake player");
+                double dx = qaFake.posX - mc.thePlayer.posX, dz = qaFake.posZ - mc.thePlayer.posZ;
+                mc.thePlayer.rotationYaw = (float) Math.toDegrees(Math.atan2(-dx, dz)); mc.thePlayer.rotationPitch = 0;
+                break;
+            }
+            case "fakemove":
+                if (qaFake == null) throw new IllegalStateException("no fake player");
+                qaFake.setPositionAndRotation(mc.thePlayer.posX + Double.parseDouble(arg(s, 1)), mc.thePlayer.posY, mc.thePlayer.posZ + Double.parseDouble(arg(s, 2)), qaFake.rotationYaw, 0);
+                LOGGER.info("Lads qa fakemove: {} blocks", qaFake.getDistanceToEntity(mc.thePlayer));
+                break;
+            case "fakeplayer": { // fakeplayer <dx> <dz> | off: a client-side player in a sword and diamond armour
+                if (qaFake != null) { mc.theWorld.removeEntityFromWorld(-7001); qaFake = null; }
+                if (s.length > 1 && !"off".equalsIgnoreCase(s[1])) {
+                    qaFake = new net.minecraft.client.entity.EntityOtherPlayerMP(mc.theWorld, new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "QaFar"));
+                    float yaw = mc.thePlayer.rotationYaw + 180;
+                    qaFake.setPositionAndRotation(mc.thePlayer.posX + Double.parseDouble(arg(s, 1)), mc.thePlayer.posY, mc.thePlayer.posZ + Double.parseDouble(arg(s, 2)), yaw, 0);
+                    qaFake.rotationYawHead = yaw; qaFake.renderYawOffset = yaw;
+                    qaFake.setCurrentItemOrArmor(0, new net.minecraft.item.ItemStack(net.minecraft.init.Items.diamond_sword));
+                    qaFake.setCurrentItemOrArmor(4, new net.minecraft.item.ItemStack(net.minecraft.init.Items.diamond_helmet));
+                    qaFake.setCurrentItemOrArmor(3, new net.minecraft.item.ItemStack(net.minecraft.init.Items.diamond_chestplate));
+                    mc.theWorld.addEntityToWorld(-7001, qaFake);
+                    LOGGER.info("Lads qa fakeplayer: at {} {} {} ({} blocks)", qaFake.posX, qaFake.posY, qaFake.posZ, qaFake.getDistanceToEntity(mc.thePlayer));
+                }
                 break;
             }
             case "hold": { // hold tab [off]: the player list, as holding Tab (the QA bar steps aside: both sit at the top)

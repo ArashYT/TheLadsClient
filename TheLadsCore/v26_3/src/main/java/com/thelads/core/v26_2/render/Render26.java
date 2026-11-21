@@ -14,5 +14,7 @@ public final class Render26 {
             items == null ? "on" : "off (" + items + ")", animations == null ? "on" : "off (" + animations + ")");
         if (Boolean.getBoolean("thelads.verifyAutoWorld"))
             net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(RenderProbe26::tick);
+        String mmcss = com.thelads.core.perf.MmcssBoost.register(); // Windows MMCSS "Games" registration on the main thread
+        if (mmcss != null) LoggerFactory.getLogger("TheLadsCore").info(mmcss);
     }
 }
