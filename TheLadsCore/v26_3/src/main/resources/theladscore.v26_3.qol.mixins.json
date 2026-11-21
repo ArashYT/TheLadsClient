@@ -18,6 +18,11 @@
     "MouseHandlerQolMixin26",
     "RenderNullPipelineGuardMixin26",
     "SoundEngineQolMixin26",
-    "AudioEngineMixin26"
+    "AudioEngineMixin26",
+    "InstantHotbarMixin26",
+    "OffhandKeyMixin26",
+    "SmoothClientMixin26",
+    "SmoothEntityMixin26",
+    "SmoothServerMixin26"
   ]
 }
