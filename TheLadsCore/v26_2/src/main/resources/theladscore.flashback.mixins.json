@@ -1,8 +1,0 @@
-{
-  "required": true,
-  "package": "com.thelads.core.v26_2.feature.flashback.mixin",
-  "compatibilityLevel": "JAVA_25",
-  "plugin": "com.thelads.core.v26_2.feature.flashback.mixin.FlashbackMixinPlugin",
-  "client": ["ExportWriterMixin", "ReplayFolderMixin"],
-  "injectors": {"defaultRequire": 1}
-}

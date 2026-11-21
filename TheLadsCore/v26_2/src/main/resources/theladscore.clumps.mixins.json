@@ -1,7 +1,0 @@
-{
-  "required": true,
-  "package": "com.thelads.core.v26_2.feature.clumps.mixin",
-  "compatibilityLevel": "JAVA_25",
-  "mixins": ["ExperienceOrbMixin", "ExperienceOrbAccess"],
-  "injectors": { "defaultRequire": 1 }
-}
