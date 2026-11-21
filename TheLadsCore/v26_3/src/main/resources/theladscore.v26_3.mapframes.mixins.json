@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.feature.mapframes.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "MapFrameItemFrameMixin26",
+    "MapFramePacketMixin26",
+    "MapFrameRendererMixin26",
+    "MapFrameStateMixin26"
+  ],
+  "injectors": { "defaultRequire": 1 }
+}
