@@ -26,6 +26,21 @@ class VersionSwitchTest {
     }
 
     @Test
+    void requestCarriesTheServerAndOffLatestIsKnown(@TempDir Path dir) throws Exception {
+        assertFalse(VersionSwitch.isOffLatest(dir)); // no launcher file: a dev run never switches
+        Files.write(dir.resolve(VersionSwitch.VERSIONS_FILE), "{\"current\":\"26.3\"}".getBytes(StandardCharsets.UTF_8));
+        assertFalse(VersionSwitch.isOffLatest(dir));
+        for (String off : new String[] {"1.20.1", "1.8.9", "Zero SMP"}) {
+            Files.write(dir.resolve(VersionSwitch.VERSIONS_FILE), ("{\"current\":\"" + off + "\"}").getBytes(StandardCharsets.UTF_8));
+            assertTrue(VersionSwitch.isOffLatest(dir), off);
+        }
+        assertTrue(VersionSwitch.request(dir, VersionSwitch.LATEST, "mc.arashyt.ca"));
+        var json = JsonParser.parseString(new String(Files.readAllBytes(dir.resolve(VersionSwitch.REQUEST_FILE)), StandardCharsets.UTF_8)).getAsJsonObject();
+        assertEquals("26.3", json.get("version").getAsString());
+        assertEquals("mc.arashyt.ca", json.get("server").getAsString());
+    }
+
+    @Test
     void zeroSmpOffersEveryLadsClientVersion(@TempDir Path dir) throws Exception {
         // The modpack's launcher folder names what runs "Zero SMP": nothing is left out, 1.20.1 included.
         Files.write(dir.resolve(VersionSwitch.VERSIONS_FILE),

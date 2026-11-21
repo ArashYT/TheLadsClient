@@ -394,6 +394,8 @@ public class VanillaGameBridge26 implements LadsGameBridge {
         return names;
     }
 
+    @Override public void quitGame() { Minecraft.getInstance().stop(); }
+
     @Override public void showToast(String title, String message) {
         var mc = Minecraft.getInstance();
         if (mc.isSameThread()) {

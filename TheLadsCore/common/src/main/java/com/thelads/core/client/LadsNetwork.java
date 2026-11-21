@@ -167,6 +167,7 @@ public final class LadsNetwork {
      * any queued command if the player enters Singleplayer or any non-Lads server (strict Anti-Ban Rule).
      */
     public static void tick(LadsGameBridge bridge) {
+        moveToLatest(bridge);
         String cmd = pendingCommand;
         if (cmd == null || bridge == null) return;
         if (!bridge.isIngame() || !bridge.hasPlayer()) {
@@ -184,6 +185,20 @@ public final class LadsNetwork {
                 bridge.sendChatLine(cmd);
             }
         }
+    }
+
+    private static boolean movingToLatest;
+
+    /**
+     * On the network in an older version or a modpack: asks the launcher for {@link VersionSwitch#LATEST} with this server and
+     * closes the game; the launcher starts it and joins again. Once per session; nothing happens without the launcher's version file.
+     */
+    private static void moveToLatest(LadsGameBridge bridge) {
+        if (movingToLatest || bridge == null || !bridge.isIngame() || !isConnected(bridge)) return;
+        java.nio.file.Path dir = com.thelads.core.client.util.ClientPaths.getBaseDir();
+        if (!VersionSwitch.isOffLatest(dir)) return;
+        movingToLatest = true;
+        if (VersionSwitch.request(dir, VersionSwitch.LATEST, bridge.getServerAddress())) bridge.quitGame();
     }
 
     private static void connect(LadsGameBridge bridge, String name, String address) {

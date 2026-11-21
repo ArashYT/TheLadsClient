@@ -224,6 +224,8 @@ public interface LadsGameBridge {
     default List<String> getOnlinePlayerNames() { return Collections.emptyList(); }
     /** The tab list's players other than the local one, as the server sent their profiles. */
     default List<com.thelads.core.client.hypixel.NickDetector.Profile> getTabProfiles() { return Collections.emptyList(); }
+    /** Closes the game (the launcher starts what it was asked to after the exit). */
+    default void quitGame() {}
     /** Displays a brief client-side system toast / notification. */
     default void showToast(String title, String message) {}
     /** Sends a plugin message (custom payload) to the server; false when this version or connection cannot (RealPing). */
