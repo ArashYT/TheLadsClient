@@ -92,6 +92,9 @@ public final class Qol189 {
         SoundVolumes.legacy = true;
         ModuleSupport.registerBuiltIn(BUILT_IN);
         ModuleSupport.registerUnavailable(com.thelads.core.modules.ElytraSwapModule.NAME, "Minecraft 1.8.9 has no elytra.");
+        ModuleSupport.registerUnavailable(com.thelads.core.modules.SmoothSingleplayerModule.NAME, "Not done on Minecraft 1.8.9: its entity tracker needs a bigger mixin than this lane allows.");
+        ModuleSupport.registerUnavailable(com.thelads.core.modules.InstantHotbarModule.NAME, "Minecraft 1.8.9 reads keys from the LWJGL event queue, not per-key click callbacks.");
+        ModuleSupport.registerUnavailable(com.thelads.core.modules.OffhandKeyModule.NAME, "Minecraft 1.8.9 has no off hand.");
         // BedColors189 tints the red bed texture, so other team colors come out nearly black (1.11.0 QA R2-F5): off until it draws right.
         ModuleSupport.registerUnavailable(com.thelads.core.modules.BedColorsModule.NAME, "Not ready on Minecraft 1.8.9 yet: team colors "
             + "on the red bed texture still look too dark.");

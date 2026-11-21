@@ -93,6 +93,14 @@ public final class NativeKeyBindings1201 {
         CATEGORY
     ));
 
+    /** Offhand Key (OffhandKeyModule): unbound, does nothing unless the module is on and allowed. */
+    public static final KeyMapping OFFHAND_USE = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+        "key.theladscore.offhand_use",
+        InputConstants.Type.KEYSYM,
+        GLFW.GLFW_KEY_UNKNOWN,
+        CATEGORY
+    ));
+
     private NativeKeyBindings1201() {}
 
     public static void init() {

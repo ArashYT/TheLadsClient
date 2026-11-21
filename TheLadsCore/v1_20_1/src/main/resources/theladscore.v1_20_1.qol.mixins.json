@@ -15,6 +15,11 @@
     "MouseHandlerAccessor1201",
     "MouseHandlerQolMixin1201",
     "SoundEngineQolMixin1201",
-    "AudioEngineMixin1201"
+    "AudioEngineMixin1201",
+    "InstantHotbarMixin1201",
+    "OffhandKeyMixin1201",
+    "SmoothClientMixin1201",
+    "SmoothEntityMixin1201",
+    "SmoothServerMixin1201"
   ]
 }

@@ -86,6 +86,9 @@ public final class Qol1201 {
             com.thelads.core.modules.ContainerSortingModule.NAME, com.thelads.core.modules.CreativeFlyBoostModule.NAME,
             com.thelads.core.modules.ElytraSwapModule.NAME, com.thelads.core.modules.LinkPreviewModule.NAME, com.thelads.core.modules.MlgCobwebModule.NAME,
             com.thelads.core.client.schematic.SchematicManager.NAME, "Server Notification Actions", com.thelads.core.client.hypixel.SkyBlockSuite.MODULE_NAME);
+        // SmoothServerMixin1201 + SmoothEntityMixin1201 + SmoothClientMixin1201, InstantHotbarMixin1201, OffhandKeyMixin1201
+        ModuleSupport.registerBuiltIn(com.thelads.core.modules.SmoothSingleplayerModule.NAME, com.thelads.core.modules.InstantHotbarModule.NAME,
+            com.thelads.core.modules.OffhandKeyModule.NAME);
 
         ClientTickEvents.END_CLIENT_TICK.register(Qol1201::tick);
         WorldRenderEvents.BEFORE_DEBUG_RENDER.register(Qol1201::chunkBorders);

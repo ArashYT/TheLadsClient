@@ -77,6 +77,9 @@ public final class Qol26 {
     private Qol26() {}
 
     public static void register() {
+        // SmoothServerMixin26 + SmoothEntityMixin26 + SmoothClientMixin26, InstantHotbarMixin26, OffhandKeyMixin26
+        ModuleSupport.registerBuiltIn(com.thelads.core.modules.SmoothSingleplayerModule.NAME, com.thelads.core.modules.InstantHotbarModule.NAME,
+            com.thelads.core.modules.OffhandKeyModule.NAME);
         ModuleSupport.registerBuiltIn(TooltipScroll.NAME, CrashCatcher.NAME, QuickReconnect.NAME, KeepCursor.NAME, SoundVolumes.NAME,
             ChunkBorders.NAME, com.thelads.core.client.SoundFilters.NAME, com.thelads.core.client.media.MumbleLink.NAME, com.thelads.core.client.worldedit.WorldEditCUI.NAME,
             // 1.11.0 lanes: InventoryTweaksMixin26 (sorting, terminal solvers), AbilitiesMixin26, NativeFeatures' elytra key,

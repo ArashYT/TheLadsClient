@@ -32,5 +32,7 @@ public final class NativeKeyBindings {
         InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), CATEGORY);
     public static final KeyMapping ELYTRA_SWAP = new KeyMapping("key.theladscore.elytra_swap",
         InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), CATEGORY);
+    public static final KeyMapping OFFHAND_USE = new KeyMapping("key.theladscore.offhand_use",
+        InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), CATEGORY);
     private NativeKeyBindings() {}
 }
