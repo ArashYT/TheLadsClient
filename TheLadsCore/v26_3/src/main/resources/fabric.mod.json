@@ -64,6 +64,7 @@
     "theladscore.embedded.capes.mixins.json",
 
         "theladscore.v26_3.render.mixins.json",
+        "theladscore.v26_3.lod.mixins.json",
         "theladscore.v26_3.ladsapiui.mixins.json",
         "theladscore.v26_3.pvp.mixins.json",
         "theladscore.v26_3.visuals.mixins.json",

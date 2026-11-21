@@ -1,0 +1,17 @@
+{
+  "required": false,
+  "minVersion": "0.7",
+  "package": "com.thelads.core.v1_8_9.lod.mixin",
+  "refmap": "theladscore.v1_8_9.refmap.json",
+  "compatibilityLevel": "JAVA_8",
+  "injectors": {
+    "defaultRequire": 0
+  },
+  "client": [
+    "PlayerLodCapeMixin189",
+    "PlayerLodHandItemMixin189",
+    "PlayerLodHeadItemMixin189",
+    "PlayerLodNameMixin189",
+    "PlayerLodRendererMixin189"
+  ]
+}
