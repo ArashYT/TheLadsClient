@@ -411,6 +411,12 @@ public class BoxElementImpl extends BoxElement implements ContainerEventHandler 
 		if (toastY > expectedRect.getY()) {
 			expectedRect.setY(toastY);
 		}
+		// Last: the Lads Boss Bar HUD (not vanilla's bars) sits where the player put it, below the toast; Jade stays under it
+		int[] ladsBars = com.thelads.core.client.hud.HudManager.bossBarBox();
+		if (ladsBars != null && expectedRect.getX() < ladsBars[2] && expectedRect.getX() + expectedRect.getWidth() > ladsBars[0]
+				&& expectedRect.getY() < ladsBars[3] + 2 && expectedRect.getY() + expectedRect.getHeight() > ladsBars[1]) {
+			expectedRect.setY(ladsBars[3] + 2);
+		}
 	}
 
 	public void updateRect(TooltipAnimation animation) {

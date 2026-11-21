@@ -243,7 +243,20 @@ public class HudManager {
         }
         if (name != null) coverMoved |= covered.remove(name);
         // The Lads Boss Bar clears the policy toast like vanilla's does; only where its box meets the toast's span.
+        if (element instanceof BossBarHudElement && game != null && game.bossBarCount() > 0) {
+            int sy = bossShift(at, unit);
+            bossBox = new int[] {(int) (at.x() / unit), (int) ((at.y() + sy) / unit), (int) Math.ceil(at.right() / unit), (int) Math.ceil((at.bottom() + sy) / unit)};
+            bossBoxAt = System.nanoTime();
+        }
         element.renderAt(g, at.x(), at.y() + (element instanceof BossBarHudElement ? bossShift(at, unit) : 0), false);
+    }
+
+    private static volatile int[] bossBox;
+    private static volatile long bossBoxAt;
+
+    /** Where the Lads Boss Bar was last drawn, {left, top, right, bottom} in GUI units (shift under the toast included), null when no bar showed lately: Jade stays under it. */
+    public static int[] bossBarBox() {
+        return System.nanoTime() - bossBoxAt < 700_000_000L ? bossBox : null;
     }
 
     private boolean bossShifted;

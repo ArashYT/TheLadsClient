@@ -31,6 +31,19 @@ class TitleScreenThemeTest {
         }
     }
 
+    /** The legacy logo never reaches the top-right control row: it is pushed below it when it would. */
+    @Test void narrowLogoClearsTheControlRow() {
+        for (int[] size : new int[][] {{427, 240}, {640, 360}, {480, 270}, {960, 540}})
+          for (boolean update : new boolean[] {false, true}) {
+            var l = TitleScreenTheme.layout(size[0], size[1], 12);
+            int left = TitleScreenTheme.headerLeft(size[0], 40, true, update);
+            int[] b = TitleScreenTheme.narrowLogoBox(size[0], size[1], l.menuY(), l.menuWidth(), 100, 1f, left);
+            boolean overRow = b[1] < 28 && b[0] + b[2] > left - 4;
+            assertFalse(overRow, "logo over the control row at " + size[0] + "x" + size[1] + " update=" + update);
+            assertTrue(b[1] + b[3] <= l.menuY(), "logo above the menu");
+          }
+    }
+
     /** The title's own controls (menu, fullscreen top right, Switch after the account name) never overlap. */
     @Test void titleControlsStayApartFromSmallWindowsToLargeOnes() {
         for (int w = 260; w <= 1000; w += 20) // 260: the build label grew a character with 1.13.10 and no longer fits beside a Switch at 240

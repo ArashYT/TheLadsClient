@@ -365,6 +365,7 @@ public final class TitleNoir {
         }
         int cx = x + w - 11, cy = y + faceHeight / 2;
         g.pushPose();
+        TitleScreenTheme.qaArrow("new", hover * hover * (3 - 2 * hover) * 2);
         g.translate(hover * hover * (3 - 2 * hover) * 2, 0); // smooth, frame-time eased, not whole-pixel steps
         for (int i = 0; i < 4; i++) g.fill(cx + i, cy - 3 + i, cx + i + 1, cy + 4 - i, color);
         g.popPose();

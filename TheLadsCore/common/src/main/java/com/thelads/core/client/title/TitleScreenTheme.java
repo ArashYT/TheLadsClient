@@ -223,17 +223,41 @@ public final class TitleScreenTheme {
         return true;
     }
 
+    /** Left edge of the title's top-right control row in the legacy layout (icon Panorama and Update, labelled Layout, globe, fullscreen). */
+    public static int headerLeft(int screenWidth, int layoutLabelWidth, boolean panoramaShown, boolean updateShown) {
+        int left = languageX(screenWidth, HEADER_SIZE) - HEADER_GAP - layoutToggleWidth(screenWidth, layoutLabelWidth);
+        if (panoramaShown) left -= HEADER_GAP + HEADER_SIZE;
+        if (updateShown) left -= HEADER_GAP + HEADER_SIZE;
+        return left;
+    }
+
+    /** The narrow legacy logo box {x, y, width, height, under, beside}: centred over the menu, and pushed below the control row (never over it) when it would reach it. */
+    public static int[] narrowLogoBox(int sw, int sh, int menuY, int menuWidth, int taglineWidth, float scale, int toolbarLeft) {
+        int top = 4;
+        int[] box = null;
+        for (int pass = 0; pass < 2; pass++) {
+            int room = menuY - 4 - top, logoRoom = room >= 36 ? room - 14 : room;
+            int width = Math.max(1, Math.round(legacyLogoWidth(menuWidth, logoRoom) * Math.min(1f, scale))), height = legacyLogoHeight(width);
+            boolean under = room - height >= 14, beside = !under && sh >= 220 && width + 8 + taglineWidth <= menuWidth;
+            int x = (sw - width - (beside ? 8 + taglineWidth : 0)) / 2, y = top + (room - height - (under ? 14 : 0)) / 2;
+            if (pass == 1 && width < 24) break; // no room under the row: keep the first box
+            box = new int[] {x, y, width, height, under ? 1 : 0, beside ? 1 : 0};
+            if (pass == 1 || x + width <= toolbarLeft - 4 || top > 4) break;
+            top = 6 + HEADER_SIZE + 2;
+        }
+        return box;
+    }
+
     /** The pre-1.13.3 one-line logo over the legacy layout's narrow menu, the tagline under it or, where only a row fits, beside it. False: the version could not draw it. */
     private static boolean narrowLogo(LadsGraphics g, Layout l) {
-        int room = l.menuY() - 8, logoRoom = room >= 36 ? room - 14 : room;
-        int width = Math.max(1, Math.round(legacyLogoWidth(l.menuWidth(), logoRoom) * Math.min(1f, com.thelads.core.modules.TitleScreenModule.logoScale()))), height = legacyLogoHeight(width);
+        int left = headerLeft(l.width(), g.textWidth(LAYOUT), com.thelads.core.modules.TitleScreenModule.panorama(), com.thelads.core.client.LauncherUpdate.available() != null);
         int text = g.textWidth(TAGLINE);
-        boolean under = room - height >= 14, beside = !under && l.height() >= 220 && width + 8 + text <= l.menuWidth();
-        int x = (l.width() - width - (beside ? 8 + text : 0)) / 2, y = 4 + (room - height - (under ? 14 : 0)) / 2;
+        int[] b = narrowLogoBox(l.width(), l.height(), l.menuY(), l.menuWidth(), text, com.thelads.core.modules.TitleScreenModule.logoScale(), left);
+        int x = b[0], y = b[1], width = b[2], height = b[3];
         if (!g.drawImage(LEGACY_LOGO, x, y, width, height)) return false;
         logoGlow(g, LEGACY_LOGO_GLOW, x, y, width, height);
-        if (under) g.drawCenteredText(TAGLINE, x + width / 2, y + height + 5, MUTED);
-        if (beside) g.drawText(TAGLINE, x + width + 8, y + (height - g.fontHeight()) / 2, MUTED);
+        if (b[4] == 1) g.drawCenteredText(TAGLINE, x + width / 2, y + height + 5, MUTED);
+        if (b[5] == 1) g.drawText(TAGLINE, x + width + 8, y + (height - g.fontHeight()) / 2, MUTED);
         return true;
     }
 
@@ -272,6 +296,9 @@ public final class TitleScreenTheme {
     }
 
 
+    private static final boolean QA_ARROW = System.getenv("LADS_QA_ARROW") != null;
+    /** QA only (env LADS_QA_ARROW): one log line per rendered frame with the arrow's eased x offset. */
+    static void qaArrow(String layout, float dx) { if (QA_ARROW && dx > 0) System.out.println("Lads QA arrow " + layout + " t=" + (System.nanoTime() / 1000000L) + " dx=" + dx); }
     public static void renderButtonSurface(LadsGraphics g,int x,int y,int width,int height,boolean hovered,boolean focused,boolean active,float opacity) {
         renderButtonSurface(g,x,y,width,height,hovered,focused,active,opacity,0);
     }
@@ -318,6 +345,7 @@ public final class TitleScreenTheme {
         if (width >= 150) {
             int arrowX = x + width - 15, arrowY = y + height / 2;
             g.pushPose();
+            qaArrow("legacy", lift * 2);
             g.translate(lift * 2, 0); // eased by the frame-time hover, not rounded to whole pixels
             g.fill(arrowX - 3, arrowY - 2, arrowX - 2, arrowY + 3, color);
             g.fill(arrowX - 2, arrowY - 1, arrowX - 1, arrowY + 2, color);
