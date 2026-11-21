@@ -32,6 +32,7 @@ public abstract class GlobalButtonMixin extends AbstractWidget {
     @Unique
     private String ladsIcon(Font font) {
         if ((Object) this instanceof TextAndImageButton) return null; // already draws its own sprite beside its label
+        if (MessageIcons.packIcon(getMessage())) return null; // the resource pack draws its own icon in the label
         String icon = ButtonLift.icon(this);
         if (icon == null) icon = MessageIcons.of(getMessage());
         return icon != null && TitleScreenTheme.iconFits(getWidth(), font.width(getMessage())) ? icon : null;
