@@ -241,7 +241,24 @@ public final class SessionManager implements LadsClientAPI {
      * not enough: hello, policy and presence go out again.
      */
     public void worldChanged(LadsPlayerHandle handle) {
-        refresh(handle, platform.isProxy());
+        if (!refresh(handle, platform.isProxy()) || platform.isProxy()) return;
+        // Clients up to 1.14.3 read our messages on the network thread but the Respawn on the game thread, so the Respawn's reset
+        // can land after this policy and wipe it for the whole stay in the world. Send it again once the world has loaded.
+        java.util.UUID uuid = handle.uuid();
+        String world = handle.world();
+        for (int ticks : WORLD_RESEND_TICKS) platform.runLater(() -> resendAfterWorldChange(uuid, world), ticks);
+    }
+
+    private static final int[] WORLD_RESEND_TICKS = {10, 60};
+
+    /** No hello (the client's reply budget is small): the session survives the client's reset, so the policy alone applies. */
+    private void resendAfterWorldChange(java.util.UUID uuid, String world) {
+        LadsSession s;
+        synchronized (lock) {
+            s = sessions.get(uuid);
+            if (s == null || !s.isLads() || !Objects.equals(world, s.getSyncedWorld())) return;
+        }
+        resync(s, false);
     }
 
     /**
@@ -279,14 +296,15 @@ public final class SessionManager implements LadsClientAPI {
         refresh(handle, false);
     }
 
-    private void refresh(LadsPlayerHandle handle, boolean force) {
-        if (handle == null) return;
+    /** @return whether hello and policy went out again */
+    private boolean refresh(LadsPlayerHandle handle, boolean force) {
+        if (handle == null) return false;
         LadsSession s;
         boolean doResync = false;
         boolean doHello = false;
         synchronized (lock) {
             s = sessions.get(handle.uuid());
-            if (s == null) return;
+            if (s == null) return false;
             s.setHandle(handle);
             if (s.isLads()) {
                 if (force || !Objects.equals(handle.world(), s.getSyncedWorld())) {
@@ -297,14 +315,15 @@ public final class SessionManager implements LadsClientAPI {
             }
         }
         if (doResync) {
-            resync(s);
+            resync(s, true);
         } else if (doHello) {
             s.sendHello();
         }
+        return doResync;
     }
 
-    private void resync(LadsSession s) {
-        s.sendHello(); // the client clears policy and presence on hello; the reply is ignored because the session is already acked
+    private void resync(LadsSession s, boolean hello) {
+        if (hello) s.sendHello(); // the client clears policy and presence on hello; the reply is ignored because the session is already acked
         s.sendPolicy();
         if (config.isBadgePresence()) {
             s.sendPresence(true, getAllLadsPlayerUuids(), Collections.emptyList());
