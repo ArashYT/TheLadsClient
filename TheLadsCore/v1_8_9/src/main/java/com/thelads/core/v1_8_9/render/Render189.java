@@ -15,5 +15,7 @@ public final class Render189 {
     public static void init() {
         String animations = BuiltInRender.standDownReason(BuiltInRender.KERRIA);
         LogManager.getLogger("TheLadsCore").info("Lads render: Kerria texture animation {}", animations == null ? "on" : "off (" + animations + ")");
+        String mmcss = com.thelads.core.perf.MmcssBoost.register(); // Windows MMCSS "Games" registration on the main thread
+        if (mmcss != null) LogManager.getLogger("TheLadsCore").info(mmcss);
     }
 }
