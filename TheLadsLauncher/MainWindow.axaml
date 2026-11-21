@@ -507,7 +507,7 @@
                                         </Border>
                                     </StackPanel>
                                 </ScrollViewer>
-                                <StackPanel Grid.Column="2" Spacing="8" VerticalAlignment="Top">
+                                <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto"><StackPanel Spacing="8" VerticalAlignment="Top">
                                     <TextBlock Text="PREVIEW" Foreground="#868994" FontSize="12" FontWeight="Bold" LetterSpacing="1" />
                                     <Border x:Name="SettingsPreviewFrame" Background="#121317" CornerRadius="4" BorderBrush="#303137" BorderThickness="1" Padding="14" ClipToBounds="True">
                                         <StackPanel Spacing="10">
@@ -516,13 +516,13 @@
                                                 <StackPanel Spacing="8">
                                                     <TextBlock Text="Ready to play" FontWeight="SemiBold" x:Name="SettingsPreviewHeading" />
                                                     <TextBlock Text="Lads Client" Foreground="#A0A1AA" FontSize="12" x:Name="SettingsPreviewSub" />
-                                                    <Button Content="Play" Classes="action" Height="30" HorizontalAlignment="Left" IsHitTestVisible="False" />
+                                                    <Button Content="Play" Classes="action" Height="36" MinWidth="72" HorizontalAlignment="Left" IsHitTestVisible="False" />
                                                 </StackPanel>
                                             </Border>
                                         </StackPanel>
                                     </Border>
                                     <TextBlock x:Name="SettingsPreviewSummary" Foreground="#868994" FontSize="11" TextWrapping="Wrap" Text="Dark, 100%" />
-                                </StackPanel>
+                                </StackPanel></ScrollViewer>
                                 </Grid>
                             </TabItem>
                             <TabItem Header="Memory &amp; Java">
