@@ -190,8 +190,8 @@
                     </Grid>
                 </Border>
                 <Grid Grid.Row="1" Grid.Column="1" RowDefinitions="*,Auto">
-                    <Grid x:Name="HomePage" Margin="28,16,28,16" RowDefinitions="Auto,*">
-                        <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,0,0,10">
+                    <Grid x:Name="HomePage" RowDefinitions="Auto,*">
+                        <Grid x:Name="HomeHeader" ColumnDefinitions="Auto,Auto,*,Auto" Margin="28,16,28,10" IsVisible="{Binding !#PlayStandardPanel.IsVisible}">
                             <TextBlock x:Name="HomeTitle" Text="Play" FontSize="24" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,20,0" />
                             <TabControl x:Name="PlaySubTabs" IsVisible="False" Classes="pills" Padding="0" Grid.Column="1" SelectionChanged="PlaySubTabs_SelectionChanged" VerticalAlignment="Center">
                                 <TabItem x:Name="PlayStandardTab" Header="Client" />
@@ -201,83 +201,115 @@
                                 <TextBlock x:Name="MinecraftVersionText" Text="Minecraft" Foreground="#B8B9C2" FontSize="11" />
                             </Border>
                         </Grid>
-                        <Grid x:Name="PlayStandardPanel" Grid.Row="1" RowDefinitions="Auto,*,Auto">
-                            <Border Grid.Row="0" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" ClipToBounds="True" Height="140">
-                                <!-- Compact banner at the top (1.13.25): hero title on the left, fixed-width artwork, then the network card (zero overlap). The middle of the page stays empty for now; the launch row sits at the bottom. -->
+                        <!-- Play page design B (hero launch): hero with the launch row, then a JUMP IN row of four cards. -->
+                        <Grid x:Name="PlayStandardPanel" Grid.Row="1" RowDefinitions="55*,45*">
+                            <Border Grid.Row="0" Background="#1D1E22" ClipToBounds="True" MinHeight="250">
                                 <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" MinWidth="250" />
-                                        <ColumnDefinition Width="196" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Canvas x:Name="ParticleCanvas" Grid.Column="0" IsHitTestVisible="False" Opacity="0.10" />
-                                    <StackPanel Grid.Column="0" Margin="18,8,12,8" VerticalAlignment="Center" Spacing="4">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <Border Width="14" Height="2" Background="{DynamicResource LadsAccent}" VerticalAlignment="Center" />
-                                            <TextBlock Text="BUILT FOR YOUR GAME" Classes="caption" FontSize="9" />
-                                        </StackPanel>
-                                        <TextBlock Text="THE LADS CLIENT." FontFamily="Bahnschrift SemiCondensed,Inter" FontSize="30" FontWeight="Bold" LetterSpacing="-0.5" />
-                                        <TextBlock Text="Your worlds. Your mods. Your people." Foreground="#999BA5" FontSize="13" />
-                                    </StackPanel>
-                                    <!-- Fixed-width artwork column with nothing overlapping the image. -->
-                                    <Border Grid.Column="1" BorderBrush="#303137" BorderThickness="1,0,1,0" ClipToBounds="True" IsHitTestVisible="False">
+                                    <Border>
                                         <Border.Background>
-                                            <ImageBrush Source="avares://TheLadsLauncher/Assets/artwork.jpg" Stretch="UniformToFill" AlignmentX="Center" AlignmentY="Top" />
+                                            <ImageBrush Source="avares://TheLadsLauncher/Assets/artwork.jpg" Stretch="UniformToFill" AlignmentX="Right" AlignmentY="Top" />
                                         </Border.Background>
                                     </Border>
-                                    <!-- One click into the network from the first page, with its live status vertically centred beside the artwork (MainWindow.Network.cs). -->
-                                    <Border Grid.Column="2" Background="#191A1E" Padding="14,0">
-                                        <StackPanel VerticalAlignment="Center" Spacing="8">
-                                            <Button x:Name="NetworkPlayButton" Classes="launch" Height="44" MinWidth="184" Padding="12,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Launch and join The Lads Network (mc.arashyt.ca)" IsEnabled="{Binding #LaunchButton.IsEnabled}" Click="NetworkPlay_Click">
-                                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"><c:Glyph Kind="play" Size="14" VerticalAlignment="Center" /><TextBlock Text="Play The Lads Network" FontWeight="Bold" FontSize="14" VerticalAlignment="Center" /></StackPanel>
+                                    <Border IsHitTestVisible="False">
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                                                <GradientStop Color="#F21D1E22" Offset="0" />
+                                                <GradientStop Color="#D61D1E22" Offset="0.6" />
+                                                <GradientStop Color="#001D1E22" Offset="1" />
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                    </Border>
+                                    <Canvas x:Name="ParticleCanvas" IsHitTestVisible="False" Opacity="0.10" />
+                                    <StackPanel Margin="32,0,32,32" VerticalAlignment="Bottom" HorizontalAlignment="Left" Spacing="0">
+                                        <TextBlock Text="READY TO PLAY" Classes="caption" Foreground="#B8B9C2" />
+                                        <TextBlock x:Name="HeroTitle" Text="Minecraft" Classes="notranslate" FontFamily="Bahnschrift SemiCondensed,Inter" FontSize="56" FontWeight="Bold" Margin="0,8,0,0" />
+                                        <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,8,0,24">
+                                            <TextBlock x:Name="HeroLoaderText" Text="Fabric" Foreground="#B8B9C2" FontSize="14" />
+                                            <TextBlock Text="&#183;" Foreground="#B8B9C2" FontSize="14" />
+                                            <TextBlock Text="{Binding #ModCountText.Text}" FontFeatures="+tnum" Foreground="#B8B9C2" FontSize="14" />
+                                            <TextBlock Text="mods" Foreground="#B8B9C2" FontSize="14" />
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="16">
+                                            <Button x:Name="LaunchButton" Classes="launch" FontSize="22" FontWeight="Bold" Foreground="White" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Right-click to launch with a different account" Click="LaunchButton_Click" Height="56" Width="210" VerticalAlignment="Bottom">
+                                                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                    <c:Glyph Kind="play" Size="18" Foreground="White" VerticalAlignment="Center" />
+                                                    <TextBlock Text="Play" FontWeight="Bold" FontSize="22" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <Button.ContextMenu>
+                                                    <ContextMenu x:Name="LaunchContextMenu">
+                                                        <MenuItem Header="Launch with account:" IsEnabled="False" />
+                                                    </ContextMenu>
+                                                </Button.ContextMenu>
                                             </Button>
-                                            <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
-                                                <Ellipse x:Name="NetworkStatusDot" Width="8" Height="8" Fill="#6B6D76" VerticalAlignment="Center" />
-                                                <TextBlock x:Name="NetworkStatusText" Text="Checking..." Foreground="#B8B9C2" FontSize="11" VerticalAlignment="Center" />
+                                            <StackPanel Spacing="4" VerticalAlignment="Bottom">
+                                                <TextBlock Text="PROFILE" Classes="caption" Foreground="#B8B9C2" />
+                                                <ComboBox x:Name="LaunchProfileSelector" Classes="launchPicker notranslate" FontSize="14" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" ToolTip.Tip="Choose the Minecraft profile to launch" SelectionChanged="LaunchProfileSelector_SelectionChanged" Height="56" Width="210" />
+                                            </StackPanel>
+                                            <StackPanel Spacing="4" VerticalAlignment="Bottom">
+                                                <TextBlock Text="PLAYING AS" Classes="caption" Foreground="#B8B9C2" />
+                                                <ComboBox x:Name="LaunchAccountSelector" Classes="launchPicker" PlaceholderText="Select an account" FontSize="14" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" ToolTip.Tip="Launch with this account (does not change your main account)" SelectionChanged="LaunchAccountSelector_SelectionChanged" Height="56" Width="210">
+                                                    <ComboBox.ItemTemplate>
+                                                        <DataTemplate x:DataType="models:AccountChoice">
+                                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                                <Border Width="24" Height="24" CornerRadius="4" ClipToBounds="True" Background="#303137">
+                                                                    <Image Source="{Binding Head}" Width="24" Height="24" RenderOptions.BitmapInterpolationMode="None" />
+                                                                </Border>
+                                                                <TextBlock Text="{Binding Label}" Classes="notranslate" VerticalAlignment="Center" />
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ComboBox.ItemTemplate>
+                                                </ComboBox>
                                             </StackPanel>
                                         </StackPanel>
+                                    </StackPanel>
+                                    <ProgressBar x:Name="ProgressBar" Height="2" Minimum="0" Maximum="100" Value="0" VerticalAlignment="Bottom" />
+                                </Grid>
+                            </Border>
+                            <Grid Grid.Row="1" Margin="32,20,32,20" RowDefinitions="Auto,*,Auto">
+                                <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,10">
+                                    <TextBlock Text="JUMP IN" Classes="caption" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="StatusText" Grid.Column="1" Text="Ready to play" Foreground="#B8B9C2" FontSize="12" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                </Grid>
+                                <Grid Grid.Row="1" ColumnDefinitions="*,*,*,*">
+                                    <Border Grid.Column="0" Margin="0,0,8,0" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" Padding="8">
+                                        <Grid RowDefinitions="Auto,*,Auto">
+                                            <Border Height="48" CornerRadius="3" Background="#191A1E"><c:Glyph Kind="globe" Size="24" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                                            <StackPanel Grid.Row="1" Margin="4,6,4,6" Spacing="2" VerticalAlignment="Center">
+                                                <TextBlock Text="The Lads Network" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" />
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <Ellipse x:Name="NetworkStatusDot" Width="8" Height="8" Fill="#6B6D76" VerticalAlignment="Center" />
+                                                    <TextBlock x:Name="NetworkStatusText" Text="Checking..." Foreground="#B8B9C2" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                            <Button x:Name="NetworkPlayButton" Grid.Row="2" Classes="action" Background="Transparent" Content="Join" HorizontalAlignment="Stretch" Height="32" ToolTip.Tip="Launch and join The Lads Network (mc.arashyt.ca)" IsEnabled="{Binding #LaunchButton.IsEnabled}" Click="NetworkPlay_Click" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Grid.Column="1" Margin="4,0,4,0" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" Padding="8">
+                                        <Grid RowDefinitions="Auto,*,Auto">
+                                            <Border Height="48" CornerRadius="3" Background="#191A1E"><Image Source="avares://TheLadsLauncher/Assets/lads_smp_reborn_icon.png" Width="36" Height="36" HorizontalAlignment="Center" /></Border>
+                                            <StackPanel Grid.Row="1" Margin="4,6,4,6" VerticalAlignment="Center"><TextBlock Text="Lads SMP Reborn" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" /></StackPanel>
+                                            <Button Grid.Row="2" Classes="action" Background="Transparent" Content="Launch" HorizontalAlignment="Stretch" Height="32" ToolTip.Tip="Open Experiences" Click="NavExperiences_Click" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Grid.Column="2" Margin="4,0,4,0" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" Padding="8">
+                                        <Grid RowDefinitions="Auto,*,Auto">
+                                            <Border Height="48" CornerRadius="3" Background="#191A1E"><Image Source="avares://TheLadsLauncher/Assets/zero_smp_icon.png" Width="72" Height="36" HorizontalAlignment="Center" /></Border>
+                                            <StackPanel Grid.Row="1" Margin="4,6,4,6" VerticalAlignment="Center"><TextBlock Text="Zero SMP" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" /></StackPanel>
+                                            <Button Grid.Row="2" Classes="action" Background="Transparent" Content="Launch" HorizontalAlignment="Stretch" Height="32" ToolTip.Tip="Open Experiences" Click="NavExperiences_Click" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Grid.Column="3" Margin="8,0,0,0" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" Padding="8">
+                                        <Grid RowDefinitions="Auto,*,Auto">
+                                            <Border Height="48" CornerRadius="3" Background="#191A1E"><c:Glyph Kind="sparkles" Size="24" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                                            <StackPanel Grid.Row="1" Margin="4,6,4,6" VerticalAlignment="Center"><TextBlock Text="Lads Horizon" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" /></StackPanel>
+                                            <Button Grid.Row="2" Classes="action" Background="Transparent" Content="Launch" HorizontalAlignment="Stretch" Height="32" ToolTip.Tip="Open Experiences" Click="NavExperiences_Click" />
+                                        </Grid>
                                     </Border>
                                 </Grid>
-                            </Border>
-                            <Border Grid.Row="2" Margin="0,14,0,0" BorderBrush="#303137" BorderThickness="0,1,0,1" Padding="0,16,0,14">
-                                <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,*,220">
-                                    <TextBlock Text="PROFILE" Classes="caption" Margin="0,0,0,7" />
-                                    <TextBlock Grid.Column="1" Text="PLAYING AS" Classes="caption" Margin="0,0,0,7" />
-                                    <Grid Grid.Row="1" Grid.ColumnSpan="3" ColumnDefinitions="*,*,220">
-                                        <ComboBox x:Name="LaunchProfileSelector" Classes="launchPicker notranslate" FontSize="16" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" ToolTip.Tip="Choose the Minecraft profile to launch" SelectionChanged="LaunchProfileSelector_SelectionChanged" Height="69" HorizontalAlignment="Stretch" Grid.Column="0" Margin="0,0,12,0" />
-                                        <ComboBox x:Name="LaunchAccountSelector" Classes="launchPicker" PlaceholderText="Select an account" FontSize="16" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" ToolTip.Tip="Launch with this account (does not change your main account)" SelectionChanged="LaunchAccountSelector_SelectionChanged" Height="69" HorizontalAlignment="Stretch" Grid.Column="1" Margin="0,0,16,0">
-                                            <ComboBox.ItemTemplate>
-                                                <DataTemplate x:DataType="models:AccountChoice">
-                                                    <StackPanel Orientation="Horizontal" Spacing="12">
-                                                        <Border Width="32" Height="32" CornerRadius="4" ClipToBounds="True" Background="#303137">
-                                                            <Image Source="{Binding Head}" Width="32" Height="32" RenderOptions.BitmapInterpolationMode="None" />
-                                                        </Border>
-                                                        <TextBlock Text="{Binding Label}" Classes="notranslate" VerticalAlignment="Center" />
-                                                    </StackPanel>
-                                                </DataTemplate>
-                                            </ComboBox.ItemTemplate>
-                                        </ComboBox>
-                                        <Button x:Name="LaunchButton" Classes="launch" FontSize="22" FontWeight="Bold" Foreground="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Right-click to launch with a different account" Click="LaunchButton_Click" Height="69" Grid.Column="2" MinWidth="220" Margin="0">
-                                            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                <c:Glyph Kind="play" Size="18" Foreground="White" VerticalAlignment="Center" />
-                                                <TextBlock Text="Play" FontWeight="Bold" FontSize="22" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                            <Button.ContextMenu>
-                                                <ContextMenu x:Name="LaunchContextMenu">
-                                                    <MenuItem Header="Launch with account:" IsEnabled="False" />
-                                                </ContextMenu>
-                                            </Button.ContextMenu>
-                                        </Button>
-                                    </Grid>
-                                    <StackPanel Grid.Row="2" Grid.ColumnSpan="3" Margin="0,10,0,0" Spacing="5">
-                                        <TextBlock x:Name="StatusText" Text="Ready to play" Foreground="#9C9EA8" FontSize="11" TextWrapping="Wrap" />
-                                        <ProgressBar x:Name="ProgressBar" Height="2" Minimum="0" Maximum="100" Value="0" />
-                                    </StackPanel>
-                                    <Border x:Name="HomeSharedNotice" Grid.Row="3" Grid.ColumnSpan="3" IsVisible="False" Margin="0,10,0,0" Background="#202125" BorderBrush="#3A3B42" BorderThickness="1" CornerRadius="4" Padding="12,8" />
-                                </Grid>
-                            </Border>
+                                <Border x:Name="HomeSharedNotice" Grid.Row="2" IsVisible="False" Margin="0,10,0,0" Background="#202125" BorderBrush="#3A3B42" BorderThickness="1" CornerRadius="4" Padding="12,8" />
+                            </Grid>
                         </Grid>
-                        <views:ExperiencesView x:Name="ExperiencesPage" Grid.Row="1" IsVisible="False" />
+                        <views:ExperiencesView x:Name="ExperiencesPage" Grid.Row="1" IsVisible="False" Margin="28,0,28,16" />
                     </Grid>
                     <Grid x:Name="AccountsPage" IsVisible="False" Margin="28,24,28,24" ColumnDefinitions="330,20,*">
                         <!-- Left Column: Account Actions -->
