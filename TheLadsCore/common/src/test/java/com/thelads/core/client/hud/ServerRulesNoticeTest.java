@@ -190,6 +190,22 @@ class ServerRulesNoticeTest {
         ServerRulesNotice.clearPolicyToast();
     }
 
+    @Test
+    void testBossBarHudShiftsOnlyWhereItMeetsTheToast() {
+        ServerRulesNotice.clearPolicyToast();
+        var atTop = new HudGroupLayout.Rect(309, 8, 182, 19);
+        assertEquals(0, HudManager.bossShift(atTop, 1), "no toast: no shift");
+        ServerRulesNotice.showPolicyToast("Title", "Notice");
+        ServerRulesNotice.render(new MockGraphics(800, 600));
+        try { Thread.sleep(300); } catch (InterruptedException ignored) {}
+        int shift = HudManager.bossShift(atTop, 1);
+        assertTrue(shift > 0, "under the toast it moves down, was " + shift);
+        assertEquals(Math.round(shift * 0.5), HudManager.bossShift(new HudGroupLayout.Rect(154, 4, 91, 9), 0.5), "follows the HUD's own units");
+        assertEquals(0, HudManager.bossShift(new HudGroupLayout.Rect(0, 8, 182, 19), 1), "dragged beside the toast: stays");
+        assertEquals(0, HudManager.bossShift(new HudGroupLayout.Rect(309, 300, 182, 19), 1), "dragged below it: stays");
+        ServerRulesNotice.clearPolicyToast();
+    }
+
     private static class MockGraphics implements LadsGraphics {
         private final int width, height;
 

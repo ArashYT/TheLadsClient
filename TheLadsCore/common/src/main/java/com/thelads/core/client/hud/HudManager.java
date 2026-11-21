@@ -200,6 +200,14 @@ public class HudManager {
      */
     public boolean coverChanged() {
         if (game == null) return false;
+        // The Boss Bar slides with the toast, drawn from the capped build: rebuild every frame while it moves and once as it stops.
+        var boss = get("BossBar");
+        var bossAt = boss == null || !boss.isEnabled() ? null : lastPlaced.get("BossBar");
+        boolean shifted = bossAt != null && bossShift(bossAt, unit) > 0;
+        if (shifted || shifted != bossShifted) {
+            bossShifted = shifted;
+            return true;
+        }
         if (coverMoved) {
             coverMoved = false;
             return true;
@@ -234,7 +242,17 @@ public class HudManager {
             return;
         }
         if (name != null) coverMoved |= covered.remove(name);
-        element.renderAt(g, at.x(), at.y(), false);
+        // The Lads Boss Bar clears the policy toast like vanilla's does; only where its box meets the toast's span.
+        element.renderAt(g, at.x(), at.y() + (element instanceof BossBarHudElement ? bossShift(at, unit) : 0), false);
+    }
+
+    private boolean bossShifted;
+
+    /** How far (Lads HUD units) the toast pushes a HUD placed at {@code at} down, 0 when it is away or the HUD is beside it. */
+    static int bossShift(HudGroupLayout.Rect at, double unit) {
+        int y = (int) Math.round(at.y() / unit);
+        int shift = ServerRulesNotice.clearOf((int) Math.round(at.x() / unit), (int) Math.round(at.right() / unit), y) - y;
+        return shift <= 0 ? 0 : (int) Math.round(shift * unit);
     }
 
     private boolean isExempt(HudElement element) {

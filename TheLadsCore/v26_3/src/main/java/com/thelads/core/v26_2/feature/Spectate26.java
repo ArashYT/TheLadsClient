@@ -1,6 +1,7 @@
 package com.thelads.core.v26_2.feature;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.thelads.core.client.hud.ServerRulesNotice;
 import com.thelads.core.client.ladsapi.LadsApiClient;
 import com.thelads.core.client.ladsapi.SpectateState;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -133,7 +134,10 @@ public final class Spectate26 {
         }
         int labelWidth = mc.font.width(label), width = labelWidth + 6 + mc.font.width(name) + 16;
         // Vanilla draws a boss bar every 19 px from y 12, its name 9 px above it, until a third of the screen is used.
-        int x = (graphics.guiWidth() - width) / 2, y = Math.min(4 + 19 * bossBars(mc), graphics.guiHeight() / 3 + 4);
+        int bars = bossBars(mc), cx = graphics.guiWidth() / 2;
+        int x = cx - width / 2, y = Math.min(4 + 19 * bars, graphics.guiHeight() / 3 + 4);
+        // Follows the boss bars (and the Lads API toast they step below); with none, steps below the toast itself.
+        y = bars > 0 ? y + ServerRulesNotice.clearOf(cx - 91, cx + 91, 12) - 12 : ServerRulesNotice.clearOf(x, x + width, y);
         graphics.fill(x, y, x + width, y + 14, 0x99000000);
         graphics.fill(x, y, x + 2, y + 14, 0xFFE0443C);
         graphics.text(mc.font, label, x + 8, y + 3, 0xFFB8B8B8, false);

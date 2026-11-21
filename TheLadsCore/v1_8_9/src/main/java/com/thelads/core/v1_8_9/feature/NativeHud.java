@@ -5,6 +5,7 @@ import com.thelads.core.client.FrameAnimation;
 import com.thelads.core.client.hud.HudCover;
 import com.thelads.core.client.hud.HudManager;
 import com.thelads.core.client.hud.ScoreboardHudElement;
+import com.thelads.core.client.hud.ServerRulesNotice;
 import com.thelads.core.config.DropdownOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
@@ -16,6 +17,7 @@ import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.entity.boss.BossStatus;
 import net.minecraftforge.client.GuiIngameForge;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.InputEvent;
 import org.lwjgl.input.Mouse;
@@ -75,6 +77,27 @@ public final class NativeHud {
             || HudCover.sidebarCovered(event.resolution.getScaledWidth(), event.resolution.getScaledHeight(), mc.fontRendererObj::getStringWidth);
         if (hide || hidSidebar) GuiIngameForge.renderObjective = !hide;
         hidSidebar = hide;
+    }
+
+    private static boolean bossShifted;
+
+    /** Vanilla's boss bar (GuiIngame.renderBossHealth, drawn from y 12) starts below the Lads API toast, sliding with it. Last, so nothing cancels after. */
+    @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
+    public void bossBarBelowToast(RenderGameOverlayEvent.Pre event) {
+        if (event.type != RenderGameOverlayEvent.ElementType.BOSSHEALTH || event.isCanceled()) return;
+        int cx = event.resolution.getScaledWidth() / 2;
+        int shift = ServerRulesNotice.clearOf(cx - 91, cx + 91, 12) - 12;
+        if (shift <= 0) return;
+        GL11.glPushMatrix();
+        GL11.glTranslatef(0, shift, 0);
+        bossShifted = true;
+    }
+
+    @SubscribeEvent(priority = EventPriority.HIGHEST, receiveCanceled = true)
+    public void bossBarBelowToastEnd(RenderGameOverlayEvent.Post event) {
+        if (event.type != RenderGameOverlayEvent.ElementType.BOSSHEALTH || !bossShifted) return;
+        bossShifted = false;
+        GL11.glPopMatrix();
     }
 
     @SubscribeEvent
