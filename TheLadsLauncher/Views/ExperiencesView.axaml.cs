@@ -102,6 +102,36 @@ public partial class ExperiencesView : UserControl
         ZeroSmpModsText.Text = $"{ExperiencesService.ZeroSmp.ModCount} Mods";
         ToolTip.SetTip(LadsSmpRebornRamBox, $"{ExperiencesService.LadsSmpReborn.RecommendedRamMb} MB");
         ToolTip.SetTip(ZeroSmpRamBox, $"{ExperiencesService.ZeroSmp.RecommendedRamMb} MB");
+        // The Play page's cards mirror these cards; every status message (install steps, launch) reaches them through here.
+        LadsSmpRebornStatusText.GetObservable(TextBlock.TextProperty).Subscribe(new Avalonia.Reactive.AnonymousObserver<string?>(_ => StateChanged?.Invoke()));
+        ZeroSmpStatusText.GetObservable(TextBlock.TextProperty).Subscribe(new Avalonia.Reactive.AnonymousObserver<string?>(_ => StateChanged?.Invoke()));
+    }
+
+    /// <summary>Raised whenever an experience's installed/running/busy state or status message may have changed.</summary>
+    public event Action? StateChanged;
+
+    /// <summary>What the Play page's card for an experience shows. <paramref name="Message"/> is the install/launch step while busy.</summary>
+    public sealed record HomeState(bool Visible, bool Installed, bool Running, bool Busy, string? PackVersion, string? Message, ExperiencesService.ExperienceButtonState Button);
+
+    internal HomeState GetHomeState(ExperienceDefinition exp)
+    {
+        bool reborn = exp == ExperiencesService.LadsSmpReborn;
+        string instanceId = reborn ? LadsSmpRebornInstanceId : ZeroSmpInstanceId;
+        bool installed = ExperiencesService.IsInstalled(DataDirectory, instanceId);
+        bool running = HasRunningProcess(reborn ? _runningLadsSmpReborn : _runningZeroSmp);
+        bool busy = (reborn ? _ladsSmpRebornCts : _zeroSmpCts) != null;
+        var button = ExperiencesService.GetExperienceButtonState(exp, installed, running, busy, Host?.ModpackSettings.AllowMultiInstance == true);
+        string? pack = installed ? ExperiencesService.GetInstance(DataDirectory, instanceId)?.PackVersion : null;
+        string? message = (reborn ? LadsSmpRebornStatusText : ZeroSmpStatusText).Text;
+        return new HomeState(!reborn || LadsSmpRebornCard.IsVisible, installed, running, busy, pack, message, button);
+    }
+
+    /// <summary>The Play page's card button: the same handler as the Experiences card's own Play / Install button.</summary>
+    internal void StartExperience(ExperienceDefinition exp)
+    {
+        RefreshState(); // the account selector the handler reads
+        if (exp == ExperiencesService.LadsSmpReborn) LadsSmpRebornPlay_Click(null, new RoutedEventArgs());
+        else ZeroSmpPlay_Click(null, new RoutedEventArgs());
     }
 
     public async Task LoadAsync()
@@ -202,6 +232,7 @@ public partial class ExperiencesView : UserControl
             SyncAccountSelector(host, LadsSmpRebornAccountSelector);
             SyncAccountSelector(host, ZeroSmpAccountSelector);
         }
+        StateChanged?.Invoke();
     }
 
     /// <summary>Invite-only: the Lads SMP Reborn card shows only when one of the Microsoft accounts is invited (/smp_invite on Discord).</summary>
@@ -215,7 +246,7 @@ public partial class ExperiencesView : UserControl
         bool allowed;
         try { allowed = await ExperiencesService.HasAccessAsync(DataDirectory, ExperiencesService.LadsSmpReborn, names); }
         catch { allowed = false; }
-        if (key == _accessKey) LadsSmpRebornCard.IsVisible = allowed;
+        if (key == _accessKey) { LadsSmpRebornCard.IsVisible = allowed; StateChanged?.Invoke(); }
     }
 
     private void RefreshCardState(
