@@ -78,8 +78,8 @@
               </ComboBox.ItemTemplate>
             </ComboBox>
 
-            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
-              <Button c:Ico.Name="play" x:Name="LadsSmpRebornPlayBtn" Classes="launch" Content="Play" Height="46" MinWidth="136" Padding="28,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="16" FontWeight="Bold" Click="LadsSmpRebornPlay_Click" />
+            <WrapPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal" VerticalAlignment="Center" ItemSpacing="10" LineSpacing="8">
+              <Button c:Ico.Name="play" x:Name="LadsSmpRebornPlayBtn" Classes="launch" Content="Play" Height="46" MinWidth="136" Padding="18,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="16" FontWeight="Bold" Click="LadsSmpRebornPlay_Click" />
               <Button c:Ico.Name="cross" x:Name="LadsSmpRebornCancelBtn" Classes="action" Content="Cancel" Height="46" Padding="20,0" IsVisible="False" Click="LadsSmpRebornCancel_Click" />
 
               <Button x:Name="LadsSmpRebornInstancesDropdownBtn" Classes="action" Height="46" Padding="14,0" IsVisible="False" ToolTip.Tip="Manage running The Lads SMP Reborn instances">
@@ -92,12 +92,9 @@
                   <MenuFlyout Placement="BottomEdgeAlignedLeft" />
                 </Button.Flyout>
               </Button>
-            </StackPanel>
-
-            <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
               <Button c:Ico.Name="folder-open" x:Name="LadsSmpRebornFolderBtn" Classes="action" Content="Open folder" Height="36" Click="LadsSmpRebornFolder_Click" />
               <Button c:Ico.Name="refresh" x:Name="LadsSmpRebornReinstallBtn" Classes="action" Content="Reinstall" Height="36" Click="LadsSmpRebornReinstall_Click" />
-            </StackPanel>
+            </WrapPanel>
           </Grid>
 
           <!-- Quick Close Running Instances Strip -->
@@ -191,8 +188,8 @@
               </ComboBox.ItemTemplate>
             </ComboBox>
 
-            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
-              <Button c:Ico.Name="play" x:Name="ZeroSmpPlayBtn" Classes="launch" Content="Play" Height="46" MinWidth="136" Padding="28,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="16" FontWeight="Bold" Click="ZeroSmpPlay_Click" />
+            <WrapPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal" VerticalAlignment="Center" ItemSpacing="10" LineSpacing="8">
+              <Button c:Ico.Name="play" x:Name="ZeroSmpPlayBtn" Classes="launch" Content="Play" Height="46" MinWidth="136" Padding="18,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="16" FontWeight="Bold" Click="ZeroSmpPlay_Click" />
               <Button c:Ico.Name="cross" x:Name="ZeroSmpCancelBtn" Classes="action" Content="Cancel" Height="46" Padding="20,0" IsVisible="False" Click="ZeroSmpCancel_Click" />
 
               <Button x:Name="ZeroSmpInstancesDropdownBtn" Classes="action" Height="46" Padding="14,0" IsVisible="False" ToolTip.Tip="Manage running Zero SMP instances">
@@ -209,12 +206,9 @@
               <CheckBox x:Name="ZeroSmpAutoJoinCheck" Content="Auto-join server" VerticalAlignment="Center" FontSize="12" Margin="6,0,0,0"
                         ToolTip.Tip="Join the Zero SMP server automatically as soon as the game has loaded."
                         IsCheckedChanged="ZeroSmpAutoJoin_Changed" />
-            </StackPanel>
-
-            <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
               <Button c:Ico.Name="folder-open" x:Name="ZeroSmpFolderBtn" Classes="action" Content="Open folder" Height="36" Click="ZeroSmpFolder_Click" />
               <Button c:Ico.Name="refresh" x:Name="ZeroSmpReinstallBtn" Classes="action" Content="Reinstall" Height="36" Click="ZeroSmpReinstall_Click" />
-            </StackPanel>
+            </WrapPanel>
           </Grid>
 
           <!-- Quick Close Running Instances Strip -->
