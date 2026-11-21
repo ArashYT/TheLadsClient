@@ -880,6 +880,7 @@ public partial class MainWindow : Window
             foreach (string game in _runningProcesses.Where(p => IsGameRunning(p.Key)).Select(p => p.Value).ToList()) WriteInGameUpdate(game, starting: false);
         }
         ToolTip.SetTip(UpdateNowBtn, $"Version {version} is ready. Click to install it and restart the launcher.");
+        CheckUpdateBtn.IsVisible = false; // the check button turns into the red Update button
         if (UpdateNowHost.IsVisible) return;
         UpdateNowHost.IsVisible = true;
         Log($"[Updater] v{version} is ready; waiting for the Update button.");
