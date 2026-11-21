@@ -28,5 +28,8 @@ public final class ExtraModules {
         manager.register(INPUT_OPTIMIZER, Module.Category.MECHANIC);
         manager.register(AUDIO_ENGINE, Module.Category.MECHANIC);
         manager.register(RENTITIES, Module.Category.MECHANIC);
+        // Player LOD: skipped when another stream already registered it (e.g. from ModuleManager).
+        if (manager.getModule(PlayerLodModule.NAME) == null) manager.register(new PlayerLodModule(), Module.Category.MECHANIC);
+        com.thelads.core.config.ModuleSupport.registerBuiltIn(PlayerLodModule.NAME);
     }
 }
