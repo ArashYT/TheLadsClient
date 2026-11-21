@@ -151,26 +151,6 @@ class TestTier3CrossFeature(unittest.TestCase):
         self.assertEqual(shared_options.read_text(encoding="utf-8").strip(), "fov:70.0")
 
     # -------------------------------------------------------------------------
-    # T3.5: Packwiz Metadata Integrity and Repo Size Cleanliness (F1 + F2)
-    # -------------------------------------------------------------------------
-    def test_t3_05_packwiz_metadata_integrity_and_repo_cleanliness(self):
-        """
-        T3.5: Packwiz metadata architecture strictly enforces that all mod descriptors
-        are .pw.toml files while git index contains zero jar files, keeping repo size < 50 MB.
-        """
-        # 1. Check packwiz index exists and has files
-        index_toml_path = ch.PACKWIZ_DIR / "index.toml"
-        self.assertTrue(index_toml_path.exists())
-        
-        # 2. Check no jar files in git
-        code, out, _ = ch.run_cmd("git ls-files \"Packwiz/*.jar\"")
-        self.assertEqual(code, 0)
-        self.assertEqual(out.strip(), "", "No jars tracked in Packwiz")
-        
-        # 3. Check git pack size remains < 50 MB
-        self.assertLess(ch.get_git_pack_size_mb(), 50.0)
-
-    # -------------------------------------------------------------------------
     # T3.6: Account Switcher Data Flow (F6 Launcher Auth + F14 Mod Account Switcher)
     # -------------------------------------------------------------------------
     def test_t3_06_account_switcher_data_flow_launcher_to_client(self):

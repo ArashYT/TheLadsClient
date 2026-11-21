@@ -17,7 +17,7 @@ public sealed class ModChoiceInstallTests : IDisposable
         var pack = ModSandbox.Jar("zoomify");
         var own = ModSandbox.Jar("usermod");
         var pin = box.Pin("zoomify", pack);
-        box.WriteManifest("26.2", new[] { pin });
+        box.WriteManifest("26.3", new[] { pin });
         box.WriteReceipt(("zoomify", pack));
         File.WriteAllBytes(box.Mod("lads-zoomify.jar.disabled"), pack);
         File.WriteAllBytes(box.Mod("user.jar.disabled"), own);
@@ -43,7 +43,7 @@ public sealed class ModChoiceInstallTests : IDisposable
         var pack = ModSandbox.Jar("zoomify");
         var own = ModSandbox.Jar("zoomify", "own-build");
         var pin = box.Pin("zoomify", pack);
-        box.WriteManifest("26.2", new[] { pin });
+        box.WriteManifest("26.3", new[] { pin });
         box.WriteReceipt(("zoomify", pack));
         File.WriteAllBytes(box.Mod("lads-zoomify.jar.disabled"), pack);
         File.WriteAllBytes(box.Mod("zoomify-own.jar.disabled"), own);
@@ -64,7 +64,7 @@ public sealed class ModChoiceInstallTests : IDisposable
     [Fact]
     public async Task ExplicitlyDisabledPackModIsNotDownloaded()
     {
-        box.WriteManifest("26.2", new[] { box.Pin("zoomify", ModSandbox.Jar("zoomify")) });
+        box.WriteManifest("26.3", new[] { box.Pin("zoomify", ModSandbox.Jar("zoomify")) });
         box.Choose(("zoomify", false));
         await box.Install();
         Assert.Empty(Directory.GetFiles(box.Mods));
@@ -76,7 +76,7 @@ public sealed class ModChoiceInstallTests : IDisposable
     {
         var bytes = ModSandbox.Jar("zoomify");
         var pin = box.Pin("zoomify", bytes);
-        box.WriteManifest("26.2", new[] { pin });
+        box.WriteManifest("26.3", new[] { pin });
         await box.Install();
         Assert.Equal(bytes, File.ReadAllBytes(box.Mod(pin.FileName)));
 
@@ -95,7 +95,7 @@ public sealed class ModChoiceInstallTests : IDisposable
     [Fact]
     public async Task UserJarsFollowExplicitChoicesByRenameOnly()
     {
-        box.WriteManifest("26.2", Array.Empty<ClientModInstaller.Entry>());
+        box.WriteManifest("26.3", Array.Empty<ClientModInstaller.Entry>());
         var own = ModSandbox.Jar("usermod");
         File.WriteAllBytes(box.Mod("My Mod (1.0).jar"), own);
         box.Choose(("usermod", false));
@@ -140,7 +140,7 @@ public sealed class ModChoiceInstallTests : IDisposable
         var pack = ModSandbox.Jar("xxx");
         var own = ModSandbox.Jar("xxx", "own-build");
         var pin = box.Pin("xxx", pack);
-        box.WriteManifest("26.2", new[] { pin });
+        box.WriteManifest("26.3", new[] { pin });
         box.WriteReceipt(("xxx", pack));
         File.WriteAllBytes(box.Mod(pin.FileName), pack);
         File.WriteAllBytes(box.Mod("mine-xxx.jar.disabled"), own);
@@ -157,7 +157,7 @@ public sealed class ModChoiceInstallTests : IDisposable
     public async Task ChoiceSavedDuringDownloadsAbortsTheCommit()
     {
         var bytes = ModSandbox.Jar("zoomify");
-        box.WriteManifest("26.2", new[] { box.Pin("zoomify", bytes) });
+        box.WriteManifest("26.3", new[] { box.Pin("zoomify", bytes) });
         await Assert.ThrowsAsync<IOException>(() => box.Install(status: message =>
         {
             if (message == "Preparing client mod changes...") box.Choose(("zoomify", false));
@@ -171,7 +171,7 @@ public sealed class ModChoiceInstallTests : IDisposable
     {
         var library = box.Pin("cloth-config", ModSandbox.Jar("cloth-config", name: "Cloth Config"));
         var consumer = box.Pin("betterf3", ModSandbox.Jar("betterf3", depends: new() { ["cloth-config"] = ">=26.2.0" }, name: "BetterF3"));
-        box.WriteManifest("26.2", new[] { library, consumer });
+        box.WriteManifest("26.3", new[] { library, consumer });
         box.Choose(("cloth-config", false));
         var error = await Assert.ThrowsAsync<ClientModDependencyException>(() => box.Install());
         Assert.Contains("BetterF3 (betterf3) requires cloth-config >=26.2.0, which is disabled", error.Message);
@@ -183,25 +183,25 @@ public sealed class ModChoiceInstallTests : IDisposable
     public async Task ExplicitCoreDisableNeedsNoBundleAndInstallsNothing()
     {
         box.Choose(("theladscore", false));
-        Assert.False(await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "26.2"));
+        Assert.False(await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "26.3"));
         Assert.Empty(Directory.GetFiles(box.Mods));
     }
 
     [Fact]
     public async Task CoreDisabledSurvivesBothInstallersAndComesBackWhenEnabled()
     {
-        var core = ModSandbox.Core("26.2");
-        box.WriteCore("26.2", core);
+        var core = ModSandbox.Core("26.3");
+        box.WriteCore("26.3", core);
         var bytes = ModSandbox.Jar("zoomify");
         var pin = box.Pin("zoomify", bytes);
-        box.WriteManifest("26.2", new[] { pin });
-        Assert.True(await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "26.2"));
+        box.WriteManifest("26.3", new[] { pin });
+        Assert.True(await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "26.3"));
         await box.Install();
 
         box.Choose(("theladscore", false));
         for (var run = 0; run < 2; run++)
         {
-            await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "26.2");
+            await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "26.3");
             await box.Install();
             Assert.Equal(core, File.ReadAllBytes(box.Mod("theladscore.jar.disabled")));
             Assert.False(File.Exists(box.Mod("theladscore.jar")));
@@ -209,7 +209,7 @@ public sealed class ModChoiceInstallTests : IDisposable
         }
 
         box.Choose(("theladscore", true));
-        Assert.True(await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "26.2"));
+        Assert.True(await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "26.3"));
         Assert.Equal(core, File.ReadAllBytes(box.Mod("theladscore.jar")));
         Assert.False(File.Exists(box.Mod("theladscore.jar.disabled")));
         Assert.Equal(core, File.ReadAllBytes(Directory.GetFiles(Path.Combine(box.Game, "mods-disabled"), "theladscore.jar.disabled",
@@ -219,14 +219,14 @@ public sealed class ModChoiceInstallTests : IDisposable
     [Fact]
     public async Task DisabledCoreNextToAReinstalledCopyKeepsOnlyTheDisabledOne()
     {
-        var core = ModSandbox.Core("26.2");
-        var older = ModSandbox.Jar("theladscore", "1.1.0", new() { ["minecraft"] = "26.2" });
-        box.WriteCore("26.2", core);
+        var core = ModSandbox.Core("26.3");
+        var older = ModSandbox.Jar("theladscore", "1.1.0", new() { ["minecraft"] = "26.3" });
+        box.WriteCore("26.3", core);
         File.WriteAllBytes(box.Mod("theladscore.jar.disabled"), older);
         File.WriteAllBytes(box.Mod("theladscore.jar"), core);
         box.Choose(("theladscore", false));
 
-        Assert.True(await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "26.2"));
+        Assert.True(await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "26.3"));
 
         Assert.Equal(older, File.ReadAllBytes(box.Mod("theladscore.jar.disabled")));
         Assert.False(File.Exists(box.Mod("theladscore.jar")));
@@ -237,12 +237,12 @@ public sealed class ModChoiceInstallTests : IDisposable
     [Fact]
     public async Task WithoutAChoiceALeftoverDisabledCoreIsBackedUpAndCoreInstalled()
     {
-        var core = ModSandbox.Core("26.2");
-        var older = ModSandbox.Jar("theladscore", "1.1.0", new() { ["minecraft"] = "26.2" });
-        box.WriteCore("26.2", core);
+        var core = ModSandbox.Core("26.3");
+        var older = ModSandbox.Jar("theladscore", "1.1.0", new() { ["minecraft"] = "26.3" });
+        box.WriteCore("26.3", core);
         File.WriteAllBytes(box.Mod("theladscore.jar.disabled"), older);
 
-        Assert.True(await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "26.2"));
+        Assert.True(await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "26.3"));
 
         Assert.Equal(core, File.ReadAllBytes(box.Mod("theladscore.jar")));
         Assert.False(File.Exists(box.Mod("theladscore.jar.disabled")));

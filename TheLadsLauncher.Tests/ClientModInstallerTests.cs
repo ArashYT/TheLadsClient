@@ -20,12 +20,12 @@ public sealed class ClientModInstallerTests : IDisposable
             writer.Write(JsonSerializer.Serialize(new {schemaVersion=1,id,version}));
         return bytes.ToArray();
     }
-    private ClientModInstaller.Entry Manifest(byte[] bytes, string game = "26.2", string? hash = null, string id = "testmod", string? url = null)
+    private ClientModInstaller.Entry Manifest(byte[] bytes, string game = "26.3", string? hash = null, string id = "testmod", string? url = null)
     {
         var entry = new ClientModInstaller.Entry("test", "test", "Test Mod", id, "v1", "1", "testmod.jar",
             url ?? "https://cdn.modrinth.com/data/test/versions/v1/test.jar", hash ?? Convert.ToHexString(SHA512.HashData(bytes)),
             bytes.Length, "MIT", null, "https://modrinth.com/mod/test");
-        var dir = Path.Combine(root, "game-mods", "26.2"); Directory.CreateDirectory(dir);
+        var dir = Path.Combine(root, "game-mods", "26.3"); Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, "client-mods.json"), JsonSerializer.Serialize(new ClientModInstaller.Manifest(game, new() {entry})));
         return entry;
     }
@@ -38,7 +38,7 @@ public sealed class ClientModInstallerTests : IDisposable
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) {Content = new ByteArrayContent(bytes)});
         }
     }
-    private Task Install(HttpClient client, CancellationToken token = default) => ClientModInstaller.InstallAsync(root, Game, "26.2", cancellationToken:token, httpClient:client);
+    private Task Install(HttpClient client, CancellationToken token = default) => ClientModInstaller.InstallAsync(root, Game, "26.3", cancellationToken:token, httpClient:client);
 
     [Fact] public async Task InstallsVerifiedJarThenLaunchesWithoutDownloadingAgain()
     {
@@ -90,9 +90,9 @@ public sealed class ClientModInstallerTests : IDisposable
         Assert.Equal(first, File.ReadAllBytes(Assert.Single(Directory.GetFiles(Cache, "previous-testmod-*.jar"))));
     }
     [Theory]
-    [InlineData("1.21.11", "testmod", "https://cdn.modrinth.com/mod.jar")]
-    [InlineData("26.2", "../escape", "https://cdn.modrinth.com/mod.jar")]
-    [InlineData("26.2", "testmod", "https://example.com/mod.jar")]
+    [InlineData("1.20.1", "testmod", "https://cdn.modrinth.com/mod.jar")]
+    [InlineData("26.3", "../escape", "https://cdn.modrinth.com/mod.jar")]
+    [InlineData("26.3", "testmod", "https://example.com/mod.jar")]
     public async Task InvalidManifestRejectedBeforeDownload(string game, string id, string url)
     {
         var bytes=Jar("testmod"); Manifest(bytes,game,id:id,url:url); var handler=new Handler(bytes); using var client=new HttpClient(handler);
@@ -108,7 +108,7 @@ public sealed class ClientModInstallerTests : IDisposable
     {
         var bytes=Jar("testmod"); Manifest(bytes); using var client=new HttpClient(new Handler(bytes)); await Install(client);
         var personal=Path.Combine(Mods,"personal.jar"); var own=Jar("personal");File.WriteAllBytes(personal,own);
-        File.WriteAllText(Path.Combine(root,"game-mods","26.2","client-mods.json"),JsonSerializer.Serialize(new ClientModInstaller.Manifest("26.2",new())));
+        File.WriteAllText(Path.Combine(root,"game-mods","26.3","client-mods.json"),JsonSerializer.Serialize(new ClientModInstaller.Manifest("26.3",new())));
         await Install(client);Assert.False(File.Exists(Destination));Assert.Equal(own,File.ReadAllBytes(personal));
         Assert.Equal(bytes, File.ReadAllBytes(Path.Combine(Cache, "retired", "testmod", "testmod.jar")));
     }
@@ -124,9 +124,9 @@ public sealed class ClientModInstallerTests : IDisposable
             "https://cdn.modrinth.com/data/test/versions/v1/" + id + ".jar", Sha(bytes), bytes.Length, "MIT", null, "https://modrinth.com/mod/test");
     private void WritePins(params (string Id, byte[] Bytes)[] pins)
     {
-        var dir = Path.Combine(root, "game-mods", "26.2"); Directory.CreateDirectory(dir);
+        var dir = Path.Combine(root, "game-mods", "26.3"); Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, "client-mods.json"),
-            JsonSerializer.Serialize(new ClientModInstaller.Manifest("26.2", pins.Select(p => Pin(p.Id, p.Bytes)).ToList())));
+            JsonSerializer.Serialize(new ClientModInstaller.Manifest("26.3", pins.Select(p => Pin(p.Id, p.Bytes)).ToList())));
     }
     private sealed class ScriptedHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
     {
@@ -137,7 +137,7 @@ public sealed class ClientModInstallerTests : IDisposable
         new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(
             pins.Single(p => request.RequestUri!.AbsolutePath.EndsWith("/" + p.Id + ".jar")).Bytes) }));
     private Task InstallWithStatus(HttpClient client, Action<string> status, CancellationToken token = default) =>
-        ClientModInstaller.InstallAsync(root, Game, "26.2", status, token, client);
+        ClientModInstaller.InstallAsync(root, Game, "26.3", status, token, client);
     private Dictionary<string, string> ReadReceipt() =>
         JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(Receipt))!;
     private static byte[] FabricJar(string id, Dictionary<string, object>? depends = null, string[]? provides = null,
@@ -235,8 +235,7 @@ public sealed class ClientModInstallerTests : IDisposable
     }
 
     [Theory]
-    [InlineData("1.21.11")]
-    [InlineData("26.2")]
+    [InlineData("26.3")]
     public async Task SupportedFabricRuntimeSuppliesMixinExtras(string minecraft)
     {
         var bytes = FabricJar("dynamic_fps", new() { ["mixinextras"] = ">=0.3.2" });
@@ -516,7 +515,7 @@ public sealed class ClientModInstallerTests : IDisposable
             using var client = new HttpClient(new Handler(bytes));
             if (target == "ancestor")
                 await Assert.ThrowsAsync<IOException>(() => ClientModInstaller.InstallAsync(root,
-                    Path.Combine(link, "new-profile"), "26.2", httpClient: client));
+                    Path.Combine(link, "new-profile"), "26.3", httpClient: client));
             else await Assert.ThrowsAsync<IOException>(() => Install(client));
             Assert.False(File.Exists(Destination)); Assert.False(Directory.Exists(Path.Combine(external, "new-profile")));
             if (target == "receipt") Assert.Equal("{}", File.ReadAllText(Path.Combine(external, "receipt.json")));

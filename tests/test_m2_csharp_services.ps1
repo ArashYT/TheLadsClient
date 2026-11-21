@@ -93,7 +93,7 @@ try {
     $pathSvc = [TheLadsLauncher.Services.PathService]::new($pSandbox)
     $profileSvc = [TheLadsLauncher.Services.ProfileService]::new($pathSvc)
 
-    Run-TestCase "ProfileService Default Catalog Parity (1.21.1, 26.2, Latest Release)" {
+    Run-TestCase "ProfileService Default Catalog Parity (1.21.1, 26.3, Latest Release)" {
         $profiles = $profileSvc.GetProfiles()
         if ($profiles.Count -lt 3) {
             throw "Expected at least 3 default profiles, got $($profiles.Count)"
@@ -104,10 +104,10 @@ try {
         if ($p121.JavaMajorVersion -ne 21) { throw "Profile 1.21.1 must use Java 21, got $($p121.JavaMajorVersion)" }
         if ($p121.IsIsolated) { throw "Profile 1.21.1 must NOT be isolated by default" }
 
-        $p262 = $profiles | Where-Object { $_.MinecraftVersion -eq "26.2" }
-        if (-not $p262) { throw "Default profile 26.2 missing" }
-        if ($p262.JavaMajorVersion -ne 25) { throw "Profile 26.2 must use Java 25, got $($p262.JavaMajorVersion)" }
-        if ($p262.IsIsolated) { throw "Profile 26.2 must NOT be isolated by default" }
+        $p263 = $profiles | Where-Object { $_.MinecraftVersion -eq "26.3" }
+        if (-not $p263) { throw "Default profile 26.3 missing" }
+        if ($p263.JavaMajorVersion -ne 25) { throw "Profile 26.3 must use Java 25, got $($p263.JavaMajorVersion)" }
+        if ($p263.IsIsolated) { throw "Profile 26.3 must NOT be isolated by default" }
 
         $pLatest = $profiles | Where-Object { $_.MinecraftVersion -eq "latest.release" }
         if (-not $pLatest) { throw "Default profile latest.release missing" }
@@ -117,15 +117,15 @@ try {
     Run-TestCase "ProfileService Active Profile Switching" {
         $profiles = $profileSvc.GetProfiles()
         $p121 = $profiles | Where-Object { $_.MinecraftVersion -eq "1.21.1" }
-        $p262 = $profiles | Where-Object { $_.MinecraftVersion -eq "26.2" }
+        $p263 = $profiles | Where-Object { $_.MinecraftVersion -eq "26.3" }
 
         $profileSvc.SetActiveProfile($p121.Id)
         $active1 = $profileSvc.GetActiveProfile()
         if ($active1.Id -ne $p121.Id) { throw "Failed setting active profile to 1.21.1" }
 
-        $profileSvc.SetActiveProfile($p262.Id)
+        $profileSvc.SetActiveProfile($p263.Id)
         $active2 = $profileSvc.GetActiveProfile()
-        if ($active2.Id -ne $p262.Id) { throw "Failed setting active profile to 26.2" }
+        if ($active2.Id -ne $p263.Id) { throw "Failed setting active profile to 26.3" }
         if ($active2.JavaMajorVersion -ne 25) { throw "Active profile JavaMajorVersion must be 25" }
     }
 
@@ -224,7 +224,7 @@ try {
 
     Run-TestCase "Shared Sync: Two Profiles Share options.txt and servers.dat" {
         $p1 = $syncProfileSvc.CreateProfile("Profile_1", "1.21.1", 21, $false)
-        $p2 = $syncProfileSvc.CreateProfile("Profile_2", "26.2", 25, $false)
+        $p2 = $syncProfileSvc.CreateProfile("Profile_2", "26.3", 25, $false)
 
         $dir1 = $syncPath.GetProfileDirectory($p1)
         $dir2 = $syncPath.GetProfileDirectory($p2)

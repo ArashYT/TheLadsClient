@@ -161,7 +161,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Launcher publish failed.' }
     # Holds the "Installing update" screen while Update.exe swaps the launcher (UpdateBridge.cs); without it updates show nothing.
     if (-not (Test-Path -LiteralPath (Join-Path $publishDir 'LadsUpdateBridge.exe'))) { throw 'Missing LadsUpdateBridge.exe' }
-    foreach ($gameVersion in @('1.8.9','1.20.1','1.21.11','26.2','26.3')) {
+    foreach ($gameVersion in @('1.8.9','1.20.1','26.3')) {
         foreach ($file in @('theladscore.jar','client-mods.json')) {
             if (-not (Test-Path -LiteralPath (Join-Path $publishDir "game-mods/$gameVersion/$file"))) { throw "Missing $gameVersion/$file" }
         }

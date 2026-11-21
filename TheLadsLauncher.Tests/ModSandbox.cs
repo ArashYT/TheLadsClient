@@ -105,7 +105,7 @@ internal sealed class ModSandbox : IDisposable
 
     public HttpClient Client() => new(new Handler(this));
 
-    public async Task Install(string version = "26.2", Action<string>? status = null)
+    public async Task Install(string version = "26.3", Action<string>? status = null)
     {
         using var client = Client();
         await ClientModInstaller.InstallAsync(Bundle, Game, version, message => { Messages.Add(message); status?.Invoke(message); },

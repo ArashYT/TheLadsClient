@@ -25,7 +25,7 @@ dependencies {
 
     implementation project(':common')
     // Retained MIT configuration libraries from the pinned 26.2 gallery; CatConfig-MC is the 26.3 copy (libs/README.md).
-    implementation files('libs/catconfig-mc-26.2-0.2.1.jar', '../v26_2/libs/catconfig-0.3.0.jar')
+    implementation files('libs/catconfig-mc-26.2-0.2.1.jar', 'libs/catconfig-0.3.0.jar')
     implementation('ca.weblite:java-objc-bridge:1.0.0') { transitive = false }
     include 'ca.weblite:java-objc-bridge:1.0.0'
     // Editor API only; the pinned pack supplies Cloth Config as a retained library.

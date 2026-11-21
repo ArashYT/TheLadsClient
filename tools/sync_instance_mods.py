@@ -19,14 +19,10 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 AUDIT = ROOT / 'artifacts/mod-audit'
 REFRESH = False
 UPDATE = False
-GAMES = ['1.20.1', '1.21.11', '26.2', '26.3']  # 1.8.9 is Forge (its own manifest); 1.21.1 was dropped in 1.6.0
+GAMES = ['1.20.1', '26.3']  # 1.8.9 is Forge (its own manifest); 1.21.1 was dropped in 1.6.0, 1.21.11 and 26.2 later
 # Only replacements implemented by these version adapters may suppress upstream jars.
 NATIVE = {
     '1.20.1': {'threads': 'ThreadPriorityModule', 'appleskin': 'NativeFood', 'clumps': 'NativeClumps',
-             'dynamic_fps': 'NativeDynamicFps', 'autoreconnectrf': 'NativeReconnect',
-             'chatsigninghider': 'ChatIndicatorMixin', 'classic_minecraft_icon': 'WindowIconMixin'},
-    '1.21.11': {'threads': 'ThreadPriorityModule', 'classic_minecraft_icon': 'WindowIconMixin', 'autohidehud': 'NativeAutohide'},
-    '26.2': {'threads': 'ThreadPriorityModule', 'appleskin': 'NativeFood', 'clumps': 'NativeClumps',
              'dynamic_fps': 'NativeDynamicFps', 'autoreconnectrf': 'NativeReconnect',
              'chatsigninghider': 'ChatIndicatorMixin', 'classic_minecraft_icon': 'WindowIconMixin'},
     '26.3': {'threads': 'ThreadPriorityModule', 'appleskin': 'NativeFood', 'clumps': 'NativeClumps',
@@ -41,24 +37,21 @@ EMBEDDED = {'entity_texture_features': 'embedded.etf', 'entity_model_features': 
             'searchables': 'embedded.controlling', 'nbtac': 'embedded.nbtac', 'capes': 'embedded.capes',
             'tooltipstxf': 'embedded.tooltips', 'fixbookgui': 'embedded.fixbookgui', 'hoveringhotbar': 'embedded.hoveringhotbar'}
 for _game, _cushions, _playtime in [('1.20.1', 'optimizedcushionsbackport', 'worldplaytimereborn'),
-                                    ('1.21.11', 'optimizedcushionsbackport', 'worldplaytimereborn'),
-                                    ('26.2', 'optimizedcushionsbackport', 'worldplaytimereborn'),
                                     ('26.3', 'optimizedcushions', 'worldplaytimereborn')]:
     NATIVE[_game].update(EMBEDDED, **{_cushions: 'embedded.cushions', _playtime: 'embedded.playtime'})
-# 1.7.0: Lads' own remakes replace these jars on 26.x (1.21.11 is frozen and keeps them). Configured Defaults lives in the launcher.
-for _game in ['1.20.1', '26.2', '26.3']:
+# 1.7.0: Lads' own remakes replace these jars on 26.x. Configured Defaults lives in the launcher.
+for _game in ['1.20.1', '26.3']:
     NATIVE[_game].update({'asynclogger': 'AsyncLogging', 'betterf3': 'NativeBetterF3', 'chat_heads': 'NativeChatHeads',
                           'configureddefaults': 'PackDefaults (launcher)', 'customfov': 'NativeCustomFov',
                           'jasione': 'EnumValuesHook', 'lambdynlights': 'NativeDynamicLights', 'mousetweaks': 'NativeMouseTweaks',
                           'netprodis': 'PacketErrorGuardMixin'})
 # Dropped from one game's pack only (modId -> reason); unlike REMOVED, other games keep it.
-DROPPED = {_game: {'libjf': 'Only Jasione used it (libjf:asm); Jasione is native since 1.7.0.'} for _game in ['1.20.1', '26.2', '26.3']}
+DROPPED = {_game: {'libjf': 'Only Jasione used it (libjf:asm); Jasione is native since 1.7.0.'} for _game in ['1.20.1', '26.3']}
 # Iris 1.10.7 pins Sodium 0.8.7; newer add-ons require Sodium 0.8.14.
 # Original projects supplying a feature instead of the source instance's newer fork, per (game, mod): none since 1.21.1 left.
 COMPATIBLE_PROJECTS = {}
 COMPATIBLE_RELEASES = {# Flashback needs voicechat_api >= 2.6.24, which only ships as 'beta' uploads.
-                       ('1.21.11', 'voicechat'): 'MLNG868g', ('26.2', 'voicechat'): 'Ls232EsW', ('26.3', 'voicechat'): 'OLnMVWXy',
-                       ('1.21.11', 'reeses-sodium-options'): 'yIgAFMna', ('1.21.11', 'sodium-extra'): 'yqY1efrC'}
+                       ('26.3', 'voicechat'): 'OLnMVWXy'}
 KNOWN = {'autoreconnectrf': 'PRy8Khga', 'clientsort': 'K0AkAin6',
          'cloth-config': '9s6osm5g', 'fastershadowmapper': 'nSRLvOHG'}
 # Removed from the pack (modId -> Modrinth project), matched by either key. They are never surveyed, preserved or
@@ -70,8 +63,8 @@ KNOWN = {'autoreconnectrf': 'PRy8Khga', 'clientsort': 'K0AkAin6',
 REMOVED = {'goodmc': 'hwir46QE', 'gammautils': 'wdLuzzEP', 'motionblur': 'fWundlde', 'motionblurplus': 'Qbkde6rq',
            'satin': 'fRbqPLg4', 'sound_physics_remastered': 'qyVF9oeo', 'clientsort': 'K0AkAin6',
            'nopackcompatcheck': '1agMh8Z8', 'essential': 'k2ZPuTBm', 'essential-container': 'k2ZPuTBm'}
-# A frozen pack keeps a mod that left the others (1.21.11 has been frozen since 1.6.0).
-KEPT = {'1.21.11': {'nopackcompatcheck'}}
+# A frozen pack keeps a mod that left the others (none now: 1.21.11, the last frozen pack, is dropped).
+KEPT = {}
 
 
 def removed(mod_id, project_id, game):

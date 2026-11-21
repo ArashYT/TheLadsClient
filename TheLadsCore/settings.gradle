@@ -20,8 +20,6 @@ if (versionFile.exists() && propsFile.exists()) {
 rootProject.name = 'TheLadsCore'
 include 'common'
 include 'v1_20_1'
-include 'v1_21_11'
-include 'v26_2'
 
 include 'v26_3'
 include 'forge_earlywindow' // the Lads early loading window for Forge 1.20.1 packs (lads-earlywindow.jar)

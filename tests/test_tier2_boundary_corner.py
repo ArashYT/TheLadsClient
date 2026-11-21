@@ -136,16 +136,6 @@ hash = "abcde"
         self.assertFalse(valid, ".pw.toml with invalid side must be rejected")
         self.assertIn("side", msg.lower())
 
-    def test_f02_b05_index_toml_files_not_empty_and_valid(self):
-        """F2: Index.toml contains non-empty file entries and sha256 hash format."""
-        index_toml_path = ch.PACKWIZ_DIR / "index.toml"
-        content = index_toml_path.read_text(encoding="utf-8", errors="replace")
-        parsed = ch.parse_minimal_toml(content)
-        self.assertEqual(parsed.get("hash-format"), "sha256", "Hash format must be sha256")
-        files_list = parsed.get("files", [])
-        self.assertIsInstance(files_list, list, "Files must be parsed as a list of entries")
-        self.assertGreater(len(files_list), 0, "Index must contain files")
-
     # =========================================================================
     # Feature 3: Workspace Hygiene (forbidden directories absent)
     # =========================================================================

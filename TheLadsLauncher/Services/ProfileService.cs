@@ -563,7 +563,7 @@ public class ProfileService : IProfileService
         }
         var newest = NewestVersion;
         if (profile.MinecraftVersion is "latest.release" or "latest-release"
-            || (profile.Name == LatestReleaseName && profile.MinecraftVersion != newest && GameVersionPolicy.RequiresFabric(profile.MinecraftVersion)))
+            || (profile.Name == LatestReleaseName && profile.MinecraftVersion != newest && (GameVersionPolicy.RequiresFabric(profile.MinecraftVersion) || GameVersionPolicy.IsPaused(profile.MinecraftVersion))))
         {
             var oldVersion = profile.MinecraftVersion;
             profile.MinecraftVersion = newest;
@@ -605,7 +605,7 @@ public class ProfileService : IProfileService
             changed = true;
         }
 
-        if (profile.MinecraftVersion is "1.20.1" or "1.21.11" or "26.2" or "26.3")
+        if (profile.MinecraftVersion is "1.20.1" or "26.3")
         {
             var requiredJava = GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion);
             if (profile.JavaMajorVersion < requiredJava)

@@ -55,25 +55,6 @@ if ($hasSkinLayersMixins) {
     Write-Output "  - SkinLayers Mixins: NOT FOUND (not yet ported/integrated)"
 }
 
-# 2. gradle.properties version checks
-$propertiesPath = "TheLadsCore/gradle.properties"
-Write-Output "[Validation] Checking gradle.properties for Minecraft 26.2 target:"
-if (Test-Path $propertiesPath) {
-    $propertiesContent = Get-Content $propertiesPath -Raw
-    if ($propertiesContent -match "minecraft_version\s*=\s*(?<version>\S+)") {
-        $mcVersion = $Matches['version']
-        if ($mcVersion -eq "26.2") {
-            Write-Output "  - Minecraft Version: Target 26.2 (PASS)"
-        } else {
-            Write-Warning "  - Minecraft Version: target is not 26.2 (currently: $mcVersion)"
-        }
-    } else {
-        Write-Warning "  - Minecraft Version: minecraft_version not found in gradle.properties"
-    }
-} else {
-    Write-Warning "  - gradle.properties not found at $propertiesPath"
-}
-
 # 3. Shaded jar verification checks
 Write-Output "[Validation] Checking shaded jar statuses in build output:"
 $buildLibsDir = "TheLadsCore/build/libs"

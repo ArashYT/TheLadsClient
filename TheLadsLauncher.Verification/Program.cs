@@ -785,7 +785,7 @@ try
     foreach (var line in QaShared.AddMods(Path.Combine(directory, "mods"), Env("LADS_VERIFY_ADD_MODS"))) { Console.WriteLine(line); summary.Add(line); }
     if (Env("LADS_VERIFY_V133") == "1")
     {
-        string addon = Path.Combine(root,"TheLadsCore",version=="26.3"?"v26_3":"v26_2","build","verification","lads-jade-addon-qa.jar");
+        string addon = Path.Combine(root,"TheLadsCore","v26_3","build","verification","lads-jade-addon-qa.jar");
         File.Copy(addon,Path.Combine(directory,"mods","lads-jade-addon-qa.jar"),true);
     }
     // As LaunchService: OptiFine from optifine.net, checked against the pinned SHA-256 and cached in the sandbox launcher folder.
@@ -1278,7 +1278,7 @@ try
     GameOptionsService.EnsureDataVersion(directory, version); // as GameSession.Configure in the launcher: this options.txt is written after it
     QaDiscord.ForceOff(directory); // QA games never show on the owner's Discord (Essential's activity status, Lads DiscordRPC)
     var stopwatch = Stopwatch.StartNew();
-    // 26.3 (SDL) shows its window without activating it; QaWindowGuard covers 1.8.9 and 26.2 (and moves every game window).
+    // 26.3 (SDL) shows its window without activating it; QaWindowGuard covers 1.8.9 (and moves every game window).
     if (Environment.GetEnvironmentVariable("LADS_VERIFY_FOCUS") != "1") process.StartInfo.Environment["SDL_WINDOW_ACTIVATE_WHEN_SHOWN"] = "0";
     // At most 3 QA games machine-wide, each with >= 4 GB free RAM (QaShared). Runs that need the game in front (LADS_VERIFY_FOCUS=1) are the exclusive .qa-game-lock ones.
     if (Environment.GetEnvironmentVariable("LADS_VERIFY_FOCUS") != "1")
@@ -1653,17 +1653,16 @@ if (process != null && HasStarted(process))
 lock (logGate) { log?.Dispose(); log = null; }
 if (File.Exists(logPath)) File.Copy(logPath, Path.Combine(evidence, $"production-smoke-{scenario}.log"), overwrite: true);
 if (capabilities.Forge) CopyIfExists(gameLog, Path.Combine(evidence, $"latest-{scenario}.log"));
-// Catalog parity with 26.3 (or 26.2 reference if present): informational, or a failure with LADS_VERIFY_PARITY=1 (the release gate).
+// Catalog parity with 26.3: informational, or a failure with LADS_VERIFY_PARITY=1 (the release gate).
 // 1.8.9's first-release scope is deliberately smaller (artifacts\1.4.0\PLAN-1.4.0.md): there it is only reported.
 bool parityGate = Env("LADS_VERIFY_PARITY") == "1" && !capabilities.Forge;
 if (!expectCoreDisabled && process != null && HasStarted(process))
 {
     var parityLines = new List<string>();
-    // 26.3 is the reference itself; the others compare with the newest 26.3 (else 26.2) catalog a run left in this worktree.
+    // 26.3 is the reference itself; the others compare with the newest 26.3 catalog a run left in this worktree.
     string? referencePath = version == "26.3" ? null : new[] {
             Path.Combine(verificationRoot, "26.3-title", "lads-core-catalog.json"),
-            Path.Combine(verificationRoot, "26.3", "lads-core-catalog.json"),
-            Path.Combine(verificationRoot, "26.2-title", "lads-core-catalog.json")
+            Path.Combine(verificationRoot, "26.3", "lads-core-catalog.json")
         }.FirstOrDefault(File.Exists);
 
     if (referencePath == null)
@@ -1673,7 +1672,7 @@ if (!expectCoreDisabled && process != null && HasStarted(process))
     }
     else
     {
-        string refVer = referencePath.Contains("26.3", StringComparison.Ordinal) ? "26.3" : "26.2";
+        const string refVer = "26.3";
         if (capabilities.Forge)
             parityLines.Add($"Lads catalog parity: report only on {version}, whose first-release scope is deliberately smaller than {refVer}'s; LADS_VERIFY_PARITY does not apply.");
         try
@@ -1880,7 +1879,7 @@ static string InventoryTable(ModInventory inventory)
 sealed record QaCapabilities(bool SharedCreate, bool RenderScale, bool Welcome, bool Version133, bool Version134, bool Replay,
     bool RequestedFeatures, string[] TitleProbes, string[] WorldProbes)
 {
-    public static readonly string[] Supported = ["1.8.9", "1.20.1", "1.21.11", "26.2", "26.3"];
+    public static readonly string[] Supported = ["1.8.9", "1.20.1", "26.3"];
 
     public bool Forge { get; init; }
     /// <summary>1.20.1: a Fabric Core with only QaProbe1201 (title, QA world, script, screenshots), none of the 26.x probes, snapshots or shared-content reports.</summary>
@@ -1890,7 +1889,7 @@ sealed record QaCapabilities(bool SharedCreate, bool RenderScale, bool Welcome, 
 
     public static QaCapabilities For(string version) => version == "1.20.1"
         ? new(false, false, false, false, false, false, false, [], ["Lads world capture END:"]) { Minimal = true }
-        : version is "26.2" or "26.3"
+        : version == "26.3"
         ? new(true, true, true, true, GraphicsRenderer.SupportsVulkan(version), true, true,
             ["Lads raised title probe END:", "Lads native reconnect probe END:", "Lads background policy probe END:", "Lads native SignalLoss probe END:", "Lads narrator probe END:"],
             ["Lads native feature probe END:", "Lads food probe END:",
@@ -1900,9 +1899,7 @@ sealed record QaCapabilities(bool SharedCreate, bool RenderScale, bool Welcome, 
         // 1.8.9 (Forge): the C1 Core self-test (menu key, pause-menu button, bridge in its own QA world, launcher catalog) is its one probe.
         : GameVersionPolicy.UsesForge(version)
             ? new(false, false, false, false, false, false, false, [], ["Lads 1.8.9 core probe END:"]) { Forge = true }
-        // 1.21.x: NativeWorldVerification on its own QA save, the native feature probe, the U1 menu access probe and the U3 HUD pipeline probe.
-        : new(false, false, false, false, false, false, false, [],
-            ["Lads native feature probe END:", "Lads menu access probe END:", "Lads HUD pipeline probe END:", "Lads world capture END:", "Lads shared content probe END:"]) { KillBanner = true };
+        : throw new ArgumentException($"Unsupported version {version}.");
 }
 
 /// <summary>The mods a loader reported loading, from the game's log lines.</summary>
