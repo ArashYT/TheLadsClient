@@ -82,6 +82,9 @@ public final class TitleOverlay {
         else LAYOUT.open(new Rect(x, y, width, height), LAYOUTS, 120);
     }
 
+    /** QA scripts: where row i of the Layout or Panorama list is, canvas pixels (null while that list is closed). */
+    public static int[] qaRow(boolean layoutMenu, int i) { return (layoutMenu ? LAYOUT : PANORAMA).qaRow(i); }
+
     /** Last in the title's frame, mouse in canvas pixels, dt seconds since the last frame. */
     public static void render(LadsGraphics g, int sw, int sh, int mx, int my, float dt, boolean reducedMotion) {
         if (socialOn()) sidebar().render(g, sw, sh, mx, my, dt, reducedMotion);

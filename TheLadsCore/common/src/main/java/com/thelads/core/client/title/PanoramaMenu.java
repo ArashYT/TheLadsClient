@@ -84,6 +84,13 @@ final class PanoramaMenu {
 
     void close() { open = false; }
 
+    /** QA scripts: the centre of row i in canvas pixels once the open list was laid out, else null. */
+    int[] qaRow(int i) {
+        if (!open || layout == null) return null;
+        Rect l = layout.list();
+        return new int[] { l.x() + l.width() / 2, l.y() + i * TitleOverlayLayout.ROW + TitleOverlayLayout.ROW / 2 - (int) Math.round(scroll) };
+    }
+
     /** Whether the pointer is on the button or the list, or within GRACE of either. */
     static boolean near(Rect button, Rect panel, double x, double y) {
         return TitleOverlayLayout.inside(grow(button, GRACE), x, y) || TitleOverlayLayout.inside(grow(panel, GRACE), x, y);

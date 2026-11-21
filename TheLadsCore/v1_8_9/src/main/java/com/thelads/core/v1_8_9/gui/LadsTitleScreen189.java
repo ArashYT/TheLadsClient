@@ -476,6 +476,9 @@ public final class LadsTitleScreen189 {
         }
     }
 
+    /** QA scripts: the Layout button pressed. */
+    public void qaOpenLayoutList() { openLayoutList(); }
+
     /** The Layout button: its Legacy / New list opens under it. */
     private void openLayoutList() {
         float ms = matrixScale();

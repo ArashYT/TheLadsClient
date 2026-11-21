@@ -111,12 +111,16 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
         if (ladsDiscoverButton == null) return;
         ladsDiscoverButton.setPosition(width - 124, 8);
         ladsColumnsButton.setPosition(8, 8);
-        if (ladsFriendsButton != null) ladsFriendsButton.setPosition(ladsColumnsButton.visible ? 96 : 8, 8); // top left: clear of the title
+        if (ladsFriendsButton != null) { ladsFriendsButton.setWidth(76); ladsFriendsButton.setPosition(ladsColumnsButton.visible ? 96 : 8, 8); } // top left: clear of the title
         int cover = ladsCoverX();
         if (cover >= 0) { // Friends goes left of the button that took the corner, clear of the centred title
             ladsDiscoverButton.setPosition(8, 8);
             ladsColumnsButton.setPosition(128, 8);
-            if (ladsFriendsButton != null) ladsFriendsButton.setPosition(cover - 80, 8);
+            if (ladsFriendsButton != null) {
+                int fx = Math.max(cover - 80, width / 2 + minecraft.font.width(title) / 2 + 4); // never over the centred title
+                ladsFriendsButton.setPosition(fx, 8);
+                ladsFriendsButton.setWidth(Math.max(54, Math.min(76, cover - 4 - fx)));
+            }
         }
     }
 
