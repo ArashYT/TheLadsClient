@@ -6,7 +6,6 @@
     <StackPanel Margin="0,6,0,16" Spacing="16">
       <!-- Section Header -->
       <StackPanel Spacing="4">
-        <TextBlock Text="Experiences" FontSize="20" FontWeight="Bold" />
         <TextBlock Text="Official Modpacks from the Lads Client!"
                    Foreground="#A0A1AA" FontSize="12" TextWrapping="Wrap" />
       </StackPanel>
