@@ -99,12 +99,6 @@ namespace TheLadsLauncher.UpdateBridge
             Rectangle area = Rectangle.Intersect(e.ClipRectangle, new Rectangle(Point.Empty, _image.Size));
             e.Graphics.InterpolationMode = InterpolationMode.NearestNeighbor;   // 1:1, no resampling blur
             e.Graphics.DrawImage(_image, area, area, GraphicsUnit.Pixel);
-            if (!_reducedMotion)
-            {
-                var state = e.Graphics.Save();   // the shine narrows the clip and smoothing to its own pill
-                DrawShine(e.Graphics);
-                e.Graphics.Restore(state);
-            }
             DrawMining(e);
             if (_bridgeShown == null)
             {
@@ -139,33 +133,6 @@ namespace TheLadsLauncher.UpdateBridge
             }
         }
 
-        // Same as the launcher's StartupProgressShine: 110 px (x scale) white #55 centre, sweeping the bar every 1600 ms.
-        void DrawShine(Graphics g)
-        {
-            int border = (int)Math.Round(_scale);
-            Rectangle track = Rectangle.Inflate(_bar, -border, -border);
-            if (track.Width <= 0 || track.Height <= 0) return;
-            float width = 110 * _scale;
-            float x = track.X - width + (float)(_clock.Elapsed.TotalMilliseconds % SweepMs / SweepMs) * (_bar.Width + width);
-            var shine = new RectangleF(x, track.Y, width, track.Height);
-            using (var pill = new GraphicsPath())
-            using (var brush = new LinearGradientBrush(shine, Color.Transparent, Color.Transparent, LinearGradientMode.Horizontal))
-            {
-                float d = track.Height;
-                pill.AddArc(track.X, track.Y, d, d, 90, 180);
-                pill.AddArc(track.Right - d, track.Y, d, d, 270, 180);
-                pill.CloseFigure();
-                brush.InterpolationColors = new ColorBlend
-                {
-                    Colors = new[] { Color.Transparent, Color.FromArgb(0x55, Color.White), Color.Transparent },
-                    Positions = new[] { 0f, 0.5f, 1f },
-                };
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.SetClip(shine, CombineMode.Intersect);
-                g.FillPath(brush, pill);
-            }
-        }
-
         void Tick()
         {
             double now = _clock.Elapsed.TotalMilliseconds;
@@ -174,7 +141,7 @@ namespace TheLadsLauncher.UpdateBridge
             {
                 if (now < _fadeStartMs)   // still holding fully opaque; the shine keeps moving
                 {
-                    if (!_reducedMotion) { Invalidate(_bar); InvalidateMining(); }
+                    if (!_reducedMotion) InvalidateMining();
                     return;
                 }
                 double opacity = 1 - (now - _fadeStartMs) / FadeMs;
@@ -196,7 +163,7 @@ namespace TheLadsLauncher.UpdateBridge
                 if (now - _lastUpdateSeenMs >= _graceMs) { GiveUp("no Update.exe for " + (_graceMs / 1000).ToString(CultureInfo.InvariantCulture) + " s and no launcher signal", true); return; }
                 if (now >= HardCapMs) { GiveUp("10 min cap reached", !installing); return; }
             }
-            if (!_reducedMotion) { Invalidate(_bar); InvalidateMining(); }
+            if (!_reducedMotion) InvalidateMining();
         }
 
         const string LauncherTitle = "The Lads Client";   // MainWindow.axaml Title
