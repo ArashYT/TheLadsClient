@@ -42,6 +42,9 @@ public final class FramePacer {
     private long gpu, cpu;
     private long margin = -1;
     private boolean paced;
+    /** The Low Latency module's tuning (offset, back-off, smoothing, cap); null = the plain always-on pacing. */
+    private LowLatencyTuner tuner;
+    private long lastWaited, lastFrameStart = -1;
     /** QA counters. */
     public long frames, pacedFrames, waitedNs, dryFrames;
 
@@ -54,6 +57,11 @@ public final class FramePacer {
         this.waiter = waiter;
     }
 
+    /** Sets (or clears, null) the Low Latency tuning, once per frame from the render thread. */
+    public void tuner(LowLatencyTuner tuner) {
+        this.tuner = tuner;
+    }
+
     /**
      * Before the frame reads its input. previousDone polls (without blocking) the fence of the last presented frame, olderDone the
      * one before it. Returns the nanoseconds waited; the caller polls input again when it waited.
@@ -63,6 +71,7 @@ public final class FramePacer {
         frames++;
         if (previousDone.getAsBoolean()) { // the GPU already caught up: CPU-bound or capped, nothing queued to skip
             paced = false;
+            lastFrameStart = -1; // capped or CPU-bound frames say nothing about what the wait costs
             lastAnchor = previousDoneAt = -1;
             startedAt = entry;
             return 0;
@@ -81,10 +90,16 @@ public final class FramePacer {
         if (gpu > 0) {
             if (margin < 0) margin = gpu / 4;
             long wake = Math.min(anchor + gpu - cpu - margin, entry + MAX_WAIT);
+            if (tuner != null) wake = Math.min(anchor + tuner.lead(gpu, cpu, gpu - cpu - margin), entry + LowLatencyTuner.CAP_NS);
             if (wake > now) now = waiter.until(wake, previousDone);
         }
         startedAt = now;
         waitedNs += now - entry;
+        lastWaited = now - entry;
+        if (tuner != null) {
+            if (lastFrameStart >= 0) tuner.frame(now - lastFrameStart, lastWaited);
+            lastFrameStart = now;
+        }
         return now - entry;
     }
 

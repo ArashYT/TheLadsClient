@@ -1,6 +1,7 @@
 package com.thelads.core.v1_8_9.mixin;
 
 import com.thelads.core.client.LadsNetwork;
+import com.thelads.core.client.ServerAddressInput;
 import com.thelads.core.client.ServerListColumns;
 import com.thelads.core.client.ServerListDrag;
 import com.thelads.core.client.ServerListEntryUi;
@@ -19,6 +20,7 @@ import net.minecraft.client.gui.ServerListEntryNormal;
 import net.minecraft.client.gui.ServerSelectionList;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.ServerList;
+import net.minecraft.client.resources.I18n;
 import org.lwjgl.input.Keyboard;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -230,5 +232,57 @@ public abstract class GuiMultiplayerMixin189 extends GuiScreen {
         int top = ((ServerListColumns.Rows) serverListSelector).lads$rowTop(next);
         if (top < serverListSelector.top + 4) serverListSelector.scrollBy(top - serverListSelector.top - 4);
         else if (top + serverListSelector.slotHeight > serverListSelector.bottom) serverListSelector.scrollBy(top + serverListSelector.slotHeight - serverListSelector.bottom);
+    }
+
+    /** Ctrl+V adds the clipboard's address, Ctrl+C copies the selected IP, Ctrl+A opens Add Server, Del asks to delete. */
+    @Inject(method = "keyTyped", at = @At("HEAD"), cancellable = true)
+    private void ladsShortcuts(char typed, int key, CallbackInfo ci) {
+        if (ladsMenu.isOpen()) return;
+        boolean ctrl = isCtrlKeyDown() && !isShiftKeyDown() && !isAltKeyDown();
+        int selected = serverListSelector.func_148193_k();
+        if (ctrl && key == Keyboard.KEY_V) {
+            if (ladsPasteServer()) ci.cancel();
+        } else if (ctrl && key == Keyboard.KEY_C) {
+            if (selected >= 0 && serverListSelector.getListEntry(selected) instanceof ServerListEntryNormal) {
+                setClipboardString(((ServerListEntryNormal) serverListSelector.getListEntry(selected)).getServerData().serverIP);
+                ci.cancel();
+            }
+        } else if (ctrl && key == Keyboard.KEY_A) {
+            try {
+                actionPerformed(new GuiButton(3, 0, 0, "")); // vanilla's Add Server button id: same screen and callback
+            } catch (IOException failure) {
+                throw new RuntimeException(failure);
+            }
+            ci.cancel();
+        } else if (key == Keyboard.KEY_DELETE && !isCtrlKeyDown() && btnDeleteServer.enabled
+            && selected >= 0 && serverListSelector.getListEntry(selected) instanceof ServerListEntryNormal) {
+            try {
+                actionPerformed(btnDeleteServer); // vanilla's own confirm screen
+            } catch (IOException failure) {
+                throw new RuntimeException(failure);
+            }
+            ci.cancel();
+        }
+    }
+
+    /** Adds the clipboard's address as a new server (or selects the saved one with the same address). False when it is not an address. */
+    @Unique
+    private boolean ladsPasteServer() {
+        String ip = ServerAddressInput.clean(getClipboardString());
+        if (ip == null) return false;
+        java.util.List<String> saved = new ArrayList<>();
+        for (int i = 0; i < savedServerList.countServers(); i++) saved.add(savedServerList.getServerData(i).serverIP);
+        int index = ServerAddressInput.indexOf(saved, ip);
+        if (index < 0) {
+            savedServerList.addServerData(new ServerData(I18n.format("selectServer.defaultName"), ip, false));
+            savedServerList.saveServerList();
+            serverListSelector.func_148195_a(savedServerList);
+            index = savedServerList.countServers() - 1;
+        }
+        selectServer(index);
+        int top = ((ServerListColumns.Rows) serverListSelector).lads$rowTop(index);
+        if (top < serverListSelector.top + 4) serverListSelector.scrollBy(top - serverListSelector.top - 4);
+        else if (top + serverListSelector.slotHeight > serverListSelector.bottom) serverListSelector.scrollBy(top + serverListSelector.slotHeight - serverListSelector.bottom);
+        return true;
     }
 }

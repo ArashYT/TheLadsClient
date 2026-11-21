@@ -30,6 +30,8 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         SocialBridge.set(new SocialBridge1201());
         com.thelads.core.security.AntiInjectDetector.init();
         com.thelads.core.client.hud.ServerHudElement.registerModules();
+        com.thelads.core.modules.ExtraModules.registerAll(com.thelads.core.config.ModuleManager.getInstance()); // 1.14.4 optimizer modules, before the config loads
+        com.thelads.core.config.ModuleSupport.registerBuiltIn("Pearl Optimizer", "Sword Optimizer", "Low Latency", "Input Optimizer", "Audio Engine");
         ConfigManager.load();
         com.thelads.core.client.util.LogPruner.pruneIfEnabled(new java.io.File("logs"));
         NativeKeyBindings1201.init();
@@ -111,7 +113,9 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
             }
         });
 
+        com.thelads.core.perf.MemoryGuard.registerDefaults();
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            com.thelads.core.perf.MemoryGuard.tick(client.level);
             com.thelads.core.client.bridge.LadsGameBridge.get().tickClient();
             while (NativeKeyBindings1201.FRIENDS.consumeClick()) {
                 if (client.screen == null) {

@@ -17,6 +17,7 @@
     "MinecraftQolMixin26",
     "MouseHandlerQolMixin26",
     "RenderNullPipelineGuardMixin26",
-    "SoundEngineQolMixin26"
+    "SoundEngineQolMixin26",
+    "AudioEngineMixin26"
   ]
 }

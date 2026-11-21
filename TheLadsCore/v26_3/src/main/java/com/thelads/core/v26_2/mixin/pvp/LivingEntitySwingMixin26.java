@@ -1,6 +1,7 @@
 package com.thelads.core.v26_2.mixin.pvp;
 
 import com.thelads.core.client.PvpVisuals;
+import com.thelads.core.perf.HasteAnimFix;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.component.SwingAnimation;
@@ -21,8 +22,17 @@ public class LivingEntitySwingMixin26 {
             } else if (PvpVisuals.swingHasteInfluence < 100) {
                 int haste = living.hasEffect(MobEffects.HASTE) ? 1 + living.getEffect(MobEffects.HASTE).getAmplifier() : 0;
                 int fatigue = living.hasEffect(MobEffects.MINING_FATIGUE) ? 1 + living.getEffect(MobEffects.MINING_FATIGUE).getAmplifier() : 0;
-                cir.setReturnValue(PvpVisuals.getSwingDuration(haste, fatigue, animation.duration()));
+                cir.setReturnValue(HasteAnimFix.clamp(PvpVisuals.getSwingDuration(haste, fatigue, animation.duration())));
             }
+        }
+    }
+
+    /** Haste V and up: vanilla's 1 tick or less draws no swing; the client shows at least 2 (HasteAnimFix). Reached when the head did not answer. */
+    @Inject(method = "getModifiedSwingDuration", at = @At("RETURN"), cancellable = true)
+    private void lads$hasteAnimFix(SwingAnimation animation, CallbackInfoReturnable<Integer> cir) {
+        LivingEntity living = (LivingEntity) (Object) this;
+        if (living.level().isClientSide() && cir.getReturnValueI() < HasteAnimFix.MIN_TICKS) {
+            cir.setReturnValue(HasteAnimFix.clamp(cir.getReturnValueI()));
         }
     }
 }

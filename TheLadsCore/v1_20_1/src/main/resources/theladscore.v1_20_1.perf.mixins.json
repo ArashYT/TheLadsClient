@@ -8,6 +8,8 @@
     "FogColorMixin",
     "FontReloadMixin",
     "FontWidthCacheMixin",
+    "AsyncChatMixin1201",
+    "WrapComponentsMixin1201",
     "JoinMultiplayerInvoker",
     "PacketDecodeGuardMixin",
     "SkyColorMixin",

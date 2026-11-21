@@ -8,6 +8,7 @@
   },
   "client": [
     "AbstractContainerScreenDarkMixin1201",
+    "AttackPredictMixin1201",
     "EntityRenderDispatcherShadowMixin1201",
     "FishingHookLineMixin1201",
     "GameRendererPvpMixin1201",
@@ -17,6 +18,8 @@
     "LightningBoltRendererMixin1201",
     "LivingEntitySwingMixin1201",
     "MobAppearanceParticleMixin1201",
+    "PearlPredictMixin1201",
+    "PredictPacketsMixin1201",
     "ScreenEffectFireMixin1201"
   ]
 }

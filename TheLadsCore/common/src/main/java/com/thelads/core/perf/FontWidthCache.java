@@ -50,6 +50,7 @@ public final class FontWidthCache {
      */
     public static void clear() {
         CACHE.clear();
+        ChatAsync.fontsChanged();
     }
 
     public static int size() {
