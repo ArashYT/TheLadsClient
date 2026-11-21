@@ -3815,6 +3815,8 @@ public partial class MainWindow : Window
             : settings.SelectedMinecraftVersionOverride;
         string loader = GameVersionPolicy.UsesForge(mcVersion) ? "Forge" : "Fabric";
         MinecraftVersionText.Text = $"Minecraft {mcVersion} / {loader}";
+        HeroTitle.Text = $"Minecraft {mcVersion}";
+        HeroLoaderText.Text = loader;
         GameLaunchVersionText.Text = $"Minecraft {mcVersion} · {loader}";
     }
 
