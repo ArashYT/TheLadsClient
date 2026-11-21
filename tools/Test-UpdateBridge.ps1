@@ -1,9 +1,7 @@
 #Requires -Version 7.0
 # Runs LadsUpdateBridge.exe against a fake Update.exe (a PING copy) in a temp root with spaces and a non-ASCII name.
 # Never touches the real %TEMP%\TheLadsClient-update, %LOCALAPPDATA%\TheLadsClient or .theladsclient: TEMP/TMP point into the root.
-# -Slow adds case 5 (~31 s): a bridge with no launcher signal drops its always-on-top after 30 s.
-[CmdletBinding()]
-param([switch]$Slow)
+# The bridge is a normal window (never WS_EX_TOPMOST); case 5 checks it only keeps itself above a window titled like the launcher.
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $root = Join-Path $repoRoot "artifacts/bridge-test/bridge test J$([char]0xF6)ns"
@@ -57,7 +55,7 @@ function Invoke-ShownCase([string]$name, [double[]]$client, [double[]]$bar, [str
         Assert ($bridge.MainWindowTitle -eq 'The Lads Client') "${name}: window titled 'The Lads Client' (got '$($bridge.MainWindowTitle)')"
         $rect = if ($bridge.MainWindowHandle -ne 0) { [BridgeTestWin32]::Rect($bridge.MainWindowHandle) -join ',' } else { 'no window' }
         Assert ($rect -eq ($client -join ',')) "${name}: window at $($client -join ',') (got $rect)"
-        Assert ($bridge.MainWindowHandle -ne 0 -and [BridgeTestWin32]::TopMost($bridge.MainWindowHandle)) "${name}: window is WS_EX_TOPMOST"
+        Assert ($bridge.MainWindowHandle -ne 0 -and -not [BridgeTestWin32]::TopMost($bridge.MainWindowHandle)) "${name}: window is NOT WS_EX_TOPMOST"
         $deadline = [DateTime]::UtcNow.AddSeconds(1)
         while ($update.PriorityClass -ne 'High' -and [DateTime]::UtcNow -lt $deadline) { Start-Sleep -Milliseconds 50; $update.Refresh() }
         Assert ($update.PriorityClass -eq 'High') "${name}: fake Update.exe raised to High within 1 s (got $($update.PriorityClass))"
@@ -101,6 +99,19 @@ public static class BridgeTestWin32 {
     [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
     [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
     [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr hWnd, int index);
+    [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr hWnd, uint cmd);
+    [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
+    // True when a is above b in z-order (a is found walking GW_HWNDPREV from b).
+    public static bool Above(IntPtr a, IntPtr b) {
+        for (IntPtr w = GetWindow(b, 3); w != IntPtr.Zero; w = GetWindow(w, 3)) if (w == a) return true;
+        return false;
+    }
+    // HWND_TOP without activating (NOMOVE | NOSIZE | NOACTIVATE).
+    public static void Raise(IntPtr hWnd) { SetWindowPos(hWnd, IntPtr.Zero, 0, 0, 0, 0, 0x13); }
+    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+    // A background process may not raise above the foreground window; the Alt tap lets this one take the foreground.
+    public static void Foreground(IntPtr hWnd) { keybd_event(0x12, 0, 0, UIntPtr.Zero); keybd_event(0x12, 0, 2, UIntPtr.Zero); SetForegroundWindow(hWnd); }
     public static bool TopMost(IntPtr hWnd) { return (GetWindowLong(hWnd, -20) & 0x8) != 0; }   // GWL_EXSTYLE, WS_EX_TOPMOST
     // Physical pixels whatever this shell's own DPI awareness is (-4 = per-monitor v2).
     public static int[] Rect(IntPtr hWnd) {
@@ -164,36 +175,61 @@ Invoke-FailCase 'case 4a (malformed --client)' @('--image', $png, '--client', '1
 Invoke-FailCase 'case 4b (missing PNG)' @('--image', (Join-Path $root 'missing.png'), '--client', '10,20,400,300', '--bar', '30,220,360,18',
     '--update-exe', $updateExe, '--relaunch', $relaunch, '--grace', '15')
 
-# Case 5 (-Slow): Update.exe hangs and no launcher signals: after 30 s the bridge stays up but is no longer above other apps.
-if ($Slow) {
-    Remove-Item -LiteralPath $log -ErrorAction SilentlyContinue
-    $shown = [Threading.EventWaitHandle]::new($false, [Threading.EventResetMode]::ManualReset, 'Local\TheLadsClient.UpdateBridgeShown')
-    $update = Start-Hidden $updateExe @('-n', '45', '127.0.0.1')   # alive ~44 s, past the 30 s
-    $bridge = $null
-    try {
-        $bridge = Start-Bridge @(120, 140, 400, 300) @(140, 340, 360, 18) 15
-        Assert ($shown.WaitOne(2000)) 'case 5: shown event within 2 s'
-        $since = [Diagnostics.Stopwatch]::StartNew()
-        $bridge.Refresh()
-        $hwnd = $bridge.MainWindowHandle
-        Start-Sleep -Seconds 28
-        Assert ($hwnd -ne 0 -and [BridgeTestWin32]::TopMost($hwnd)) 'case 5: still WS_EX_TOPMOST at 28 s'
-        while ((Read-Log) -notmatch 'no longer on top' -and $since.ElapsedMilliseconds -lt 33000) { Start-Sleep -Milliseconds 100 }
-        $at = $since.ElapsedMilliseconds
-        Assert ((Read-Log) -match 'no longer on top' -and $at -ge 29000) "case 5: 'no longer on top' logged 30 s after shown ($at ms)"
-        Assert (-not [BridgeTestWin32]::TopMost($hwnd)) 'case 5: window no longer WS_EX_TOPMOST'
-        Assert (-not $bridge.HasExited) 'case 5: bridge still up'
-        $launcherShown = $null
-        if ([Threading.EventWaitHandle]::TryOpenExisting('Local\TheLadsClient.LauncherShown', [ref]$launcherShown)) {
-            $launcherShown.Set() | Out-Null
-            $launcherShown.Dispose()
-        }
-        Assert ($bridge.WaitForExit(1500)) 'case 5: a late LauncherShown still fades it out within 1.5 s'
-        Assert ((Read-Log) -notmatch 'relaunch') 'case 5: log has no relaunch'
-    } finally {
-        Stop-All @($bridge, $update)
-        $shown.Dispose()
+# Case 5: the bridge is not topmost; it only keeps itself directly above a visible window of another process titled like the launcher.
+function Wait-Until([scriptblock]$cond, [int]$ms) {
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    while (-not (& $cond) -and $sw.ElapsedMilliseconds -lt $ms) { [Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 10 }
+    $sw.ElapsedMilliseconds
+}
+Add-Type -AssemblyName System.Windows.Forms
+Remove-Item -LiteralPath $log -ErrorAction SilentlyContinue
+$shown = [Threading.EventWaitHandle]::new($false, [Threading.EventResetMode]::ManualReset, 'Local\TheLadsClient.UpdateBridgeShown')
+$update = Start-Hidden $updateExe @('-n', '60', '127.0.0.1')
+$bridge = $null
+$fakeLauncher = $null
+$other = $null
+try {
+    $bridge = Start-Bridge @(120, 140, 400, 300) @(140, 340, 360, 18) 15
+    Assert ($shown.WaitOne(2000)) 'case 5: shown event within 2 s'
+    $bridge.Refresh()
+    $hwnd = $bridge.MainWindowHandle
+    Assert ($hwnd -ne 0 -and -not [BridgeTestWin32]::TopMost($hwnd)) 'case 5: bridge is not WS_EX_TOPMOST'
+    $fakeLauncher = [Windows.Forms.Form]::new()
+    $fakeLauncher.Text = 'The Lads Client'
+    $fakeLauncher.StartPosition = 'Manual'
+    $fakeLauncher.Bounds = [Drawing.Rectangle]::new(120, 140, 400, 300)
+    $fakeLauncher.ShowInTaskbar = $false
+    $fakeLauncher.Show()
+    [BridgeTestWin32]::Foreground($fakeLauncher.Handle)
+    [BridgeTestWin32]::Raise($fakeLauncher.Handle)
+    [Windows.Forms.Application]::DoEvents()
+    $ms = Wait-Until { [BridgeTestWin32]::Above($hwnd, $fakeLauncher.Handle) } 500
+    Assert ([BridgeTestWin32]::Above($hwnd, $fakeLauncher.Handle)) "case 5: bridge placed above the launcher-titled window within 500 ms ($ms ms)"
+    Assert (-not [BridgeTestWin32]::TopMost($hwnd)) 'case 5: bridge still not WS_EX_TOPMOST after placing'
+    Assert ((Read-Log) -match 'placed above the launcher window') "case 5: log has 'placed above the launcher window'"
+    $other = [Windows.Forms.Form]::new()
+    $other.Text = 'bridge test unrelated window'
+    $other.StartPosition = 'Manual'
+    $other.Bounds = [Drawing.Rectangle]::new(120, 140, 400, 300)
+    $other.ShowInTaskbar = $false
+    $other.Show()
+    [BridgeTestWin32]::Foreground($other.Handle)
+    [BridgeTestWin32]::Raise($other.Handle)
+    Wait-Until { $false } 1000 | Out-Null
+    Assert ([BridgeTestWin32]::Above($other.Handle, $hwnd)) 'case 5: an unrelated window raised afterwards stays above the bridge for 1 s'
+    Assert ([BridgeTestWin32]::Above($hwnd, $fakeLauncher.Handle)) 'case 5: bridge still above the launcher-titled window'
+    $launcherShown = $null
+    if ([Threading.EventWaitHandle]::TryOpenExisting('Local\TheLadsClient.LauncherShown', [ref]$launcherShown)) {
+        $launcherShown.Set() | Out-Null
+        $launcherShown.Dispose()
     }
+    $ms = Wait-Until { $bridge.HasExited } 1500
+    Assert ($bridge.HasExited) "case 5: bridge exits within 1.5 s of LauncherShown ($ms ms)"
+    Assert ((Read-Log) -notmatch 'relaunch') 'case 5: log has no relaunch'
+} finally {
+    foreach ($f in @($fakeLauncher, $other)) { if ($f) { $f.Close(); $f.Dispose() } }
+    Stop-All @($bridge, $update)
+    $shown.Dispose()
 }
 
 if ($script:failures) { Write-Host "Test-UpdateBridge: $($script:failures) FAILED (kept $root)"; exit 1 }
