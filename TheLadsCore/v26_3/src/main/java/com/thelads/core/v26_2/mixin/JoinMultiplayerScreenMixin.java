@@ -2,6 +2,7 @@ package com.thelads.core.v26_2.mixin;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.thelads.core.client.LadsNetwork;
+import com.thelads.core.client.ServerAddressInput;
 import com.thelads.core.client.ServerListColumns;
 import com.thelads.core.client.ServerListDrag;
 import com.thelads.core.client.ServerListEntryUi;
@@ -13,8 +14,10 @@ import com.thelads.core.v26_2.gui.ServerDiscoveryScreen;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.screens.ManageServerScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.multiplayer.ServerSelectionList;
@@ -22,6 +25,8 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.ServerList;
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
+import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -31,6 +36,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -45,6 +51,8 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
     @Shadow private void refreshServerList() {}
     @Shadow public abstract void join(ServerData data);
     @Shadow public abstract ServerList getServers();
+    @Shadow private ServerData editingServer;
+    @Shadow private void addServerCallback(boolean ok) {}
     @Unique private Button ladsDiscoverButton;
     @Unique private Button ladsColumnsButton;
     @Unique private Button ladsFriendsButton;
@@ -213,6 +221,62 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
         if (!ladsMenu.isOpen()) return;
         if (event.isEscape()) ladsMenu.close();
         cir.setReturnValue(true);
+    }
+
+    /** Ctrl+V adds the clipboard's address, Ctrl+C copies the selected IP, Ctrl+A opens Add Server, Del asks to delete. Not while a text field has focus. */
+    @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
+    private void ladsShortcuts(KeyEvent event, CallbackInfoReturnable<Boolean> cir) {
+        if (ladsMenu.isOpen() || getFocused() instanceof EditBox || minecraft == null) return;
+        if (event.isPaste()) {
+            if (ladsPasteServer()) cir.setReturnValue(true);
+        } else if (event.isCopy()) {
+            if (serverSelectionList.getSelected() instanceof ServerSelectionList.OnlineServerEntry entry) {
+                minecraft.keyboardHandler.setClipboard(entry.getServerData().ip);
+                cir.setReturnValue(true);
+            }
+        } else if (event.isSelectAll()) {
+            editingServer = new ServerData(I18n.get("selectServer.defaultName"), "", ServerData.Type.OTHER);
+            minecraft.setScreenAndShow(new ManageServerScreen(this, Component.translatable("manageServer.add.title"), ok -> addServerCallback(ok), editingServer));
+            cir.setReturnValue(true);
+        } else if (event.key() == InputConstants.KEY_DELETE && !event.hasControlDown() && deleteButton.active
+            && serverSelectionList.getSelected() instanceof ServerSelectionList.OnlineServerEntry) {
+            deleteButton.onPress(event); // vanilla's own confirm screen
+            cir.setReturnValue(true);
+        }
+    }
+
+    /** Adds the clipboard's address as a new server (or selects the saved one with the same address). False when it is not an address. */
+    @Unique
+    private boolean ladsPasteServer() {
+        String ip = ServerAddressInput.clean(minecraft.keyboardHandler.getClipboard());
+        if (ip == null || !ServerAddress.isValidAddress(ip)) return false;
+        ServerList list = getServers();
+        List<String> saved = new ArrayList<>();
+        for (int i = 0; i < list.size(); i++) saved.add(list.get(i).ip);
+        int at = ServerAddressInput.indexOf(saved, ip);
+        ServerData data;
+        if (at >= 0) {
+            data = list.get(at);
+        } else {
+            data = new ServerData(I18n.get("selectServer.defaultName"), ip, ServerData.Type.OTHER);
+            ServerData hidden = list.unhide(ip); // vanilla's add does the same
+            if (hidden != null) data.copyNameIconFrom(hidden);
+            list.add(data, false);
+            list.save();
+            serverSelectionList.updateOnlineServers(list);
+        }
+        int row = 0;
+        for (ServerSelectionList.Entry entry : serverSelectionList.children()) {
+            if (entry instanceof ServerSelectionList.OnlineServerEntry online && online.getServerData() == data) {
+                serverSelectionList.setSelected(entry);
+                double top = row * 36.0, view = Math.max(36, serverSelectionList.getHeight()), now = serverSelectionList.scrollAmount(); // rows are 36 px
+                if (top < now) serverSelectionList.setScrollAmount(top);
+                else if (top + 36 > now + view) serverSelectionList.setScrollAmount(top + 36 - view);
+                break;
+            }
+            row++;
+        }
+        return true;
     }
 
     @Override

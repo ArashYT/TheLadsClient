@@ -56,6 +56,11 @@ public final class ChatTranslator {
 
     private ChatTranslator() {}
 
+    /** MemoryGuard: the translation cache refills as chat arrives. */
+    public static void trimCache() {
+        synchronized (CACHE) { CACHE.clear(); }
+    }
+
     /** Translate To's code for a dropdown index; null for the game's language. */
     static String code(int index) {
         return index <= 0 || index >= CODES.length ? null : CODES[index];

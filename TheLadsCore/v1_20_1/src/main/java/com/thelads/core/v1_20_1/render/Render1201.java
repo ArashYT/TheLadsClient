@@ -13,5 +13,7 @@ public final class Render1201 {
         LoggerFactory.getLogger("TheLadsCore").info("Lads render: Flerovium item culling {}, Kerria texture animation {}",
             items == null ? "on" : "off (" + items + ")", animations == null ? "on" : "off (" + animations + ")");
         if (Boolean.getBoolean("thelads.verifyAutoWorld") || System.getProperty("thelads.qaScript") != null) RenderProbe1201.register();
+        String mmcss = com.thelads.core.perf.MmcssBoost.register(); // Windows MMCSS "Games" registration on the main thread
+        if (mmcss != null) LoggerFactory.getLogger("TheLadsCore").info(mmcss);
     }
 }

@@ -15,7 +15,7 @@ public sealed class FilenameMigrationTests : IDisposable
     {
         var bytes = ModSandbox.Jar("sodium");
         var pin = box.Pin("sodium", bytes, "sodium-fabric-0.8.0+mc26.2.jar");
-        box.WriteManifest("26.2", new[] { pin });
+        box.WriteManifest("26.3", new[] { pin });
         box.WriteReceipt(("sodium", bytes));
         var suffix = disabled ? ".disabled" : "";
         File.WriteAllBytes(box.Mod("lads-sodium.jar" + suffix), bytes);
@@ -35,7 +35,7 @@ public sealed class FilenameMigrationTests : IDisposable
     {
         var old = ModSandbox.Jar("sodium", "0.7.0");
         var next = ModSandbox.Jar("sodium", "0.8.0");
-        box.WriteManifest("26.2", new[] { box.Pin("sodium", next) });
+        box.WriteManifest("26.3", new[] { box.Pin("sodium", next) });
         box.WriteReceipt(("sodium", old));
         File.WriteAllBytes(box.Mod("lads-sodium.jar.disabled"), old);
 
@@ -52,7 +52,7 @@ public sealed class FilenameMigrationTests : IDisposable
     public async Task DisabledOlderPinIsRenamedToTheNameModrinthPublishedForThoseBytes()
     {
         var old = ModSandbox.Jar("sodium", "0.7.0");
-        box.WriteManifest("26.2", new[] { box.Pin("sodium", ModSandbox.Jar("sodium", "0.8.0")) });
+        box.WriteManifest("26.3", new[] { box.Pin("sodium", ModSandbox.Jar("sodium", "0.8.0")) });
         box.WriteReceipt(("sodium", old));
         File.WriteAllBytes(box.Mod("lads-sodium.jar.disabled"), old);
         box.VersionFile = _ => JsonSerializer.Serialize(new { files = new object[] {
@@ -77,7 +77,7 @@ public sealed class FilenameMigrationTests : IDisposable
         var old = ModSandbox.Jar("sodium", "0.7.0");
         var next = ModSandbox.Jar("sodium", "0.8.0");
         var pin = box.Pin("sodium", next);
-        box.WriteManifest("26.2", new[] { pin });
+        box.WriteManifest("26.3", new[] { pin });
         box.WriteReceipt(("sodium", old));
         File.WriteAllBytes(box.Mod("lads-sodium.jar.disabled"), old);
         box.Choose(("sodium", true));
@@ -95,7 +95,7 @@ public sealed class FilenameMigrationTests : IDisposable
     {
         var bytes = ModSandbox.Jar("sodium");
         var pin = box.Pin("sodium", bytes);
-        box.WriteManifest("26.2", new[] { pin });
+        box.WriteManifest("26.3", new[] { pin });
         File.WriteAllBytes(box.Mod(pin.FileName), bytes);
         File.WriteAllBytes(box.Mod("lads-sodium.jar"), bytes);
 
@@ -112,7 +112,7 @@ public sealed class FilenameMigrationTests : IDisposable
         var bytes = ModSandbox.Jar("sodium");
         var own = ModSandbox.Jar("sodium", "user-build");
         var pin = box.Pin("sodium", bytes);
-        box.WriteManifest("26.2", new[] { pin });
+        box.WriteManifest("26.3", new[] { pin });
         box.WriteReceipt(("sodium", bytes));
         var receipt = File.ReadAllBytes(box.Receipt);
         File.WriteAllBytes(box.Mod(pin.FileName), own);
@@ -133,7 +133,7 @@ public sealed class FilenameMigrationTests : IDisposable
         var bytes = ModSandbox.Jar("sodium");
         var other = ModSandbox.Jar("othermod");
         var pin = box.Pin("sodium", bytes, "shared-name.jar");
-        box.WriteManifest("26.2", new[] { pin });
+        box.WriteManifest("26.3", new[] { pin });
         File.WriteAllBytes(box.Mod("shared-name.jar"), other);
         File.WriteAllBytes(box.Mod("lads-sodium.jar"), bytes);
 
@@ -152,7 +152,7 @@ public sealed class FilenameMigrationTests : IDisposable
         var second = ModSandbox.Jar("beta");
         var alpha = box.Pin("alpha", first);
         var beta = box.Pin("beta", second);
-        box.WriteManifest("26.2", new[] { alpha, beta });
+        box.WriteManifest("26.3", new[] { alpha, beta });
         File.WriteAllBytes(box.Mod("lads-alpha.jar"), first);
         File.WriteAllBytes(box.Mod("lads-beta.jar.disabled"), second);
         box.WriteReceipt(("alpha", first));
@@ -182,7 +182,7 @@ public sealed class FilenameMigrationTests : IDisposable
     [InlineData(" sodium.jar")]
     public async Task UnsafeFileNamesAreRejectedBeforeAnyDownload(string fileName)
     {
-        box.WriteManifest("26.2", new[] { box.Pin("sodium", ModSandbox.Jar("sodium")) with { FileName = fileName } });
+        box.WriteManifest("26.3", new[] { box.Pin("sodium", ModSandbox.Jar("sodium")) with { FileName = fileName } });
         await Assert.ThrowsAsync<InvalidDataException>(() => box.Install());
         Assert.Empty(box.Requests);
         Assert.Empty(Directory.GetFiles(box.Mods));
@@ -191,7 +191,7 @@ public sealed class FilenameMigrationTests : IDisposable
     [Fact]
     public async Task FileNamesMustBeUniqueIgnoringCase()
     {
-        box.WriteManifest("26.2", new[] { box.Pin("alpha", ModSandbox.Jar("alpha"), "Shared.jar"), box.Pin("beta", ModSandbox.Jar("beta"), "shared.JAR") });
+        box.WriteManifest("26.3", new[] { box.Pin("alpha", ModSandbox.Jar("alpha"), "Shared.jar"), box.Pin("beta", ModSandbox.Jar("beta"), "shared.JAR") });
         await Assert.ThrowsAsync<InvalidDataException>(() => box.Install());
         Assert.Empty(box.Requests);
     }

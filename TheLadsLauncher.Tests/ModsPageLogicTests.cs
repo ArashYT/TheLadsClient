@@ -12,8 +12,8 @@ public sealed class ModsPageLogicTests : IDisposable
 
     public ModsPageLogicTests()
     {
-        box.WriteManifest("26.2", new[] { box.Pin("packmod", packJar, "Pack-Mod-1.0.jar") });
-        box.WriteCore("26.2", ModSandbox.Core("26.2", new[] { ("META-INF/jars/corelib.jar", ModSandbox.Jar("corelib")) }));
+        box.WriteManifest("26.3", new[] { box.Pin("packmod", packJar, "Pack-Mod-1.0.jar") });
+        box.WriteCore("26.3", ModSandbox.Core("26.3", new[] { ("META-INF/jars/corelib.jar", ModSandbox.Jar("corelib")) }));
         File.WriteAllBytes(box.Mod("Pack-Mod-1.0.jar"), packJar);
         File.WriteAllBytes(box.Mod("user-mod.jar"), ModSandbox.Jar("usermod", depends: new() { ["libjar"] = "*" },
             nested: new[] { ("META-INF/jars/deep.jar", ModSandbox.Jar("nestedlib")) }));
@@ -23,7 +23,7 @@ public sealed class ModsPageLogicTests : IDisposable
 
     public void Dispose() => box.Dispose();
 
-    private Task<ModInventory> Inventory() => new ModInventoryService().BuildAsync(box.Bundle, box.Game, "26.2");
+    private Task<ModInventory> Inventory() => new ModInventoryService().BuildAsync(box.Bundle, box.Game, "26.3");
 
     private static List<string> Ids(IEnumerable<ModInventoryView.Row> rows) => rows.Select(r => r.Entry.Id).ToList();
 
@@ -138,7 +138,7 @@ public sealed class ModsPageLogicTests : IDisposable
         var pack = Assert.Throws<InvalidOperationException>(() => UserModFiles.Add(inventory, Drop("other-name.jar", ModSandbox.Jar("packmod", "2.0.0"))));
         Assert.Contains("Switch the pack mod", pack.Message);
         Assert.Equal(packJar, File.ReadAllBytes(box.Mod("Pack-Mod-1.0.jar")));
-        Assert.Throws<InvalidOperationException>(() => UserModFiles.Add(inventory, Drop("theladscore.jar", ModSandbox.Core("26.2"))));
+        Assert.Throws<InvalidOperationException>(() => UserModFiles.Add(inventory, Drop("theladscore.jar", ModSandbox.Core("26.3"))));
 
         var before = File.ReadAllBytes(box.Mod("lib-jar.jar"));
         Assert.Throws<IOException>(() => UserModFiles.Add(inventory, Drop("lib-jar.jar", ModSandbox.Jar("brandnew"))));
@@ -200,7 +200,7 @@ public sealed class ModsPageLogicTests : IDisposable
     public async Task UnsatisfiedDependenciesThrowATypedErrorWithBothWaysOut()
     {
         using var sandbox = new ModSandbox();
-        sandbox.WriteManifest("26.2", Array.Empty<ClientModInstaller.Entry>());
+        sandbox.WriteManifest("26.3", Array.Empty<ClientModInstaller.Entry>());
         File.WriteAllBytes(sandbox.Mod("needy.jar"), ModSandbox.Jar("needy", depends: new() { ["lib"] = "*" }));
         File.WriteAllBytes(sandbox.Mod("lib.jar.disabled"), ModSandbox.Jar("lib"));
 
@@ -210,7 +210,7 @@ public sealed class ModsPageLogicTests : IDisposable
         Assert.Contains("enable lib or disable needy in Mods", problem.Message);
 
         var state = new ModStateService(_ => false);
-        var inventory = await new ModInventoryService().BuildAsync(sandbox.Bundle, sandbox.Game, "26.2");
+        var inventory = await new ModInventoryService().BuildAsync(sandbox.Bundle, sandbox.Game, "26.3");
         var (disable, enable) = state.DependencyFixes(inventory, problem);
         Assert.Equal(new[] { "needy" }, disable!.TargetIds);
         Assert.False(disable.Enable);
@@ -226,11 +226,11 @@ public sealed class ModsPageLogicTests : IDisposable
     public async Task AMissingLibraryOffersOnlyDisablingItsDependents()
     {
         using var sandbox = new ModSandbox();
-        sandbox.WriteManifest("26.2", Array.Empty<ClientModInstaller.Entry>());
+        sandbox.WriteManifest("26.3", Array.Empty<ClientModInstaller.Entry>());
         File.WriteAllBytes(sandbox.Mod("needy.jar"), ModSandbox.Jar("needy", depends: new() { ["nowhere"] = "*" }));
         var problem = await Assert.ThrowsAsync<ClientModDependencyException>(() => sandbox.Install());
         var (disable, enable) = new ModStateService(_ => false).DependencyFixes(
-            await new ModInventoryService().BuildAsync(sandbox.Bundle, sandbox.Game, "26.2"), problem);
+            await new ModInventoryService().BuildAsync(sandbox.Bundle, sandbox.Game, "26.3"), problem);
         Assert.Equal(new[] { "needy" }, disable!.TargetIds);
         Assert.Null(enable);
     }

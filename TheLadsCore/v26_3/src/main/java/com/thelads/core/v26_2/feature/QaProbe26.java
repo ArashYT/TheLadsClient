@@ -292,11 +292,12 @@ public final class QaProbe26 {
                 }
             }
             case "hold" -> { // hold tab [off]: the player list, as holding Tab (the QA bar steps aside: both sit at the top)
-                if (!"tab".equalsIgnoreCase(arg(s, 1))) throw new IllegalArgumentException("hold: tab");
+                if (!"tab".equalsIgnoreCase(arg(s, 1))) { QaTce1Ext26.step(mc, s); break; }
                 boolean down = !"off".equalsIgnoreCase(s.length > 2 ? s[2] : "on");
                 mc.options.keyPlayerList.setDown(down);
                 com.thelads.core.client.qa.QaProgress.hide(down);
             }
+            case "module", "key", "look", "lookat", "bind", "fakeplayer", "fakemove", "mapzero", "safety", "state" -> QaTce1Ext26.step(mc, s);
             case "srv" -> ServerListQa26.step(mc, s);
             case "ladsui" -> com.thelads.core.v26_2.ladsapi.ui.LadsApiUiQa26.step(mc, s);
             case "friendso" -> friendso(mc);

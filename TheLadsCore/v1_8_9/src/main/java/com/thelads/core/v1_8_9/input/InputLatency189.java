@@ -1,5 +1,6 @@
 package com.thelads.core.v1_8_9.input;
 
+import com.thelads.core.modules.ExtraModules;
 import com.thelads.core.perf.FramePacer;
 import com.thelads.core.perf.LatencyMeter;
 import org.apache.logging.log4j.LogManager;
@@ -7,6 +8,10 @@ import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GLContext;
+import net.minecraft.client.Minecraft;
+import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 /**
  * Built-in input-latency pacing for 1.8.9 (the Reflex AntiLag remake; it replaces the frame pacing that 1.7.3 switched off, which
@@ -81,10 +86,12 @@ public final class InputLatency189 {
                     LOGGER.info("Lads input: no OpenGL 3.2 fences; input-latency pacing is off.");
                     return;
                 }
-                LOGGER.info("Lads input: input-latency pacing on.");
+                LOGGER.info("Lads input: input-latency pacing on; Low Latency module / Input Optimizer options read per frame.");
+                MinecraftForge.EVENT_BUS.register(new Overlay());
             }
+            PACER.tuner(ExtraModules.LOW_LATENCY.activeTuner()); // the Low Latency module's offset, back-off and cap, when it is on
             PACER.frameStart(() -> done(previous), () -> done(older));
-            if (Display.isCreated()) {
+            if (Display.isCreated() && ExtraModules.INPUT_OPTIMIZER.latePoll()) {
                 Display.processMessages();
                 com.thelads.core.v1_8_9.feature.PylonWindow189.afterPump();
             }
@@ -146,5 +153,13 @@ public final class InputLatency189 {
         reflex = false;
         dropFences();
         LOGGER.warn("Input-latency pacing failed; vanilla frame timing from now: " + t);
+    }
+
+    /** The Low Latency module's debug overlay: its lines at the end of the F3 screen's left column. */
+    public static final class Overlay {
+        @SubscribeEvent
+        public void text(RenderGameOverlayEvent.Text event) {
+            if (Minecraft.getMinecraft().gameSettings.showDebugInfo) event.left.addAll(ExtraModules.LOW_LATENCY.overlayLines());
+        }
     }
 }

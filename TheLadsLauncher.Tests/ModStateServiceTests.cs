@@ -10,9 +10,9 @@ public sealed class ModStateServiceTests : IDisposable
     private bool running;
     private ModStateService Service => new(_ => running);
 
-    public ModStateServiceTests() => box.WriteManifest("26.2", Array.Empty<ClientModInstaller.Entry>());
+    public ModStateServiceTests() => box.WriteManifest("26.3", Array.Empty<ClientModInstaller.Entry>());
 
-    private Task<ModInventory> Inventory() => new ModInventoryService().BuildAsync(box.Bundle, box.Game, "26.2");
+    private Task<ModInventory> Inventory() => new ModInventoryService().BuildAsync(box.Bundle, box.Game, "26.3");
 
     private void Add(string file, string id, Dictionary<string, string>? depends = null, string version = "1.0.0", string[]? provides = null,
         (string, byte[])[]? nested = null) =>
@@ -94,7 +94,7 @@ public sealed class ModStateServiceTests : IDisposable
         LibraryChain();
         var pending = box.Pin("pendingmod", ModSandbox.Jar("pendingmod"));
         var library = box.Pin("offlib", ModSandbox.Jar("offlib"));
-        box.WriteManifest("26.2", new[] { pending, library });
+        box.WriteManifest("26.3", new[] { pending, library });
         box.Choose(("offlib", false));
         Add("wants.jar.disabled", "wants", new() { ["offlib"] = "*" });
         var inventory = await Inventory();
@@ -109,7 +109,7 @@ public sealed class ModStateServiceTests : IDisposable
     [Fact]
     public async Task DisablingLadsCoreWarnsAndPlatformEntriesCannotBeSwitched()
     {
-        box.WriteCore("26.2", ModSandbox.Core("26.2"));
+        box.WriteCore("26.3", ModSandbox.Core("26.3"));
         var inventory = await Inventory();
         Assert.Contains(ModStateService.CoreDisableWarning, Service.Plan(inventory, new[] { "theladscore" }, false).Warnings);
         Assert.NotEmpty(Service.Plan(inventory, new[] { "minecraft" }, false).Blockers);
@@ -180,8 +180,8 @@ public sealed class ModStateServiceTests : IDisposable
     [InlineData("uuu", false)]         // a different jar: disabled under a free name, both kept
     public async Task DisablingNextToADisabledTwinKeepsEveryFile(string id, bool identical)
     {
-        var enabled = id == "theladscore" ? ModSandbox.Core("26.2") : ModSandbox.Jar(id);
-        var twin = identical ? enabled : id == "theladscore" ? ModSandbox.Jar(id, "1.1.0", new() { ["minecraft"] = "26.2" }) : ModSandbox.Jar(id, "0.9.0");
+        var enabled = id == "theladscore" ? ModSandbox.Core("26.3") : ModSandbox.Jar(id);
+        var twin = identical ? enabled : id == "theladscore" ? ModSandbox.Jar(id, "1.1.0", new() { ["minecraft"] = "26.3" }) : ModSandbox.Jar(id, "0.9.0");
         File.WriteAllBytes(box.Mod(id + ".jar"), enabled);
         File.WriteAllBytes(box.Mod(id + ".jar.disabled"), twin);
         var inventory = await Inventory();
@@ -235,7 +235,7 @@ public sealed class ModStateServiceTests : IDisposable
     {
         var bytes = ModSandbox.Jar("zoomify");
         var pin = box.Pin("zoomify", bytes);
-        box.WriteManifest("26.2", new[] { pin });
+        box.WriteManifest("26.3", new[] { pin });
         File.WriteAllBytes(box.Mod(pin.FileName + ".disabled"), bytes);
         Add("user.jar.disabled", "usermod");
         box.Choose(("zoomify", false), ("usermod", false));
@@ -254,7 +254,7 @@ public sealed class ModStateServiceTests : IDisposable
     private async Task<ModToggleResult> Reset()
     {
         using var client = box.Client();
-        return await Service.ResetModsFolderAsync(box.Bundle, box.Game, "26.2", httpClient: client,
+        return await Service.ResetModsFolderAsync(box.Bundle, box.Game, "26.3", httpClient: client,
             recycle: path => { recycled.Add(Path.GetFileName(path)); File.Delete(path); });
     }
 
@@ -262,8 +262,8 @@ public sealed class ModStateServiceTests : IDisposable
     public async Task ResetModsFolderRecyclesEveryJarClearsChoicesAndReinstallsThePack()
     {
         var pin = box.Pin("sodium", ModSandbox.Jar("sodium"));
-        box.WriteManifest("26.2", new[] { pin });
-        box.WriteCore("26.2", ModSandbox.Core("26.2"));
+        box.WriteManifest("26.3", new[] { pin });
+        box.WriteCore("26.3", ModSandbox.Core("26.3"));
         await box.Install();
         File.Move(box.Mod(pin.FileName), box.Mod(pin.FileName + ".disabled"));
         Add("own-1.0.0.jar", "own");
@@ -289,7 +289,7 @@ public sealed class ModStateServiceTests : IDisposable
     public async Task ResetModsFolderClearsTheReceiptEvenWhenThePackCannotBeInstalledNow()
     {
         var sodium = ModSandbox.Jar("sodium");
-        box.WriteManifest("26.2", new[] { box.Pin("sodium", sodium) with { Url = "https://cdn.modrinth.com/data/sodium/versions/offline/sodium.jar" } });
+        box.WriteManifest("26.3", new[] { box.Pin("sodium", sodium) with { Url = "https://cdn.modrinth.com/data/sodium/versions/offline/sodium.jar" } });
         box.WriteReceipt(("sodium", sodium));
         File.WriteAllBytes(box.Mod("sodium-1.0.0.jar"), sodium);
 

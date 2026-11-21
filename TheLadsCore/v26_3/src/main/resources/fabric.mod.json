@@ -45,6 +45,8 @@
     "theladscore.clumps.mixins.json",
     "theladscore.async.mixins.json",
     "theladscore.v26_3.quit.mixins.json",
+    "theladscore.v26_3.packs.mixins.json",
+    "theladscore.v26_3.mapframes.mixins.json",
     "theladscore.jade.mixins.json",
     "theladscore.embedded.etf.mixins.json",
     "theladscore.embedded.emf.mixins.json",
@@ -64,6 +66,7 @@
     "theladscore.embedded.capes.mixins.json",
 
         "theladscore.v26_3.render.mixins.json",
+        "theladscore.v26_3.lod.mixins.json",
         "theladscore.v26_3.ladsapiui.mixins.json",
         "theladscore.v26_3.pvp.mixins.json",
         "theladscore.v26_3.visuals.mixins.json",

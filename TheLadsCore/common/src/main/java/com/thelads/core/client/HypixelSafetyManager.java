@@ -326,6 +326,7 @@ public final class HypixelSafetyManager {
             || InventoryTweaks.MOVE.equalsIgnoreCase(moduleName) || InventoryTweaks.ARMOR_SWAP.equalsIgnoreCase(moduleName)
             || BreedingTimer.NAME.equalsIgnoreCase(moduleName) || EnderChestPeek.NAME.equalsIgnoreCase(moduleName) // hidden cooldown, chest away from it
             || com.thelads.core.modules.MlgCobwebModule.NAME.equalsIgnoreCase(moduleName)
+            || com.thelads.core.modules.OffhandKeyModule.NAME.equalsIgnoreCase(moduleName) // use packets for the off hand only, which vanilla never sends alone
             || com.thelads.core.client.worldedit.WorldEditCUI.NAME.equalsIgnoreCase(moduleName)
             || "Container Sorting".equalsIgnoreCase(moduleName) || "Elytra Swap".equalsIgnoreCase(moduleName) || "Creative Fly Boost".equalsIgnoreCase(moduleName)
             || "Schematic".equalsIgnoreCase(moduleName) || "Schematic Visualizer".equalsIgnoreCase(moduleName) || "Schematica".equalsIgnoreCase(moduleName)

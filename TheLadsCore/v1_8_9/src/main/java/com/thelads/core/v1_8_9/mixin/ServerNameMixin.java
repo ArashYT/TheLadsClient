@@ -3,7 +3,9 @@ package com.thelads.core.v1_8_9.mixin;
 import com.thelads.core.shared.ServerNames;
 import net.minecraft.client.gui.GuiScreenAddServer;
 import net.minecraft.client.gui.GuiTextField;
+import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.resources.I18n;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -20,10 +22,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class ServerNameMixin {
     @Shadow private GuiTextField serverNameField;
     @Shadow private GuiTextField serverIPField;
+    @Shadow @Final private ServerData serverData;
     @Unique private ServerNames.AutoName ladsAutoName;
 
     @Inject(method = "initGui", at = @At("TAIL"))
     private void ladsAutoNameOnOpen(CallbackInfo ci) {
+        if (serverData.serverIP == null || serverData.serverIP.isEmpty()) { // a new server opens on the address field; editing keeps vanilla's focus
+            serverNameField.setFocused(false);
+            serverIPField.setFocused(true);
+        }
         ladsAutoName();
     }
 

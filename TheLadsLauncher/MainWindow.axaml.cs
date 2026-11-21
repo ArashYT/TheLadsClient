@@ -177,9 +177,9 @@ public partial class MainWindow : Window
         {
             settings.LauncherVersion = Program.Version;
             
-            // Migrate to 26.2 and new Packwiz URLs if the user has legacy settings
+            // Migrate to 26.3 and new Packwiz URLs if the user has legacy settings
             if (settings.FabricVersion.Contains("26.1.2") || settings.FabricVersion == "fabric-loader-0.19.2-26.1.2")
-                settings.FabricVersion = "fabric-loader-0.19.3-26.2";
+                settings.FabricVersion = "fabric-loader-0.19.5-26.3";
             
             if (settings.PackwizPath.Contains("The Lads Client Packwiz") || settings.PackwizPath.Contains("Arash"))
                 settings.PackwizPath = Path.Combine(TheLadsLauncher.Services.PathService.Instance.BaseDirectory, "packwiz");
@@ -1295,6 +1295,29 @@ public partial class MainWindow : Window
         resources["LadsAccentSubtle"] = Brush.Parse(subtle);
         GameStateText.Foreground = Brush.Parse("#B9BCC6");
         ApplySeasonalChrome();
+    }
+
+    private void SettingsPreview_Changed(object? sender, SelectionChangedEventArgs e) => UpdateSettingsPreview();
+
+    // Mini launcher beside General settings: mirrors the picked theme and UI scale before Save. Nothing is saved here.
+    private void UpdateSettingsPreview()
+    {
+        if (SettingsPreviewFrame == null || ThemeSelector.SelectedItem is not string theme) return;
+        string accent = theme switch
+        {
+            "DarkBlue" => "#3B82F6",
+            "DarkPurple" => "#8B5CF6",
+            "Midnight" => "#CDD6F4",
+            "Halloween" => "#FF8A1F",
+            _ => "#FF4444"
+        };
+        double pct = double.TryParse((UiScaleSelector.SelectedItem as string ?? "100%").Replace("%", ""), out double p) ? p : 100;
+        double s = pct / 100.0;
+        SettingsPreviewTitle.Foreground = new SolidColorBrush(Color.Parse(accent));
+        SettingsPreviewTitle.FontSize = 13 * s;
+        SettingsPreviewHeading.FontSize = 13 * s;
+        SettingsPreviewSub.FontSize = 12 * s;
+        SettingsPreviewSummary.Text = $"{theme}, {pct:0}% UI scale";
     }
 
     private void ApplyUiScale()
@@ -3068,6 +3091,7 @@ public partial class MainWindow : Window
         foreach (var sc in scales)
             UiScaleSelector.Items.Add(sc);
         UiScaleSelector.SelectedItem = settings.UiScale;
+        UpdateSettingsPreview();
         LoadingScreenBgColorBox.Text = settings.LoadingScreenBgColor ?? "";
         LoadingScreenBarColorBox.Text = settings.LoadingScreenBarColor ?? "";
         LoadingScreenGlowColorBox.Text = settings.LoadingScreenGlowColor ?? "";

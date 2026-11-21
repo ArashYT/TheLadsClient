@@ -241,7 +241,7 @@ public static class ModpackCoreSync
             return false;
         }
 
-        // For all other bundled versions (1.20.1, 1.21.11, 26.2, 26.3), the Core is a Fabric mod
+        // For all other bundled versions (1.20.1, 26.3), the Core is a Fabric mod
         if (mcVersion == "1.20.1" && normalizedLoader == "forge")
         {
             if (!HasSinytraConnector(modFiles))

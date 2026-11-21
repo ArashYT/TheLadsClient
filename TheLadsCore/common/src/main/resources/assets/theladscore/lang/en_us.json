@@ -21,5 +21,6 @@
     "key.thelads.copy_coordinates": "Copy coordinates (Lads)",
     "key.thelads.stopwatch": "Start / pause stopwatch (Lads)",
     "key.thelads.stopwatch_reset": "Reset stopwatch (Lads)",
-    "key.theladscore.elytra_swap": "Elytra Swap"
+    "key.theladscore.elytra_swap": "Elytra Swap",
+    "key.theladscore.offhand_use": "Use Offhand Item"
 }

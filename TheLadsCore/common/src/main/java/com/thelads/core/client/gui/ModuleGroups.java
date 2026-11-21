@@ -36,6 +36,7 @@ public final class ModuleGroups {
         new Group(HUD, "Game Screens", List.of("Chat", "Scoreboard", "TabList", "BossBar", "Action Bar", "Subtitles", "TitleTweaker", "ToastControl", "VanillaHUD", "Jade", "Autohide", "Lads Badge")),
         new Group(HUD, "Custom & Media", List.of("CustomText", "CustomShape", "CustomImage", "MediaPlayer", "Voice Chat", "Voice Chat Group")),
         new Group("Combat", "Feedback", List.of("KillBanner", "Hit Color", "Damage Tint", "Damage Tilt", "Totem Animation", "Hide Mob Deaths")),
+        new Group("Combat", "Prediction", List.of("Mace Optimizer", "Pearl Optimizer", "Sword Optimizer")),
         new Group("Combat", "Aim & Targets", List.of("Crosshair Tweaks", "Block Overlay", "Hitboxes", "Mob Overlay", "Mob Size", "Nametag Health")),
         new Group("Combat", "Animations", List.of("1.7 Animations", "LegacySwing", "NotEnoughAnimations")),
         new Group("Combat", "Game Modes", List.of("Bed Colors", "MLG Cobweb", "TNT Timer", "UHC Overlay")),
@@ -48,12 +49,12 @@ public final class ModuleGroups {
         new Group("Inventory", "Containers", List.of("Container QoL", "Container Sorting", "MouseTweaks", "ShulkerBoxUtils", "Ender Chest Peek", "Keep Cursor Position", "KeepUIOpen")),
         new Group("Inventory", "Tooltips & Info", List.of("EnhancedTooltips", "EnhancedToolbars", "Scrollable Tooltips", "AppleSkin", "NumericalEnchantments", "JEI (Just Enough Items)")),
         new Group("Camera & Input", "Camera", List.of("Zoom", "Custom FOV", "Freelook", "ViewModel", "AutoPerspective", "VerticalBobbing")),
-        new Group("Camera & Input", "Input", List.of("Toggle Sprint & Sneak", "ScrollTweaks", "RawInput", "SmoothHotbar", "Creative Fly Boost", "Auto Text")),
-        new Group("Sound", "Sound", List.of("Sound Volumes", "Sound Filters", "Combo Sounds", "Oof Mod", "DisableNarrator", "Mumble Link")),
+        new Group("Camera & Input", "Input", List.of("Toggle Sprint & Sneak", "ScrollTweaks", "RawInput", "Input Optimizer", "Low Latency", "SmoothHotbar", "Instant Hotbar", "Offhand Key", "Creative Fly Boost", "Auto Text")),
+        new Group("Sound", "Sound", List.of("Sound Volumes", "Sound Filters", "Audio Engine", "Combo Sounds", "Oof Mod", "DisableNarrator", "Mumble Link")),
         new Group(CLIENT, "Menus & Window", List.of(TITLE_SCREEN, "BorderlessFullscreen", "GUI Scale", "ConfirmDisconnect", "Draggable Server List", "ResourcePacks", "Resourcify", "BetterF3", "BetterStats", "ModernAdvancements", "Link Preview", "Unlimited Command Length")),
         new Group(CLIENT, "Tools", List.of("ClientTools", "SurvivalTweaks", "Breeding Timer", "Schematic Visualizer", "WorldEdit CUI", "BetterScreenshots", "Flashback Settings")),
         new Group(CLIENT, "Files & Safety", List.of("AutoBackup", "LogPruner", "Crash Catcher")),
-        new Group(PERFORMANCE, PERFORMANCE, List.of("Performance", "DynamicFPS", "UnfocusedFpsCap", "Exordium", "BetterResolution", "ScalableLux", "Clumps", "FarBlockEntities", "EntityCulling", "Lithium", "FerriteCore", "Async", "Particle Core", "Threads", "Jasione", "OptiFine189")),
+        new Group(PERFORMANCE, PERFORMANCE, List.of("Performance", "DynamicFPS", "UnfocusedFpsCap", "Exordium", "BetterResolution", "ScalableLux", "Clumps", "FarBlockEntities", "EntityCulling", "Lithium", "FerriteCore", "Async", "Smooth Singleplayer", "Particle Core", "Threads", "Jasione", "OptiFine189", "Rentities")),
         new Group(SERVER, SERVER, List.of("PingView", "AutoReconnect", "Quick Reconnect", "SignalLoss", "IgnorePacketErrors", "DiscordRPC", "Friends & Social", "Server Control", "Server Notification Actions", "XaeroWorldmap")),
         new Group(HYPIXEL, HYPIXEL, List.of("HYPIXEL Mods", "Quickplay", "Nick Detector", "SkyBlock Suite")));
 

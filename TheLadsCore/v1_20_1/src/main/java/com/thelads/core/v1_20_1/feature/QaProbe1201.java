@@ -376,6 +376,7 @@ public final class QaProbe1201 {
             case "hotbar" -> { needWorld(mc); mc.player.getInventory().selected = Math.max(0, Math.min(8, Integer.parseInt(arg(s, 1)) - 1)); }
             case "look" -> { needWorld(mc); mc.player.setYRot(Float.parseFloat(arg(s, 1))); mc.player.setXRot(Float.parseFloat(arg(s, 2))); }
             case "module" -> module(arg(s, 1), s.length > 2 ? s[2] : "toggle");
+            case "lookat", "bind", "fakeplayer", "fakemove", "mapzero", "safety", "state" -> { needWorld(mc); QaTce1Ext1201.step(mc, s); }
             case "option" -> option(arg(s, 1), arg(s, 2), rest(s, 3));
             case "dump" -> dump(mc, s.length > 1 ? s[1].toLowerCase(Locale.ROOT) : "state", s.length > 2 ? s[2] : null);
             case "reload" -> { reloadsLeft = s.length > 1 ? Integer.parseInt(s[1]) : 1; routine = QaProbe1201::reloadStep; routineStep = s; } // F3+T, N times back to back

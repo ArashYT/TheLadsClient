@@ -26,7 +26,7 @@ public class LauncherSettings
     public string InstancePath { get; set; } = TheLadsLauncher.Services.PathService.Instance.BaseDirectory;
     public string PackwizPath { get; set; } = Path.Combine(TheLadsLauncher.Services.PathService.Instance.BaseDirectory, "packwiz");
     public string PackwizUrl { get; set; } = "https://raw.githubusercontent.com/ArashYT/TheLadsClient/main/Packwiz/pack.toml";
-    public string FabricVersion { get; set; } = "fabric-loader-0.19.3-26.2";
+    public string FabricVersion { get; set; } = "fabric-loader-0.19.5-26.3";
 
     // Appearance
     public string Theme { get; set; } = "DarkRed";

@@ -3,7 +3,11 @@ package com.thelads.core.v26_2.mixin;
 import com.thelads.core.shared.ServerNames;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.ManageServerScreen;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.resources.language.I18n;
+import net.minecraft.network.chat.Component;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -16,14 +20,28 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * (ServerNames, known_servers.json). Both fields' responders and init call updateAddButtonStatus, so this sees every change.
  */
 @Mixin(ManageServerScreen.class)
-public abstract class ServerNameMixin {
+public abstract class ServerNameMixin extends Screen {
     @Shadow private EditBox nameEdit;
     @Shadow private EditBox ipEdit;
+    @Shadow @Final private ServerData serverData;
     @Unique private final ServerNames.AutoName ladsAutoName = new ServerNames.AutoName(I18n.get("selectServer.defaultName"));
 
     @Inject(method = "updateAddButtonStatus", at = @At("HEAD"))
     private void ladsAutoName(CallbackInfo ci) {
         String name = ladsAutoName.update(nameEdit.getValue(), ipEdit.getValue());
         if (name != null) nameEdit.setValue(name); // its responder calls back here with the same address: no loop
+    }
+
+    protected ServerNameMixin() {
+        super(Component.empty());
+    }
+
+    /** A new server (empty address) opens on the address field, so the IP can be typed or pasted at once; editing keeps vanilla's focus. */
+    @Inject(method = "setInitialFocus()V", at = @At("HEAD"), cancellable = true)
+    private void ladsFocusAddress(CallbackInfo ci) {
+        if (serverData.ip == null || serverData.ip.isEmpty()) {
+            setInitialFocus(ipEdit);
+            ci.cancel();
+        }
     }
 }

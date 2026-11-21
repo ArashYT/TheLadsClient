@@ -12,7 +12,7 @@ public sealed class RetirementTests : IDisposable
     private string Retired(string fileName) => Path.Combine(box.Cache, "retired", "goodmc", fileName);
 
     private void WritePackWithoutGoodMc() =>
-        box.WriteManifest("26.2", new[] { box.Pin("sodium", ModSandbox.Jar("sodium")) },
+        box.WriteManifest("26.3", new[] { box.Pin("sodium", ModSandbox.Jar("sodium")) },
             new() { new("goodmc", "hwir46QE", "GoodMC: Old Combat & Blockhitting", new() { ModSandbox.Sha(goodmc) }, "Removed from the pack.") });
 
     [Theory]
@@ -59,7 +59,7 @@ public sealed class RetirementTests : IDisposable
     public async Task StalePublishedStandaloneJarOfANativeModIsRetiredWithoutAReceipt()
     {
         var older = ModSandbox.Jar("entityculling", "1.8.0");
-        box.WriteManifest("26.2", new[] { box.Pin("sodium", ModSandbox.Jar("sodium")) },
+        box.WriteManifest("26.3", new[] { box.Pin("sodium", ModSandbox.Jar("sodium")) },
             new() { new("entityculling", "NNAgCjsB", "Entity Culling", new() { ModSandbox.Sha(older), ModSandbox.Sha(ModSandbox.Jar("entityculling", "1.9.0")) },
                 "Replaced by native Lads Core functionality in 1.4.6.") });
         box.WriteReceipt(("sodium", ModSandbox.Jar("sodium")));
@@ -125,9 +125,9 @@ public sealed class RetirementTests : IDisposable
     {
         var older = ModSandbox.Jar("sodium", "0.8.0");
         var pin = box.Pin("sodium", ModSandbox.Jar("sodium", "0.8.1"), version: "0.8.1");
-        box.WriteManifest("26.2", new[] { pin }, published: new() { ["sodium"] = new() { ModSandbox.Sha(older) } });
+        box.WriteManifest("26.3", new[] { pin }, published: new() { ["sodium"] = new() { ModSandbox.Sha(older) } });
         File.WriteAllBytes(box.Mod("sodium-fabric-0.8.0.jar"), older);
-        var listed = (await new ModInventoryService().BuildAsync(box.Bundle, box.Game, "26.2")).Entries.Single(e => e.FileName == "sodium-fabric-0.8.0.jar");
+        var listed = (await new ModInventoryService().BuildAsync(box.Bundle, box.Game, "26.3")).Entries.Single(e => e.FileName == "sodium-fabric-0.8.0.jar");
         Assert.Equal(ModOwnership.Pack, listed.Ownership);
 
         await box.Install();
@@ -143,7 +143,7 @@ public sealed class RetirementTests : IDisposable
     public async Task RetiringADisabledCopyKeepsTheChoiceWhenThePackShipsTheModAgain()
     {
         var yyy = ModSandbox.Jar("yyy");
-        box.WriteManifest("26.2", Array.Empty<ClientModInstaller.Entry>());
+        box.WriteManifest("26.3", Array.Empty<ClientModInstaller.Entry>());
         box.WriteReceipt(("yyy", yyy));
         File.WriteAllBytes(box.Mod("yyy-1.0.0.jar.disabled"), yyy);
         File.WriteAllText(box.State, """{"schema":1,"extra":"keep","mods":{"other":{"enabled":true}}}""");
@@ -157,7 +157,7 @@ public sealed class RetirementTests : IDisposable
         Assert.Contains("\"extra\": \"keep\"", File.ReadAllText(box.State));
 
         // A later pack ships it again: it stays disabled and is not downloaded.
-        box.WriteManifest("26.2", new[] { box.Pin("yyy", yyy) });
+        box.WriteManifest("26.3", new[] { box.Pin("yyy", yyy) });
         await box.Install();
         Assert.Empty(Directory.GetFiles(box.Mods));
         Assert.Equal(0, box.Downloads);
@@ -166,7 +166,7 @@ public sealed class RetirementTests : IDisposable
     [Fact]
     public async Task ReceiptOnlyRetirementKeepsBothNamesWhenTheBackupNameIsTaken()
     {
-        box.WriteManifest("26.2", Array.Empty<ClientModInstaller.Entry>());
+        box.WriteManifest("26.3", Array.Empty<ClientModInstaller.Entry>());
         box.WriteReceipt(("goodmc", goodmc));
         Directory.CreateDirectory(Path.GetDirectoryName(Retired("x"))!);
         File.WriteAllText(Retired("lads-goodmc.jar"), "an earlier backup");

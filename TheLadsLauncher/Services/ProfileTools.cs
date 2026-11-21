@@ -21,7 +21,7 @@ public static class ProfileTools
             && (string.IsNullOrWhiteSpace(query) || (p.Name + " " + p.MinecraftVersion).Contains(query.Trim(), StringComparison.OrdinalIgnoreCase)))
             .OrderByDescending(p => p.IsFavorite).ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>The versions the Play screen offers; profiles for other versions are listed greyed out (26.2 is paused, see GameVersionPolicy).</summary>
+    /// <summary>The versions the Play screen offers; profiles for other versions are listed greyed out (1.21.11 and 26.2 are no longer supported, see GameVersionPolicy).</summary>
     public static readonly string[] PlayableVersions = { "26.3", "1.20.1", "1.8.9" };
 
     /// <summary>The version filter choices on the Profiles page (26.2 and 1.21.11 are hidden).</summary>

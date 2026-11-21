@@ -1,6 +1,7 @@
 package com.thelads.core.v1_8_9.mixin.pvp;
 
 import com.thelads.core.client.PvpVisuals;
+import com.thelads.core.perf.HasteAnimFix;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.potion.Potion;
 import org.spongepowered.asm.mixin.Mixin;
@@ -20,8 +21,17 @@ public abstract class EntityLivingBaseSwingMixin189 {
             } else if (PvpVisuals.swingHasteInfluence < 100) {
                 int haste = living.isPotionActive(Potion.digSpeed) ? 1 + living.getActivePotionEffect(Potion.digSpeed).getAmplifier() : 0;
                 int fatigue = living.isPotionActive(Potion.digSlowdown) ? 1 + living.getActivePotionEffect(Potion.digSlowdown).getAmplifier() : 0;
-                cir.setReturnValue(PvpVisuals.getSwingDuration(haste, fatigue, 6));
+                cir.setReturnValue(HasteAnimFix.clamp(PvpVisuals.getSwingDuration(haste, fatigue, 6)));
             }
+        }
+    }
+
+    /** Haste V and up: vanilla's 1 tick or less draws no swing; the client shows at least 2 (HasteAnimFix). Reached when the head did not answer. */
+    @Inject(method = "getArmSwingAnimationEnd", at = @At("RETURN"), cancellable = true)
+    private void ladsHasteAnimFix(CallbackInfoReturnable<Integer> cir) {
+        EntityLivingBase living = (EntityLivingBase) (Object) this;
+        if (living.worldObj != null && living.worldObj.isRemote && cir.getReturnValue() < HasteAnimFix.MIN_TICKS) {
+            cir.setReturnValue(HasteAnimFix.clamp(cir.getReturnValue()));
         }
     }
 }

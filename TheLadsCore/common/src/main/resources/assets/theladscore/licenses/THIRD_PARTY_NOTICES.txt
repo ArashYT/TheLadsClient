@@ -13,14 +13,10 @@ components (LGPL, MPL, CC-BY-NC-SA) is packaged directly inside `theladscore.jar
 1. Embedded Runtime Libraries
 --------------------------------------------------------------------------------
 
-* Reflect (`net.lenni0451:Reflect:1.6.2`) — Bundled in Minecraft 1.21.11 (`v1_21_11`)
-  Copyright (c) Lenni0451
-  License: MIT License (https://github.com/Lenni0451/Reflect)
-
-* CatConfig & CatConfig-MC (`catconfig-0.3.0`, `catconfig-mc-26.2-0.2.1`) — Bundled in 26.2, 26.3
+* CatConfig & CatConfig-MC (`catconfig-0.3.0`, `catconfig-mc-26.2-0.2.1`) — Bundled in 26.3
   License: MIT License (see `assets/theladscore/licenses/CatConfig-LICENSE.txt` and `assets/theladscore/licenses/CatConfig-MC-LICENSE.txt`)
 
-* java-objc-bridge (`ca.weblite:java-objc-bridge:1.0.0`) — Bundled in 26.2, 26.3
+* java-objc-bridge (`ca.weblite:java-objc-bridge:1.0.0`) — Bundled in 26.3
   Copyright (c) Web Lite Solutions Corp. (Steve Hannah)
   License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
 
@@ -90,7 +86,7 @@ components (LGPL, MPL, CC-BY-NC-SA) is packaged directly inside `theladscore.jar
   NBT Autocomplete: GNU Lesser General Public License v3.0 only (LGPL-3.0-only) by MT (see `META-INF/lads-sources/nbtac/LICENSE`, `META-INF/lads-sources/nbtac/NOTICE.txt`)
   Modified Sources: `META-INF/lads-sources/capes/`, `META-INF/lads-sources/nbtac/`
 
-* Jade (Minecraft 26.2 and 26.3 builds only)
+* Jade (Minecraft 26.3 build only)
   Copyright (c) Snownee
   License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC-BY-NC-SA-4.0)
   License & Notice: `assets/theladscore/licenses/Jade-NOTICE.txt`, `assets/theladscore/licenses/Jade-CC-BY-NC-SA-4.0.txt`

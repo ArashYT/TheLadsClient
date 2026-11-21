@@ -92,6 +92,8 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.social.SocialToasts189());
         com.thelads.core.security.AntiInjectDetector.init();
         com.thelads.core.client.hud.ServerHudElement.registerModules(); // minigame API server HUD + run timer modules, before the config loads
+        com.thelads.core.modules.ExtraModules.registerAll(com.thelads.core.config.ModuleManager.getInstance()); // 1.14.4 optimizer modules, before the config loads
+        com.thelads.core.config.ModuleSupport.registerBuiltIn("Low Latency", "Input Optimizer");
         ConfigManager.load();
         com.thelads.core.client.util.LogPruner.pruneIfEnabled(new java.io.File("logs"));
         com.thelads.core.v1_8_9.feature.LocalSkins189.initialize(); // the Skin changer's saved skin
@@ -124,6 +126,7 @@ public class TheLadsCore189 {
         Crosshair189.register();
         MinecraftForge.EVENT_BUS.register(new Crosshair189());
         AutoReconnect189.register();
+        com.thelads.core.perf.MemoryGuard.registerDefaults();
         MinecraftForge.EVENT_BUS.register(new ConnectionTweaks189());
         MinecraftForge.EVENT_BUS.register(new KillBanner189());
         com.thelads.core.v1_8_9.feature.Hypixel189.register();
@@ -289,6 +292,7 @@ public class TheLadsCore189 {
     public void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         NativeMenuKey.tick();
+        com.thelads.core.perf.MemoryGuard.tick(Minecraft.getMinecraft().theWorld);
         com.thelads.core.client.bridge.LadsGameBridge.get().tickClient();
         com.thelads.core.client.Nicknames.tick();
         Minecraft mc = Minecraft.getMinecraft();

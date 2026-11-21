@@ -1,6 +1,7 @@
 package com.thelads.core.v1_20_1.input;
 
 import com.mojang.blaze3d.platform.Window;
+import com.thelads.core.modules.ExtraModules;
 import com.thelads.core.perf.FramePacer;
 import com.thelads.core.perf.LatencyMeter;
 import com.thelads.core.perf.PreciseWait;
@@ -43,12 +44,12 @@ import org.slf4j.LoggerFactory;
 public final class InputLatency1201 {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore-1.20.1");
     /** Mod ids the originals may use, on Fabric or Forge. */
-    private static final String[] IXERIS_IDS = {"ixeris"}, REFLEX_IDS = {"reflex", "reflexantilag", "reflex_antilag", "antilag"};
+    private static final String[] IXERIS_IDS = {"ixeris", "inputoptimizer", "rawinputbuffer"}, REFLEX_IDS = {"reflex", "reflexantilag", "reflex_antilag", "antilag"};
     private static final int BUFFER_BYTES = 16 * 1024, MAX_DEVICES = 8, RAWINPUTDEVICE_BYTES = 16;
     private static final long RECHECK_NS = 1_000_000_000L;
 
     static boolean ixeris, reflex;
-    /** The original Ixeris is installed (the Lads 1.20.1 pack ships it): it polls events itself, on its own thread. */
+    /** Ixeris (the Lads 1.20.1 pack ships it) or Input Optimizer / Raw Input Buffer is installed: it polls events itself, on its own thread. */
     private static boolean ixerisJar;
     /** The thread that presents frames (the GL context's); with a threaded renderer the frame start may run elsewhere. */
     private static volatile Thread glThread;
@@ -97,8 +98,8 @@ public final class InputLatency1201 {
                 LOGGER.warn("Buffered raw mouse input is off: " + t);
             }
         }
-        LOGGER.info("Lads input: buffered raw mouse input {}, input-latency pacing {} (GLFW {})", ixeris ? "on" : "off",
-            reflex ? "on" : "off", GLFW.glfwGetVersionString());
+        LOGGER.info("Lads input: buffered raw mouse input {}, input-latency pacing {} (GLFW {}); Low Latency module / Input Optimizer options read per frame",
+            ixeris ? "on" : "off", reflex ? "on" : "off", GLFW.glfwGetVersionString());
     }
 
     private static boolean killed(String property) {
@@ -127,7 +128,7 @@ public final class InputLatency1201 {
     /** Head of RenderSystem.pollEvents: the queued raw mouse motion, summed, before GLFW sees it. */
     public static void beforePoll() {
         if (qaFlood == 2) qaDeliverBatch();
-        if (!ixeris || qaVanilla) return;
+        if (!ixeris || qaVanilla || !ExtraModules.INPUT_OPTIMIZER.bufferedMouse()) return;
         try {
             Minecraft mc = Minecraft.getInstance();
             Window window = mc.getWindow();
@@ -188,7 +189,7 @@ public final class InputLatency1201 {
 
     /** RenderSystem.limitDisplayFPS: true when this waited instead (no event pumping during the wait, input polled after it). */
     public static boolean limit(int fps) {
-        if (!ixeris || qaVanilla) return false;
+        if (!ixeris || qaVanilla || !ExtraModules.INPUT_OPTIMIZER.bufferedMouse()) return false;
         Minecraft mc = Minecraft.getInstance();
         long deadline = lastFrameEnd + 1_000_000_000L / Math.max(1, fps);
         // Loading (resource reload overlay, or no world yet: title, world loading screens): mostly sleep, spin only the last ~1 ms.
@@ -219,7 +220,8 @@ public final class InputLatency1201 {
                 }
             }
             // Fresh input after the wait; with Ixeris' threaded event loop events arrive on its own schedule instead.
-            if (PACER.frameStart(() -> done(previous), () -> done(older)) > 0 && !ixerisJar) RenderSystemInvoker1201.lads$pollEvents();
+            PACER.tuner(ExtraModules.LOW_LATENCY.activeTuner()); // the Low Latency module's offset, back-off and cap, when it is on
+            if (PACER.frameStart(() -> done(previous), () -> done(older)) > 0 && !ixerisJar && ExtraModules.INPUT_OPTIMIZER.latePoll()) RenderSystemInvoker1201.lads$pollEvents();
         } catch (Throwable t) {
             stopPacing(t);
         }

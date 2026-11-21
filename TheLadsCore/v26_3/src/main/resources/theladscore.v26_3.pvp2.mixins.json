@@ -8,6 +8,7 @@
   },
   "client": [
     "AbstractContainerScreenDarkMixin26",
+    "AttackPredictMixin26",
     "ElderGuardianParticleStateMixin26",
     "EntityRendererPvpMixin26",
     "FirstPersonReequipMixin26",
@@ -18,6 +19,8 @@
     "LightningBoltRendererMixin26",
     "LivingEntityRendererF1Mixin26",
     "LivingEntitySwingMixin26",
+    "PearlPredictMixin26",
+    "PredictPacketsMixin26",
     "ScreenEffectPvpMixin26",
     "SubmitNodeCollectionTagMixin26"
   ]

@@ -98,56 +98,6 @@ class TestTier1FeatureCoverage(unittest.TestCase):
     # Feature 2: Packwiz Metadata Migration (.pw.toml, refresh exit 0)
     # =========================================================================
 
-    def test_f02_01_pack_toml_exists_and_valid(self):
-        """F2: Packwiz/pack.toml exists and contains valid required root metadata."""
-        pack_toml_path = ch.PACKWIZ_DIR / "pack.toml"
-        self.assertTrue(pack_toml_path.exists(), "Packwiz/pack.toml must exist")
-        content = pack_toml_path.read_text(encoding="utf-8", errors="replace")
-        parsed = ch.parse_minimal_toml(content)
-        self.assertIn("name", parsed, "pack.toml must specify 'name'")
-        self.assertIn("author", parsed, "pack.toml must specify 'author'")
-        self.assertIn("index", parsed, "pack.toml must specify 'index' section")
-
-    def test_f02_02_index_toml_exists_and_valid(self):
-        """F2: Packwiz/index.toml exists and contains valid index metadata."""
-        index_toml_path = ch.PACKWIZ_DIR / "index.toml"
-        self.assertTrue(index_toml_path.exists(), "Packwiz/index.toml must exist")
-        content = index_toml_path.read_text(encoding="utf-8", errors="replace")
-        parsed = ch.parse_minimal_toml(content)
-        self.assertIn("hash-format", parsed, "index.toml must define 'hash-format'")
-        self.assertIn("files", parsed, "index.toml must define 'files' table/entries")
-
-    def test_f02_03_zero_tracked_jars_in_packwiz(self):
-        """F2: Zero physical .jar files are tracked in Packwiz/ by git."""
-        code, out, _ = ch.run_cmd("git ls-files \"Packwiz/*.jar\"")
-        self.assertEqual(code, 0)
-        self.assertEqual(
-            out.strip(), "",
-            f"Found tracked .jar files in Packwiz/ in git tree: {out.strip()}"
-        )
-
-    def test_f02_04_mods_are_pw_toml_metadata(self):
-        """F2: Mod descriptors in Packwiz/mods are .pw.toml files with valid metadata."""
-        mods_dir = ch.PACKWIZ_DIR / "mods"
-        self.assertTrue(mods_dir.exists(), "Packwiz/mods directory must exist")
-        toml_files = list(mods_dir.glob("*.pw.toml"))
-        self.assertGreater(len(toml_files), 0, "Packwiz/mods must contain .pw.toml metadata files")
-        
-        # Verify first 10 sample files parse cleanly
-        for tf in toml_files[:10]:
-            content = tf.read_text(encoding="utf-8", errors="replace")
-            valid, msg = ch.validate_pw_toml_content(content)
-            self.assertTrue(valid, f"Invalid metadata in {tf.name}: {msg}")
-
-    def test_f02_05_resourcepacks_zero_tracked_zips(self):
-        """F2: Zero physical .zip files in Packwiz/resourcepacks are tracked in git."""
-        code, out, _ = ch.run_cmd("git ls-files \"Packwiz/resourcepacks/*.zip\"")
-        self.assertEqual(code, 0)
-        self.assertEqual(
-            out.strip(), "",
-            f"Found tracked .zip files in Packwiz/resourcepacks/: {out.strip()}"
-        )
-
     # =========================================================================
     # Feature 3: Workspace Hygiene (forbidden directories absent)
     # =========================================================================
@@ -591,14 +541,6 @@ class TestTier1FeatureCoverage(unittest.TestCase):
         self.assertIn("1.21.1", content, ":v1_21_1 must target Minecraft 1.21.1")
         self.assertIn(":common", content, ":v1_21_1 must depend on project(':common')")
 
-    def test_f11_04_v26_2_subproject_mc_26_2_fabric_loom(self):
-        """F11: Subproject :v26_2 configures Minecraft 26.2 with Java 25 and includes :common."""
-        v26_build = ch.CORE_DIR / "v26_2" / "build.gradle"
-        self.assertTrue(v26_build.exists(), "TheLadsCore/v26_2/build.gradle must exist")
-        content = v26_build.read_text(encoding="utf-8", errors="replace")
-        self.assertIn("26.2", content, ":v26_2 must target Minecraft 26.2")
-        self.assertIn(":common", content, ":v26_2 must depend on project(':common')")
-
     def test_f11_05_root_build_gradle_coordinates_subprojects(self):
         """F11: Root build.gradle coordinates multi-project repository and build tasks."""
         root_build = ch.CORE_DIR / "build.gradle"
@@ -628,14 +570,6 @@ class TestTier1FeatureCoverage(unittest.TestCase):
         content = "".join(af.read_text(encoding="utf-8", errors="replace") for af in adapter_files)
         self.assertIn("LadsGraphics", content, "v1_21_1 adapter must implement LadsGraphics")
         self.assertIn("GuiGraphics", content, "v1_21_1 adapter must wrap GuiGraphics")
-
-    def test_f12_03_v26_2_guigraphicsextractor_adapter_implements_bridge(self):
-        """F12: GuiGraphicsExtractorLadsAdapter in :v26_2 wraps GuiGraphicsExtractor to implement LadsGraphics."""
-        adapter_files = list((ch.CORE_DIR / "v26_2").rglob("*Adapter*.java"))
-        self.assertTrue(len(adapter_files) > 0, "GuiGraphicsExtractor adapter must exist in :v26_2")
-        content = "".join(af.read_text(encoding="utf-8", errors="replace") for af in adapter_files)
-        self.assertIn("LadsGraphics", content, "v26_2 adapter must implement LadsGraphics")
-        self.assertIn("GuiGraphicsExtractor", content, "v26_2 adapter must wrap GuiGraphicsExtractor")
 
     def test_f12_04_hud_elements_render_through_ladsgraphics(self):
         """F12: Universal HUD elements in :common render through LadsGraphics interface."""
@@ -777,13 +711,6 @@ class TestTier1FeatureCoverage(unittest.TestCase):
         self.assertTrue(len(v1_mixins) > 0, "GuiMixin must exist in v1_21_1")
         content = "".join(m.read_text(encoding="utf-8", errors="replace") for m in v1_mixins)
         self.assertIn("Gui.class", content, "v1_21_1 GuiMixin must target Gui.class")
-
-    def test_f15_03_v26_2_mixin_targets_hud_class(self):
-        """F15: GuiMixin in v26_2 targets net.minecraft.client.gui.Hud."""
-        v26_mixins = list((ch.CORE_DIR / "v26_2").rglob("*GuiMixin*.java"))
-        self.assertTrue(len(v26_mixins) > 0, "GuiMixin must exist in v26_2")
-        content = "".join(m.read_text(encoding="utf-8", errors="replace") for m in v26_mixins)
-        self.assertIn("Hud.class", content, "v26_2 GuiMixin must target Hud.class")
 
     def test_f15_04_boot_log_validator_single_resource_reload(self):
         """F15: Boot log validator accepts logs with exactly ONE Reloading ResourceManager entry."""

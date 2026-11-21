@@ -11,6 +11,8 @@
 		"ServerPlayerMixin"
 	],
 	"client": [
+		"LadsJadeClearMixin",
+		"LadsJadeBossRectMixin",
 		"BossHealthOverlayMixin",
 		"CreativeModeInventoryScreenMixin",
 		"FogRendererMixin",

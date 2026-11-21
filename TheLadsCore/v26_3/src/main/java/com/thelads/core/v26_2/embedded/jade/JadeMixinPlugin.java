@@ -21,6 +21,8 @@ public final class JadeMixinPlugin extends EmbeddedMixinPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        return !JadeStandDown.external();
+        // The clear-of-notification mixin patches the real Jade, so it is the one that runs only when Jade is external
+        boolean clear = mixinClassName.contains("LadsJade");
+        return clear == JadeStandDown.external();
     }
 }
