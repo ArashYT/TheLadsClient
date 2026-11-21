@@ -386,7 +386,8 @@
                         <TextBlock Text="Settings" FontSize="26" FontWeight="SemiBold" Margin="0,0,0,16" />
                         <TabControl Grid.Row="1" x:Name="SettingsTabControl" Classes="pills">
                             <TabItem Header="General">
-                                <ScrollViewer Margin="0,16,0,16">
+                                <Grid ColumnDefinitions="*,24,300" Margin="0,16,0,16">
+                                <ScrollViewer Grid.Column="0">
                                     <StackPanel Spacing="16">
                                         <Border Background="#1D1E22" CornerRadius="4" Padding="20" BorderBrush="#303137" BorderThickness="1">
                                             <StackPanel Spacing="12">
@@ -400,11 +401,11 @@
                                                 <TextBlock Text="APPEARANCE" Foreground="{DynamicResource LadsAccent}" FontSize="12" FontWeight="Bold" LetterSpacing="1" />
                                                 <Grid ColumnDefinitions="*,Auto">
                                                     <TextBlock Text="Theme" Foreground="#CCCCCC" FontSize="14" VerticalAlignment="Center" />
-                                                    <ComboBox x:Name="ThemeSelector" Grid.Column="1" Width="160" Height="36" FontSize="13" />
+                                                    <ComboBox x:Name="ThemeSelector" Grid.Column="1" Width="160" Height="36" FontSize="13" SelectionChanged="SettingsPreview_Changed" />
                                                 </Grid>
                                                 <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
                                                     <TextBlock Text="UI Scale" Foreground="#CCCCCC" FontSize="14" VerticalAlignment="Center" />
-                                                    <ComboBox x:Name="UiScaleSelector" Grid.Column="1" Width="160" Height="36" FontSize="13" />
+                                                    <ComboBox x:Name="UiScaleSelector" Grid.Column="1" Width="160" Height="36" FontSize="13" SelectionChanged="SettingsPreview_Changed" />
                                                 </Grid>
                                                 <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
                                                     <StackPanel Spacing="3" VerticalAlignment="Center" Margin="0,0,16,0">
@@ -506,6 +507,23 @@
                                         </Border>
                                     </StackPanel>
                                 </ScrollViewer>
+                                <StackPanel Grid.Column="2" Spacing="8" VerticalAlignment="Top">
+                                    <TextBlock Text="PREVIEW" Foreground="#868994" FontSize="12" FontWeight="Bold" LetterSpacing="1" />
+                                    <Border x:Name="SettingsPreviewFrame" Background="#121317" CornerRadius="4" BorderBrush="#303137" BorderThickness="1" Padding="14" ClipToBounds="True">
+                                        <StackPanel Spacing="10">
+                                            <TextBlock Text="THE LADS" Foreground="{DynamicResource LadsAccent}" FontWeight="Bold" x:Name="SettingsPreviewTitle" />
+                                            <Border x:Name="SettingsPreviewCard" Background="#1D1E22" CornerRadius="4" Padding="12" BorderBrush="#303137" BorderThickness="1">
+                                                <StackPanel Spacing="8">
+                                                    <TextBlock Text="Ready to play" FontWeight="SemiBold" x:Name="SettingsPreviewHeading" />
+                                                    <TextBlock Text="Lads Client" Foreground="#A0A1AA" FontSize="12" x:Name="SettingsPreviewSub" />
+                                                    <Button Content="Play" Classes="action" Height="30" HorizontalAlignment="Left" IsHitTestVisible="False" />
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                    </Border>
+                                    <TextBlock x:Name="SettingsPreviewSummary" Foreground="#868994" FontSize="11" TextWrapping="Wrap" Text="Dark, 100%" />
+                                </StackPanel>
+                                </Grid>
                             </TabItem>
                             <TabItem Header="Memory &amp; Java">
                                 <ScrollViewer Margin="0,16,0,16">

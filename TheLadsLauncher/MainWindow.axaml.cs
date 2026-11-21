@@ -1297,6 +1297,29 @@ public partial class MainWindow : Window
         ApplySeasonalChrome();
     }
 
+    private void SettingsPreview_Changed(object? sender, SelectionChangedEventArgs e) => UpdateSettingsPreview();
+
+    // Mini launcher beside General settings: mirrors the picked theme and UI scale before Save. Nothing is saved here.
+    private void UpdateSettingsPreview()
+    {
+        if (SettingsPreviewFrame == null || ThemeSelector.SelectedItem is not string theme) return;
+        string accent = theme switch
+        {
+            "DarkBlue" => "#3B82F6",
+            "DarkPurple" => "#8B5CF6",
+            "Midnight" => "#CDD6F4",
+            "Halloween" => "#FF8A1F",
+            _ => "#FF4444"
+        };
+        double pct = double.TryParse((UiScaleSelector.SelectedItem as string ?? "100%").Replace("%", ""), out double p) ? p : 100;
+        double s = pct / 100.0;
+        SettingsPreviewTitle.Foreground = new SolidColorBrush(Color.Parse(accent));
+        SettingsPreviewTitle.FontSize = 13 * s;
+        SettingsPreviewHeading.FontSize = 13 * s;
+        SettingsPreviewSub.FontSize = 12 * s;
+        SettingsPreviewSummary.Text = $"{theme}, {pct:0}% UI scale";
+    }
+
     private void ApplyUiScale()
     {
         if (double.TryParse(settings.UiScale.Replace("%", ""), out double pct))
@@ -3068,6 +3091,7 @@ public partial class MainWindow : Window
         foreach (var sc in scales)
             UiScaleSelector.Items.Add(sc);
         UiScaleSelector.SelectedItem = settings.UiScale;
+        UpdateSettingsPreview();
         LoadingScreenBgColorBox.Text = settings.LoadingScreenBgColor ?? "";
         LoadingScreenBarColorBox.Text = settings.LoadingScreenBarColor ?? "";
         LoadingScreenGlowColorBox.Text = settings.LoadingScreenGlowColor ?? "";
