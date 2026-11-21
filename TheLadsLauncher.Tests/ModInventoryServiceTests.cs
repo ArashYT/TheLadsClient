@@ -218,7 +218,7 @@ public sealed class ModInventoryServiceTests : IDisposable
     {
         // The launcher's own game-mods folder (copied next to the tests); only read.
         var bundle = AppContext.BaseDirectory;
-        var manifests = Directory.GetDirectories(Path.Combine(bundle, "game-mods")).ToDictionary(d => Path.GetFileName(d)!,
+        var manifests = Directory.GetDirectories(Path.Combine(bundle, "game-mods")).Where(d => File.Exists(Path.Combine(d, "client-mods.json"))).ToDictionary(d => Path.GetFileName(d)!,
             d => ClientModInstallerManifest(Path.Combine(d, "client-mods.json")));
         var inventory = await new ModInventoryService().BuildAsync(bundle, box.Game, version);
 
