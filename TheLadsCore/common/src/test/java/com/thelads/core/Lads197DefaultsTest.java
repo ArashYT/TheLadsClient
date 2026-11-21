@@ -28,6 +28,7 @@ class Lads197DefaultsTest {
     );
 
     private static final Set<String> DEFAULT_ENABLED_VISIBLE = Set.of(
+        "Audio Engine", "Input Optimizer", "Instant Hotbar", "Mace Optimizer", "Pearl Optimizer", "Player LOD", "Smooth Singleplayer", "Sword Optimizer",
         "1.7 Animations", "Action Bar", "AppleSkin", "ArmorHUD", "AutoReconnect", "Bed Wars Height Limit",
         "BetterF3", "BetterScreenshots", "BorderlessFullscreen", "BossBar", "Chat",
         "ClientTools", com.thelads.core.modules.CloudHeightModule.NAME, "Clumps", "Coordinates", "Crosshair Tweaks", com.thelads.core.modules.CustomSkyModule.NAME, com.thelads.core.modules.CustomItemTexturesModule.NAME,

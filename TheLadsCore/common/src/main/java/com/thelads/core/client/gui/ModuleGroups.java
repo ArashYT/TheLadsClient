@@ -44,7 +44,7 @@ public final class ModuleGroups {
         new Group("Visuals", "World", List.of("Time Changer", "Weather Changer", "Fog Customizer", "Cloud Height", "Hide Clouds", "CustomSky", "HideFoliage", "ClearGlass", "ChunkAnimator", "Chunk Borders")),
         new Group("Visuals", "Screen Effects", List.of("MotionBlur", "MenuBlur", "Overlays", "Render Tweaks", "Raised")),
         new Group("Visuals", "Dropped Items", List.of("Item Physics", "Loot Beams", "Item Despawn", "Custom Item Textures")),
-        new Group("Visuals", "Players & Mobs", List.of("Nametags", "SkinLayers", "Wavy Capes", "Cosmetics", "Nick Hider", "Mount Opacity", "Smooth Movement")),
+        new Group("Visuals", "Players & Mobs", List.of("Nametags", "SkinLayers", "Wavy Capes", "Cosmetics", "Nick Hider", "Mount Opacity", "Smooth Movement", "Player LOD")),
         new Group("Inventory", "Inventory", List.of("Inventory Search", "Inventory Move", "Armor Swap", "Slot Lock", "StackRefill", "Elytra Swap", "DropConfirmation", "Survival Guards")),
         new Group("Inventory", "Containers", List.of("Container QoL", "Container Sorting", "MouseTweaks", "ShulkerBoxUtils", "Ender Chest Peek", "Keep Cursor Position", "KeepUIOpen")),
         new Group("Inventory", "Tooltips & Info", List.of("EnhancedTooltips", "EnhancedToolbars", "Scrollable Tooltips", "AppleSkin", "NumericalEnchantments", "JEI (Just Enough Items)")),

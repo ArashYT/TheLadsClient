@@ -718,6 +718,7 @@ public class ModuleManager {
         register(new com.thelads.core.modules.SmoothSingleplayerModule(), Module.Category.MECHANIC);
         register(new com.thelads.core.modules.InstantHotbarModule(), Module.Category.MECHANIC);
         register(new com.thelads.core.modules.OffhandKeyModule(), Module.Category.MECHANIC);
+        com.thelads.core.modules.ExtraModules.registerAll(this);
         register(com.thelads.core.client.SoundFilters.createModule(), Module.Category.MECHANIC);
         register(com.thelads.core.client.media.MumbleLink.createModule(), Module.Category.MECHANIC);
         register(com.thelads.core.client.worldedit.WorldEditCUI.createModule(), Module.Category.MECHANIC);
