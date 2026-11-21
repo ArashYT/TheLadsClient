@@ -219,6 +219,8 @@ public final class LadsApiClient {
         return true;
     }
 
+    private static boolean policyToastShown;
+
     private static void handleHello(JsonObject json) {
         // hello: reset old state, store serverName (<=32 chars) and sessionOk
         ServerPolicy.set(null);
@@ -348,7 +350,11 @@ public final class LadsApiClient {
         sendPayload(ack.toString().getBytes(StandardCharsets.UTF_8));
 
         List<ToastAction> actions = parseToastActions(json.get("actions"));
-        LadsApiUi.policyApplied(serverName, result.changedCount, result.unlocked, notice, actions);
+        // The server re-sends its rules on every backend/mod switch; the toast is for the join only.
+        if (!policyToastShown) {
+            policyToastShown = true;
+            LadsApiUi.policyApplied(serverName, result.changedCount, result.unlocked, notice, actions);
+        }
     }
 
     private static void handlePresence(JsonObject json) {
@@ -438,6 +444,7 @@ public final class LadsApiClient {
 
     /** Disconnect: everything from the connection goes, the session too. */
     public static void reset() {
+        policyToastShown = false;
         handleReset();
         dropProof();
         sessionOk = false;
