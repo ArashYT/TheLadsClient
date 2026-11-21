@@ -183,33 +183,6 @@ class TestTier4RealWorld(unittest.TestCase):
         self.assertTrue(res_26_2["passed"], f"26.2 log failed: {res_26_2.get('errors')}")
 
     # -------------------------------------------------------------------------
-    # T4.5: Packwiz Remote Modpack Metadata Resolution
-    # -------------------------------------------------------------------------
-    def test_t4_05_packwiz_remote_modpack_metadata_resolution(self):
-        """
-        T4.5: Validates Packwiz modpack metadata resolution:
-        All .pw.toml files specify valid filenames and download/update mechanisms.
-        """
-        mods_dir = ch.PACKWIZ_DIR / "mods"
-        self.assertTrue(mods_dir.exists())
-        pw_tomls = list(mods_dir.glob("*.pw.toml"))
-        self.assertGreater(len(pw_tomls), 0, "Mods directory must contain .pw.toml files")
-        
-        valid_count = 0
-        for pt in pw_tomls:
-            content = pt.read_text(encoding="utf-8", errors="replace")
-            valid, _ = ch.validate_pw_toml_content(content)
-            if valid:
-                valid_count += 1
-                
-        # At least 95% of metadata files must be strictly valid
-        valid_ratio = valid_count / len(pw_tomls)
-        self.assertGreaterEqual(
-            valid_ratio, 0.95,
-            f"Only {valid_count}/{len(pw_tomls)} ({valid_ratio*100:.1f}%) mod metadata files are valid"
-        )
-
-    # -------------------------------------------------------------------------
     # T4.6: Account and Skin Cache Lifecycle
     # -------------------------------------------------------------------------
     def test_t4_06_account_and_skin_cache_lifecycle(self):

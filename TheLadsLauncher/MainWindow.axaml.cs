@@ -177,9 +177,9 @@ public partial class MainWindow : Window
         {
             settings.LauncherVersion = Program.Version;
             
-            // Migrate to 26.2 and new Packwiz URLs if the user has legacy settings
+            // Migrate to 26.3 and new Packwiz URLs if the user has legacy settings
             if (settings.FabricVersion.Contains("26.1.2") || settings.FabricVersion == "fabric-loader-0.19.2-26.1.2")
-                settings.FabricVersion = "fabric-loader-0.19.3-26.2";
+                settings.FabricVersion = "fabric-loader-0.19.5-26.3";
             
             if (settings.PackwizPath.Contains("The Lads Client Packwiz") || settings.PackwizPath.Contains("Arash"))
                 settings.PackwizPath = Path.Combine(TheLadsLauncher.Services.PathService.Instance.BaseDirectory, "packwiz");

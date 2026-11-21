@@ -10,12 +10,12 @@ public sealed class ModInventoryServiceTests : IDisposable
     private readonly ModSandbox box = new();
 
     private Task<ModInventory> Build(IReadOnlyCollection<string>? loaded = null) =>
-        new ModInventoryService(_ => loaded).BuildAsync(box.Bundle, box.Game, "26.2");
+        new ModInventoryService(_ => loaded).BuildAsync(box.Bundle, box.Game, "26.3");
 
     private static ModInventoryEntry Row(ModInventory inventory, string id, ModOwnership? ownership = null) =>
         inventory.Entries.Single(e => e.Id == id && (ownership == null || e.Ownership == ownership));
 
-    private void WriteCatalog(string minecraftVersion = "26.2") =>
+    private void WriteCatalog(string minecraftVersion = "26.3") =>
         File.WriteAllText(Path.Combine(box.Game, "lads-core-catalog.json"), JsonSerializer.Serialize(new
         {
             schema = 1, coreVersion = "1.2.0", minecraftVersion, writtenAt = "2026-09-29T12:00:00Z",
@@ -32,10 +32,10 @@ public sealed class ModInventoryServiceTests : IDisposable
     private (ClientModInstaller.Entry Alpha, ClientModInstaller.Entry Beta, ClientModInstaller.Entry Gamma, ClientModInstaller.Entry Delta,
         ClientModInstaller.Entry Epsilon) SeedProfile()
     {
-        var core = ModSandbox.Core("26.2", new[] {
+        var core = ModSandbox.Core("26.3", new[] {
             ("META-INF/jars/catconfig.jar", ModSandbox.Jar("catconfig-mc", library: true)),
             ("META-INF/jars/java-objc-bridge-1.0.0.jar", ModSandbox.PlainJar()) });
-        box.WriteCore("26.2", core);
+        box.WriteCore("26.3", core);
         File.WriteAllBytes(box.Mod("theladscore.jar"), core);
         var alphaBytes = ModSandbox.Jar("alpha", "2.0.0");
         var alpha = box.Pin("alpha", alphaBytes);
@@ -60,8 +60,8 @@ public sealed class ModInventoryServiceTests : IDisposable
         File.WriteAllBytes(box.Mod("lads-gone.jar"), gone);
         File.WriteAllBytes(box.Mod("oldmc.jar"), ModSandbox.Jar("oldmc", depends: new() { ["minecraft"] = "1.21.1" }));
         box.WriteReceipt(("alpha", alphaBytes), ("gone", gone));
-        box.WriteManifest("26.2", new[] { alpha, beta, gamma, delta, epsilon });
-        box.WriteManifest("26.3", new[] { box.Pin("alpha", alphaBytes), box.Pin("zeta", ModSandbox.Jar("zeta")) });
+        box.WriteManifest("26.3", new[] { alpha, beta, gamma, delta, epsilon });
+        box.WriteManifest("1.20.1", new[] { box.Pin("alpha", alphaBytes), box.Pin("zeta", ModSandbox.Jar("zeta")) });
         WriteCatalog();
         File.WriteAllText(Path.Combine(box.Game, "thelads_config.json"), """{"modules":{"FPS":{"enabled":false}},"hud":{"locked":[]}}""");
         return (alpha, beta, gamma, delta, epsilon);
@@ -119,12 +119,12 @@ public sealed class ModInventoryServiceTests : IDisposable
 
         var zeta = Row(inventory, "zeta");
         Assert.Equal((ModEntryStatus.Unavailable, false), (zeta.Status, zeta.CanToggle));
-        Assert.Equal("Not in the Lads pack for 26.2 (included for 26.3). Lads provides its own Zoom instead", zeta.Note);
+        Assert.Equal("Not in the Lads pack for 26.3 (included for 1.20.1). Lads provides its own Zoom instead", zeta.Note);
         Assert.Equal(1, inventory.Counts.Unavailable);
 
         foreach (var id in new[] { "minecraft", "fabricloader", "java" })
             Assert.Equal((ModOwnership.Platform, false), (Row(inventory, id).Ownership, Row(inventory, id).CanToggle));
-        Assert.Equal("26.2", Row(inventory, "minecraft").Version);
+        Assert.Equal("26.3", Row(inventory, "minecraft").Version);
 
         var fps = Row(inventory, "FPS");
         Assert.Equal((ModOwnership.NativeModule, ModEntryStatus.Disabled, true), (fps.Ownership, fps.Status, fps.CanToggle));
@@ -160,10 +160,10 @@ public sealed class ModInventoryServiceTests : IDisposable
         var missing = Row(await Build(), ModInventoryService.CatalogPlaceholderId);
         Assert.Equal("Launch this profile once to list Lads modules", missing.ToggleBlockedReason);
 
-        WriteCatalog("26.3");
+        WriteCatalog("1.20.1");
         var stale = Row(await Build(), "FPS");
         Assert.False(stale.CanToggle);
-        Assert.Contains("from Minecraft 26.3", stale.ToggleBlockedReason);
+        Assert.Contains("from Minecraft 1.20.1", stale.ToggleBlockedReason);
 
         WriteCatalog();
         box.Choose(("theladscore", false));
@@ -195,12 +195,12 @@ public sealed class ModInventoryServiceTests : IDisposable
     {
         SeedProfile();
         var service = new ModInventoryService();
-        var inventory = await service.BuildAsync(box.Bundle, box.Game, "26.2");
+        var inventory = await service.BuildAsync(box.Bundle, box.Game, "26.3");
         await service.WriteSnapshotAsync(inventory);
 
         var root = JsonNode.Parse(File.ReadAllText(Path.Combine(box.Cache, "inventory.json")))!;
         Assert.Equal(1, root["schema"]!.GetValue<int>());
-        Assert.Equal("26.2", root["minecraftVersion"]!.GetValue<string>());
+        Assert.Equal("26.3", root["minecraftVersion"]!.GetValue<string>());
         var entries = root["entries"]!.AsArray();
         Assert.Equal(inventory.Entries.Count, entries.Count);
         var delta = entries.Single(e => e!["id"]!.GetValue<string>() == "delta")!;
@@ -213,8 +213,6 @@ public sealed class ModInventoryServiceTests : IDisposable
     }
 
     [Theory]
-    [InlineData("1.21.11")]
-    [InlineData("26.2")]
     [InlineData("26.3")]
     public async Task ShippedManifestsAreListedCompletelyForAnEmptyProfile(string version)
     {
@@ -242,7 +240,7 @@ public sealed class ModInventoryServiceTests : IDisposable
     public void RemadeModsAreRetiredOn26xAndKeptOn12111(string id)
     {
         var mods = Path.Combine(AppContext.BaseDirectory, "game-mods");
-        foreach (var version in new[] { "26.2", "26.3" })
+        foreach (var version in new[] { "26.3" })
         {
             var manifest = ClientModInstallerManifest(Path.Combine(mods, version, "client-mods.json"))!;
             Assert.DoesNotContain(manifest.Mods, m => m.ModId == id);
@@ -251,7 +249,6 @@ public sealed class ModInventoryServiceTests : IDisposable
             var retired = Assert.Single(manifest.Retired!, r => r.ModId == id);
             Assert.NotEmpty(retired.Sha512!);
         }
-        Assert.Contains(ClientModInstallerManifest(Path.Combine(mods, "1.21.11", "client-mods.json"))!.Mods, m => m.ModId == id);
     }
 
     // T17: the installer retires nothing for a version without a Lads manifest, so its receipt jars are ordinary, switchable jars.

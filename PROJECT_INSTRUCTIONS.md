@@ -51,7 +51,7 @@ You can run these commands directly using PowerShell:
     ```powershell
     powershell -ExecutionPolicy Bypass -File .\Build-LadsClient.ps1
     ```
-    Compiles the multi-version Java core (`TheLadsCore`) and deploys the production jars to the launcher's `game-mods/<version>` directories (`1.8.9`, `1.20.1`, `1.21.11`, `26.2`, `26.3`).
+    Compiles the multi-version Java core (`TheLadsCore`) and deploys the production jars to the launcher's `game-mods/<version>` directories (`1.8.9`, `1.20.1`, `26.3`).
 
 *   **Build Core + C# Launcher:**
     ```powershell

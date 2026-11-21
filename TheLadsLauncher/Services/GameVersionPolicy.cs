@@ -70,7 +70,7 @@ public static class GameVersionPolicy
     };
 
     public static bool RequiresBundledCore(string minecraftVersion) =>
-        minecraftVersion is "1.20.1" or "1.21.11" or "26.2" or "26.3" or ForgeMinecraftVersion;
+        minecraftVersion is "1.20.1" or "26.3" or ForgeMinecraftVersion;
 
     /// <summary>A version The Lads Client no longer offers (1.21.1, dropped in 1.6.0). Saved profiles of it are kept in
     /// profiles.json, and their game folders untouched, but they are not listed or launched (see ProfileService).</summary>
@@ -82,9 +82,10 @@ public static class GameVersionPolicy
     public static bool IsRetiredBuiltIn(Models.LauncherProfile profile) =>
         profile.Id == profile.MinecraftVersion && profile.MinecraftVersion is "26.2" or "1.21.11" && string.IsNullOrWhiteSpace(profile.CustomGameDir);
 
-    /// <summary>26.2 support is paused (2026-10-08): its profile stays and is listed greyed out, but it is never launched, made
-    /// active at startup or created anew. Its game folder and settings are left alone.</summary>
-    public const string PausedMessage = "26.2 support is paused — use 26.3";
+    /// <summary>26.2 support is dropped: its profile stays and is listed greyed out, but it is never launched, made
+    /// active at startup or created anew. Its game folder and settings are left alone. 1.21.11 (also dropped) has no Core either
+    /// and is simply not offered on the Play screen, like any other Minecraft version.</summary>
+    public const string PausedMessage = "26.2 is no longer supported — use 26.3";
     public static bool IsPaused(string minecraftVersion) => minecraftVersion == "26.2";
 
     /// <summary>1.7.10 is never coming: listed greyed out in the version selector ("COMING NEVER!"), never launched or created.</summary>

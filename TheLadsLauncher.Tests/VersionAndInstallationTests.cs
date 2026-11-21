@@ -10,8 +10,6 @@ public class VersionAndInstallationTests
 {
     [Theory]
     [InlineData("1.20.1", 17)]
-    [InlineData("1.21.11", 21)]
-    [InlineData("26.2", 25)]
     [InlineData("26.3", 25)]
     public void ExactVersionAndJavaRequirements(string version, int java)
     {
@@ -113,14 +111,6 @@ public class VersionAndInstallationTests
     }
 
     [Theory]
-    [InlineData("1.21.11", "0.16.9", "0.19.5")]
-    [InlineData("26.2", "0.19.2", "0.19.5")]
-    [InlineData("1.21.11", "fabric-loader-0.18.0-1.21.11", "fabric-loader-0.19.5-1.21.11")]
-    [InlineData("26.2", "fabric-loader-0.19.2-26.2", "fabric-loader-0.19.5-26.2")]
-    [InlineData("26.2", "0.19.5", "0.19.5")]
-    [InlineData("1.21.11", "fabric-loader-0.20.0-1.21.11", "fabric-loader-0.20.0-1.21.11")]
-    [InlineData("1.21.11", "0.18.0-custom", "0.18.0-custom")]
-    [InlineData("26.2", "fabric-loader-0.18.0-custom-26.2", "fabric-loader-0.18.0-custom-26.2")]
     [InlineData("26.3", "0.19.5", "0.19.5")]
     [InlineData("26.3", "fabric-loader-0.19.5-26.3", "fabric-loader-0.19.5-26.3")]
     [InlineData("1.20.1", "0.15.0", "0.19.5")]
@@ -302,21 +292,21 @@ public class VersionAndInstallationTests
         using var dir = new TestDirectory();
         string bundle = Path.Combine(dir.Path, "bundle");
         string game = Path.Combine(dir.Path, "game");
-        string source = Path.Combine(bundle, "game-mods", "26.2", "theladscore.jar");
-        CreateMod(source, "theladscore", "26.2");
+        string source = Path.Combine(bundle, "game-mods", "26.3", "theladscore.jar");
+        CreateMod(source, "theladscore", "26.3");
         string old = Path.Combine(game, "mods", "old-core.jar");
         CreateMod(old, "theladscore", "1.21.1");
         byte[] oldBytes = File.ReadAllBytes(old);
         string other = Path.Combine(game, "mods", "other.jar");
-        CreateMod(other, "othermod", "26.2");
+        CreateMod(other, "othermod", "26.3");
         byte[] otherBytes = File.ReadAllBytes(other);
-        Assert.True(await BundledModInstaller.InstallAsync(bundle, game, "26.2"));
+        Assert.True(await BundledModInstaller.InstallAsync(bundle, game, "26.3"));
         Assert.False(File.Exists(old));
         Assert.Equal(otherBytes, File.ReadAllBytes(other));
         Assert.Equal(oldBytes, File.ReadAllBytes(Directory.GetFiles(Path.Combine(game, "mods-disabled"), "old-core.jar", SearchOption.AllDirectories).Single()));
         string installed = Path.Combine(game, "mods", "theladscore.jar");
         DateTime stamp = File.GetLastWriteTimeUtc(installed);
-        Assert.False(await BundledModInstaller.InstallAsync(bundle, game, "26.2"));
+        Assert.False(await BundledModInstaller.InstallAsync(bundle, game, "26.3"));
         Assert.Equal(stamp, File.GetLastWriteTimeUtc(installed));
     }
 
@@ -324,10 +314,10 @@ public class VersionAndInstallationTests
     public async Task WrongBundleFailsBeforeTouchingExistingMods()
     {
         using var dir = new TestDirectory();
-        string source = Path.Combine(dir.Path, "game-mods", "1.21.11", "theladscore.jar");
+        string source = Path.Combine(dir.Path, "game-mods", "26.3", "theladscore.jar");
         CreateMod(source, "theladscore", "1.21.1");
         string game = Path.Combine(dir.Path, "game");
-        await Assert.ThrowsAsync<InvalidDataException>(() => BundledModInstaller.InstallAsync(dir.Path, game, "1.21.11"));
+        await Assert.ThrowsAsync<InvalidDataException>(() => BundledModInstaller.InstallAsync(dir.Path, game, "26.3"));
         Assert.False(Directory.Exists(game));
     }
 
@@ -335,19 +325,19 @@ public class VersionAndInstallationTests
     public async Task MissingRequiredBundleDoesNotLaunchVanillaSilently()
     {
         using var dir = new TestDirectory();
-        await Assert.ThrowsAsync<FileNotFoundException>(() => BundledModInstaller.InstallAsync(dir.Path, Path.Combine(dir.Path, "game"), "26.2"));
+        await Assert.ThrowsAsync<FileNotFoundException>(() => BundledModInstaller.InstallAsync(dir.Path, Path.Combine(dir.Path, "game"), "26.3"));
     }
 
     [Fact]
     public async Task AForeignJarNamedLikeCoreIsNeverOverwritten()
     {
         using var dir = new TestDirectory();
-        CreateMod(Path.Combine(dir.Path, "game-mods", "26.2", "theladscore.jar"), "theladscore", "26.2");
+        CreateMod(Path.Combine(dir.Path, "game-mods", "26.3", "theladscore.jar"), "theladscore", "26.3");
         string game = Path.Combine(dir.Path, "game");
         string foreign = Path.Combine(game, "mods", "theladscore.jar");
-        CreateMod(foreign, "othermod", "26.2");
+        CreateMod(foreign, "othermod", "26.3");
         byte[] before = File.ReadAllBytes(foreign);
-        await Assert.ThrowsAsync<IOException>(() => BundledModInstaller.InstallAsync(dir.Path, game, "26.2"));
+        await Assert.ThrowsAsync<IOException>(() => BundledModInstaller.InstallAsync(dir.Path, game, "26.3"));
         Assert.Equal(before, File.ReadAllBytes(foreign));
     }
 

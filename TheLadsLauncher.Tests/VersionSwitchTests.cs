@@ -69,7 +69,7 @@ public class VersionSwitchTests
     }
 
     [Theory]
-    [InlineData("""{"version":"26.2"}""", "paused")]
+    [InlineData("""{"version":"26.2"}""", "no longer supported")]
     [InlineData("""{"version":"1.7.10"}""", "COMING NEVER")]
     [InlineData("""{"version":"1.21.11"}""", "not offered")]
     [InlineData("""{"version":""}""", "not offered")]
