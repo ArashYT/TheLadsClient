@@ -381,16 +381,25 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
         return profile;
     }
 
+    private static final java.util.Map<java.util.UUID, PlayerSkin> LAST_SKIN = new java.util.concurrent.ConcurrentHashMap<>();
+
     @Override
     public void drawHead(String username, String uuid, int x, int y, int size) {
         try {
             Minecraft mc = Minecraft.getInstance();
             com.mojang.authlib.GameProfile profile = resolveHeadProfile(username, com.thelads.core.client.auth.SkinProfiles.orSession(username, uuid, mc.getUser().getName(), mc.getUser().getProfileId()));
             com.mojang.authlib.GameProfile real = SKIN_PROFILES.get(profile.id());
-            java.util.function.Supplier<PlayerSkin> lookup = mc.getSkinManager().createLookup(real != null ? real : profile, false);
+            com.mojang.authlib.GameProfile shown = real != null ? real : profile;
+            java.util.function.Supplier<PlayerSkin> lookup = mc.getSkinManager().createLookup(shown, false);
             PlayerSkin skin = lookup != null ? lookup.get() : null;
-            if (skin == null) {
-                skin = net.minecraft.client.resources.DefaultPlayerSkin.get(profile);
+            PlayerSkin fallback = net.minecraft.client.resources.DefaultPlayerSkin.get(profile);
+            if (skin == null || skin.equals(net.minecraft.client.resources.DefaultPlayerSkin.get(shown))) {
+                // Vanilla answers with the default skin (Alex for many ids) while its skin cache reloads: keep the last real one on screen
+                PlayerSkin kept = LAST_SKIN.get(shown.id());
+                skin = kept != null ? kept : fallback;
+            } else {
+                if (LAST_SKIN.size() > 256) LAST_SKIN.clear();
+                LAST_SKIN.put(shown.id(), skin);
             }
             if (skin != null) {
                 PlayerFaceExtractor.extractRenderState(g, skin, x, y, size);

@@ -43,6 +43,7 @@ import javax.imageio.ImageWriter;
 import javax.imageio.metadata.IIOMetadataNode;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
+import com.thelads.core.shared.SharedContentPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -208,21 +209,40 @@ public final class DmMedia {
         return (gameDir != null ? gameDir : Path.of("")).toAbsolutePath().normalize().resolve("screenshots");
     }
 
-    /** The game's screenshots, newest first: the only pictures a DM can send. */
-    public static List<Path> screenshots(Path gameDir) {
-        try (Stream<Path> files = Files.list(screenshotsDir(gameDir))) {
-            return files.filter(p -> isPictureName(p) && Files.isRegularFile(p))
-                    .sorted(Comparator.comparingLong(DmMedia::modified).reversed()).limit(MAX_LISTED).toList();
-        } catch (IOException | RuntimeException e) {
-            return List.of();
+    /**
+     * The folders F2 can save into: the game folder's own, and the shared Lads one (GlobalScreenshotMixin sends every new screenshot
+     * there, so listing only the game folder found none of the new ones).
+     */
+    private static List<Path> screenshotsDirs(Path gameDir) {
+        List<Path> dirs = new ArrayList<>(2);
+        dirs.add(screenshotsDir(gameDir));
+        try {
+            Path shared = SharedContentPaths.screenshotsDir().toAbsolutePath().normalize();
+            if (!dirs.contains(shared)) dirs.add(shared);
+        } catch (RuntimeException ignored) {
+            // no shared folder known: the game folder's own only
         }
+        return dirs;
+    }
+
+    /** The game's screenshots (its own folder and the shared one), newest first: the only pictures a DM can send. */
+    public static List<Path> screenshots(Path gameDir) {
+        List<Path> all = new ArrayList<>();
+        for (Path dir : screenshotsDirs(gameDir)) {
+            try (Stream<Path> files = Files.list(dir)) {
+                files.filter(p -> isPictureName(p) && Files.isRegularFile(p)).forEach(all::add);
+            } catch (IOException | RuntimeException e) {
+                // this folder is missing or unreadable: the other one still lists
+            }
+        }
+        return all.stream().sorted(Comparator.comparingLong(DmMedia::modified).reversed()).limit(MAX_LISTED).toList();
     }
 
     /** True only for a PNG/JPG directly in the game's screenshots folder: no other file can be sent. */
     public static boolean isScreenshot(Path gameDir, Path file) {
         if (file == null || !isPictureName(file)) return false;
         Path parent = file.toAbsolutePath().normalize().getParent();
-        return parent != null && parent.equals(screenshotsDir(gameDir)) && Files.isRegularFile(file);
+        return parent != null && screenshotsDirs(gameDir).contains(parent) && Files.isRegularFile(file);
     }
 
     private static boolean isPictureName(Path p) {

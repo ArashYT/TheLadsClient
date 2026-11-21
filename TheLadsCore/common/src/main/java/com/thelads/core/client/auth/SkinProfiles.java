@@ -16,10 +16,10 @@ import java.util.function.Function;
  */
 public final class SkinProfiles<P> {
     private static final long RECHECK_MS = 10 * 60_000L; // a skin changed in the launcher shows up while the game runs
-    private static final long RETRY_MS = 60_000L;
+    private static final long[] RETRY_MS = {3_000L, 10_000L, 30_000L, 60_000L}; // the first lookup at startup often fails (no network yet, rate limit): retry soon, then slow down
     private static final int MAX_IDS = 512;
 
-    private record Known<P>(P profile, long nextFetch) {}
+    private record Known<P>(P profile, long nextFetch, int fails) {}
 
     private final Function<UUID, P> fetch;
     private final Map<UUID, Known<P>> known = new ConcurrentHashMap<>();
@@ -57,8 +57,11 @@ public final class SkinProfiles<P> {
         if (known.size() > MAX_IDS) known.clear();
         long now = System.currentTimeMillis();
         Known<P> before = known.get(id);
-        if (profile != null) known.put(id, new Known<>(profile, now + RECHECK_MS));
-        else known.put(id, new Known<>(before == null ? null : before.profile(), now + RETRY_MS));
+        if (profile != null) known.put(id, new Known<>(profile, now + RECHECK_MS, 0));
+        else {
+            int fails = before == null ? 0 : before.fails();
+            known.put(id, new Known<>(before == null ? null : before.profile(), now + RETRY_MS[Math.min(fails, RETRY_MS.length - 1)], fails + 1)); // keeps the last good profile
+        }
         asked.remove(id);
     }
 

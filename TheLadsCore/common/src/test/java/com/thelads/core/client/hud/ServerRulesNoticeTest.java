@@ -167,6 +167,29 @@ class ServerRulesNoticeTest {
         assertFalse(ServerRulesNotice.mouseClicked(100, 100, 0));
     }
 
+    @Test
+    void testSlideEasesInAndOut() {
+        assertEquals(0f, ServerRulesNotice.slide(0, 8_000_000_000L), 0.001f);
+        assertEquals(1f, ServerRulesNotice.slide(4_000_000_000L, 4_000_000_000L), 0.001f);
+        assertEquals(0f, ServerRulesNotice.slide(8_000_000_000L, 0), 0.001f);
+        assertTrue(ServerRulesNotice.slide(100_000_000L, 8_000_000_000L) > 0f);
+        assertTrue(ServerRulesNotice.slide(100_000_000L, 8_000_000_000L) < 1f);
+    }
+
+    @Test
+    void testClearOfPushesTopCentreThingsBelowTheToast() {
+        ServerRulesNotice.clearPolicyToast();
+        assertEquals(12, ServerRulesNotice.clearOf(300, 482, 12), "no toast: nothing moves");
+        ServerRulesNotice.showPolicyToast("Title", "Notice");
+        ServerRulesNotice.render(new MockGraphics(800, 600)); // learns the card's size and span
+        // Fully slid in 250 ms later: nudge the clock instead of sleeping
+        try { Thread.sleep(300); } catch (InterruptedException ignored) {}
+        int pushed = ServerRulesNotice.clearOf(300, 482, 12);
+        assertTrue(pushed > 12, "the boss bar sits below the toast, was " + pushed);
+        assertEquals(12, ServerRulesNotice.clearOf(0, 10, 12), "a thing beside the toast stays");
+        ServerRulesNotice.clearPolicyToast();
+    }
+
     private static class MockGraphics implements LadsGraphics {
         private final int width, height;
 

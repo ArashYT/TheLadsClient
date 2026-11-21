@@ -60,6 +60,18 @@ public class SkinProfilesTest {
     }
 
     @Test
+    public void aFailedFirstLookupIsRetriedSoonAndTheSkinThenShows() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        SkinProfiles<String> profiles = new SkinProfiles<>(id -> {
+            if (calls.incrementAndGet() == 1) throw new IllegalStateException("no connection yet");
+            return "textures of " + id;
+        });
+        String found = null;
+        for (int i = 0; i < 1200 && found == null; i++) { found = profiles.get(REAL); Thread.sleep(5); }
+        assertEquals("textures of " + REAL, found, "retry must not wait a minute");
+    }
+
+    @Test
     public void aHeadWithoutAnIdIsTheGamesOwnWhenTheNameIs() {
         UUID self = UUID.randomUUID();
         assertEquals(self.toString(), SkinProfiles.orSession("arash_yt", null, "Arash_YT", self));

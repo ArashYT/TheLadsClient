@@ -406,6 +406,11 @@ public class BoxElementImpl extends BoxElement implements ContainerEventHandler 
 				expectedRect.setY(qaBottom + 2);
 			}
 		}
+		// The Lads API notification slides down over the top centre: stay below it while it is up
+		int toastY = com.thelads.core.client.hud.ServerRulesNotice.clearOf((int) expectedRect.getX(), (int) (expectedRect.getX() + expectedRect.getWidth()), (int) expectedRect.getY());
+		if (toastY > expectedRect.getY()) {
+			expectedRect.setY(toastY);
+		}
 	}
 
 	public void updateRect(TooltipAnimation animation) {

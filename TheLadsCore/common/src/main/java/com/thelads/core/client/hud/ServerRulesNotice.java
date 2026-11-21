@@ -25,6 +25,9 @@ public final class ServerRulesNotice {
     private static String policyTitle;
     private static String policyNotice;
     private static long policyUntil;
+    private static long policyFrom;
+    private static final long SLIDE_NANOS = 250_000_000L;
+    private static int toastH, toastX0, toastX1; // last drawn card: height and x span, for clearOf
     private static List<ToastAction> toastActions = Collections.emptyList();
 
     public static final class ActionHitbox {
@@ -52,7 +55,8 @@ public final class ServerRulesNotice {
         policyTitle = title;
         policyNotice = notice;
         toastActions = (actions != null && !actions.isEmpty()) ? new ArrayList<>(actions) : Collections.emptyList();
-        policyUntil = System.nanoTime() + (!toastActions.isEmpty() ? SHOW_ACTIONS_NANOS : SHOW_NANOS);
+        policyFrom = System.nanoTime();
+        policyUntil = policyFrom + (!toastActions.isEmpty() ? SHOW_ACTIONS_NANOS : SHOW_NANOS);
     }
 
     public static void clearPolicyToast() {
@@ -61,6 +65,27 @@ public final class ServerRulesNotice {
         policyUntil = 0;
         toastActions = Collections.emptyList();
         activeHitboxes.clear();
+    }
+
+    /** 0..1: how far the card has slid down from above the screen, in over the first and out over the last 250 ms of its time. */
+    static float slide(long sinceShownNanos, long leftNanos) {
+        return Math.min(ease(sinceShownNanos / (float) SLIDE_NANOS), ease(leftNanos / (float) SLIDE_NANOS));
+    }
+
+    private static float ease(float t) {
+        t = Math.max(0f, Math.min(1f, t));
+        return 1f - (1f - t) * (1f - t);
+    }
+
+    /**
+     * Top-centre things (the vanilla boss bar, Jade's tooltip) ask where to start: {@code y} when the toast is away or elsewhere, else
+     * below the toast as it slides in and out, so it never covers them.
+     */
+    public static int clearOf(int left, int right, int y) {
+        if (!isToastShowing() || toastH == 0 || right <= toastX0 || left >= toastX1) return y;
+        long now = System.nanoTime();
+        float p = slide(now - policyFrom, policyUntil - now);
+        return p <= 0f ? y : Math.max(y, Math.round(p * (toastH + 4)) + 2);
     }
 
     public static boolean isToastShowing() {
@@ -132,7 +157,11 @@ public final class ServerRulesNotice {
         boolean twoLines = notice != null && !notice.isEmpty();
         int contentH = twoLines ? 28 : 16;
         int h = showActions ? (contentH + 16) : contentH;
-        int y = 4;
+        long now = System.nanoTime();
+        int y = 4 - Math.round((1f - slide(now - policyFrom, policyUntil - now)) * (h + 4)); // slides down from above, and back up
+        toastH = h;
+        toastX0 = x;
+        toastX1 = x + w;
 
         // Background card matching client notification style
         g.fill(x, y, x + w, y + h, 0xE0130B10);

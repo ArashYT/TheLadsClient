@@ -67,7 +67,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
             ServerListColumns.cycle(width);
             serverSelectionList.setScrollAmount(serverSelectionList.scrollAmount());
             ladsUpdateColumns();
-        }).bounds(8, 8, 36, 20).build());
+        }).bounds(8, 8, 84, 20).build());
         // Friends: the invites friends sent (Invites tab) and the friends list, without going back to the title screen
         ladsFriendsButton = addRenderableWidget(Button.builder(ladsFriendsLabel(), b -> {
             if (minecraft == null) return;
@@ -101,7 +101,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
         if (ladsColumnsButton == null) return;
         int columns = ServerListColumns.fit(ServerListColumns.wanted(), width);
         ladsColumnsButton.visible = ServerListColumns.most(width) > 1;
-        ladsColumnsButton.setMessage(Component.literal("    " + columns));
+        ladsColumnsButton.setMessage(Component.literal("    Columns: " + columns));
         ladsColumnsButton.setTooltip(Tooltip.create(Component.literal("Server list columns: " + columns + ". Click to change.")));
     }
 
@@ -111,7 +111,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
         if (ladsDiscoverButton == null) return;
         ladsDiscoverButton.setPosition(width - 124, 8);
         ladsColumnsButton.setPosition(8, 8);
-        if (ladsFriendsButton != null) ladsFriendsButton.setPosition(ladsColumnsButton.visible ? 48 : 8, 8); // top left: clear of the title
+        if (ladsFriendsButton != null) ladsFriendsButton.setPosition(ladsColumnsButton.visible ? 96 : 8, 8); // top left: clear of the title
         int cover = ladsCoverX();
         if (cover >= 0) { // Friends goes left of the button that took the corner, clear of the centred title
             ladsDiscoverButton.setPosition(8, 8);
@@ -128,6 +128,8 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
             if (child instanceof Button b && b != d && b != ladsColumnsButton && b != ladsFriendsButton && b.visible
                 && b.getX() < d.getX() + d.getWidth() && d.getX() < b.getX() + b.getWidth()
                 && b.getY() < d.getY() + d.getHeight() && d.getY() < b.getY() + b.getHeight()) {
+                b.setY(8); // same row and height as ours (ViaFabricPlus sits a few px higher)
+                b.setHeight(20);
                 return b.getX();
             }
         }
