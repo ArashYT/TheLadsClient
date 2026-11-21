@@ -46,6 +46,11 @@ abstract class OffhandKeyMixin1201 {
             while (off.consumeClick()) { /* drained */ }
             return;
         }
+        // start first (vanilla's own start comes after this hook and would see Use up), then swap Use for the off-hand key
+        if (!player.isUsingItem()) {
+            while (off.consumeClick()) lads$useOffhand();
+            if (off.isDown() && rightClickDelay == 0 && !player.isUsingItem()) lads$useOffhand();
+        }
         if (player.isUsingItem()) {
             // vanilla releases a held item when Use is up: for an off-hand item that means the off-hand key
             if (player.getUsedItemHand() == InteractionHand.OFF_HAND) {
@@ -54,10 +59,7 @@ abstract class OffhandKeyMixin1201 {
                 lads$useSwapped = true;
             }
             while (off.consumeClick()) { /* drained, as vanilla drains Use while an item is in use */ }
-            return;
         }
-        while (off.consumeClick()) lads$useOffhand();
-        if (off.isDown() && rightClickDelay == 0 && !player.isUsingItem()) lads$useOffhand();
     }
 
     @Inject(method = "handleKeybinds", at = @At("TAIL"), require = 0)

@@ -20,6 +20,9 @@ public final class SmoothSingleplayer {
     /** Healthy server ticks needed after falling behind before the phase lock comes back. */
     private static final int RECOVER_TICKS = 20;
 
+    /** Phase lock log lines written so far (server thread): a PC that keeps falling behind would repeat them every second. */
+    private static int logs;
+
     private static String reason;
     private static boolean decided;
     private static SmoothSingleplayerModule module;
@@ -87,14 +90,14 @@ public final class SmoothSingleplayer {
         long now = System.nanoTime();
         if (nextTickNs - now < 0L) { // the next tick is already due: server behind 20 TPS, let vanilla catch up
             healthy = 0;
-            if (locked) { locked = false; LOGGER.info("[Lads] Smooth Singleplayer: tick phase lock dropped, server is behind 20 TPS"); }
+            if (locked) { locked = false; if (logs++ < 3) LOGGER.info("[Lads] Smooth Singleplayer: tick phase lock dropped, server is behind 20 TPS"); }
             return 0L;
         }
         if (healthy < RECOVER_TICKS) { healthy++; return 0L; }
         if (now - anchor > STALE_NS) return 0L;
         // where the next tick should start sits at anchor + OFFSET + k * period; e = that phase minus the scheduled one, in [-25, 25) ms
         long e = Math.floorMod(anchor + OFFSET_NS - nextTickNs + PERIOD_NS / 2, PERIOD_NS) - PERIOD_NS / 2;
-        if (!locked) { locked = true; LOGGER.info("[Lads] Smooth Singleplayer: tick phase lock engaged"); }
+        if (!locked) { locked = true; if (logs++ < 3) LOGGER.info("[Lads] Smooth Singleplayer: tick phase lock engaged"); }
         if (Math.abs(e) < DEAD_BAND_NS) return 0L;
         long step = e / 4;
         return Math.max(-MAX_STEP_NS, Math.min(MAX_STEP_NS, step));
