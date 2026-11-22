@@ -128,14 +128,17 @@ public final class NativeDynamicLights {
             level = mc.level;
         }
         if (level == null || mc.player == null) return;
+        boolean enabled = module.isEnabled();
+        if (!enabled && lights.idle()) return; // off and every old light already gone dark: nothing to do
         ExplosionFlashes.WORLD.tick();
         lights.begin();
-        if (module.isEnabled()) {
+        if (enabled) {
             if (module.explosionsAndTnt()) {
                 ExplosionFlashes.WORLD.collect(lights);
             }
             long curTick = ticks;
-            for (Entity entity : level.entitiesForRendering()) {
+            // Only the entity sections within range, not every entity the client knows
+            for (Entity entity : level.getEntities((Entity) null, mc.player.getBoundingBox().inflate(RANGE), e -> true)) {
                 if (entity.distanceToSqr(mc.player) > RANGE * RANGE) continue;
                 int light = luminance(entity, entity == mc.player, curTick);
                 if (light > 0) lights.add(entity.getId(), entity.getX(), entity.getEyeY(), entity.getZ(), light);

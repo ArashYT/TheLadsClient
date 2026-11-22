@@ -3,6 +3,7 @@ package com.thelads.core.v26_2.rentities;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.renderpearl.api.GpuFormat;
 import com.mojang.renderpearl.api.buffers.GpuBuffer;
+import com.mojang.renderpearl.api.commands.CommandEncoder;
 import com.mojang.renderpearl.api.commands.RenderPass;
 import com.mojang.renderpearl.api.pipeline.BindGroupLayout;
 import com.mojang.renderpearl.api.pipeline.ColorTargetState;
@@ -17,9 +18,10 @@ import com.thelads.core.modules.RentitiesModule;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -61,6 +63,10 @@ public final class RentitiesRenderer {
     private static final int MAX_BONES_PER_DRAW = 8000;
     private static final int INSTANCE_BYTES = 16;
     private static final String[] KIND_NAMES = {"solid", "cutout_cull", "cutout"};
+    /** Frames whose instance and bone buffers are kept apart, so a frame never writes a buffer the GPU may still read. */
+    private static final int RING = 3;
+    private static final long MAX_BONE_BYTES = (long) MAX_BONES_PER_DRAW * BONE_FLOATS * 4;
+    private static final boolean IRIS = FabricLoader.getInstance().isModLoaded("iris") && !Boolean.getBoolean("lads.rentities.ignoreiris");
 
     private static final VertexFormat MESH_FORMAT = VertexFormat.builder(0)
         .addAttribute("Position", GpuFormat.RGB32_FLOAT)
@@ -81,25 +87,36 @@ public final class RentitiesRenderer {
     private static final RenderPipeline[] PIPELINES = new RenderPipeline[3];
 
     private static final class Key {
-        final RenderType type;
-        final RentitiesMesh mesh;
+        RenderType type;
+        RentitiesMesh mesh;
         Key(RenderType type, RentitiesMesh mesh) { this.type = type; this.mesh = mesh; }
         @Override public boolean equals(Object o) { return o instanceof Key k && k.mesh == mesh && Objects.equals(k.type, type); }
         @Override public int hashCode() { return System.identityHashCode(mesh) * 31 + Objects.hashCode(type); }
     }
 
+    /** Kept across frames with its arrays; count and prepared belong to the frame in {@code frame}. */
     private static final class Batch {
-        final PreparedRenderType prepared;
+        PreparedRenderType prepared;
         final RentitiesMesh mesh;
         final int kind;
         float[] bones = new float[0];
         int[] instances = new int[0];
         int count;
-        Batch(PreparedRenderType prepared, RentitiesMesh mesh, int kind) { this.prepared = prepared; this.mesh = mesh; this.kind = kind; }
+        long frame = -1;
+        Batch(RentitiesMesh mesh, int kind) { this.mesh = mesh; this.kind = kind; }
     }
 
-    private static final Map<Key, Batch> BATCHES = new LinkedHashMap<>();
-    private static final List<GpuBuffer> FRAME_BUFFERS = new ArrayList<>();
+    private static final Map<Key, Batch> BATCHES = new HashMap<>();
+    /** This frame's batches in first-use order. Lookups reuse PROBE; a Key is made only for a new batch. */
+    private static final List<Batch> ACTIVE = new ArrayList<>();
+    private static final Key PROBE = new Key(null, null);
+    private static final GpuBuffer[][] RING_INST = new GpuBuffer[RING][0], RING_BONES = new GpuBuffer[RING][0];
+    private static ByteBuffer stageInst = ByteBuffer.allocateDirect(0), stageBones = ByteBuffer.allocateDirect(0);
+    private static FloatBuffer stageBonesF = stageBones.asFloatBuffer();
+    private static long frame;
+    private static int ring;
+    private static boolean uploaded; // this frame's batches are in their buffers: later submits draw as vanilla
+    private static boolean shaderPack;
     private static final Matrix3f NORMAL = new Matrix3f();
     private static final Quaternionf ROTATION = new Quaternionf();
 
@@ -150,6 +167,7 @@ public final class RentitiesRenderer {
         disabled = true;
         disabledReason = reason;
         BATCHES.clear();
+        ACTIVE.clear();
         LOG.warn("[Lads] Rentities disabled: {}", reason);
     }
 
@@ -168,8 +186,6 @@ public final class RentitiesRenderer {
                 disable("GPU is " + vendor + ", Rentities is tested on NVIDIA only (override: -Dlads.rentities.anyGpu=true)");
                 return false;
             }
-            FabricLoader loader = FabricLoader.getInstance();
-            if ((loader.isModLoaded("iris") || loader.isModLoaded("oculus")) && !Boolean.getBoolean("lads.rentities.ignoreiris")) { disable("Iris / shader packs are not supported"); return false; }
             for (int i = 0; i < PIPELINES.length; i++) PIPELINES[i] = build(i);
             for (RenderPipeline p : PIPELINES) {
                 if (RenderSystem.getCompiledPipelineNullable(p) == null) { disable("the instanced shader " + p.getLocation() + " did not compile"); return false; }
@@ -205,12 +221,24 @@ public final class RentitiesRenderer {
 
     public static void levelStart() {
         inLevel = true;
-        BATCHES.clear();
+        frame++;
+        uploaded = false;
+        ACTIVE.clear();
+        shaderPack = IRIS && shaderPackInUse();
     }
 
     public static void levelEnd() {
         inLevel = false;
-        BATCHES.clear();
+        ACTIVE.clear();
+    }
+
+    /** A shader pack replaces the entity shaders, so Rentities steps aside while one is on; Iris without a pack is fine. */
+    private static boolean shaderPackInUse() {
+        try {
+            return net.irisshaders.iris.api.v0.IrisApi.getInstance().isShaderPackInUse();
+        } catch (Throwable t) {
+            return true;
+        }
     }
 
     /**
@@ -219,7 +247,7 @@ public final class RentitiesRenderer {
      */
     @SuppressWarnings("unchecked")
     public static <S> boolean record(ModelFeatureRenderer.Submit<S> submit) {
-        if (disabled || !inLevel) return false;
+        if (disabled || !inLevel || shaderPack || uploaded) return false;
         RentitiesModule module = ExtraModules.RENTITIES;
         if (!module.isEnabled()) return false;
         try {
@@ -241,16 +269,26 @@ public final class RentitiesRenderer {
                 statFallbacks++;
                 return false;
             }
-            Key key = new Key(type, entry.mesh);
-            Batch batch = BATCHES.get(key);
+            PROBE.type = type;
+            PROBE.mesh = entry.mesh;
+            Batch batch = BATCHES.get(PROBE);
+            PROBE.type = null;
+            PROBE.mesh = null;
             if (batch == null) {
+                if (BATCHES.size() >= 1024) BATCHES.clear(); // deleted meshes or many one-off render types; ACTIVE keeps this frame's
+                batch = new Batch(entry.mesh, kind);
+                BATCHES.put(new Key(type, entry.mesh), batch);
+            }
+            if (batch.frame != frame) {
+                batch.frame = frame;
+                batch.count = 0;
                 PreparedRenderType prepared = type.prepare();
-                if (prepared.scissorState().enabled() || prepared.textures().isEmpty()) {
-                    statFallbacks++;
-                    return false;
-                }
-                batch = new Batch(prepared, entry.mesh, kind);
-                BATCHES.put(key, batch);
+                batch.prepared = prepared.scissorState().enabled() || prepared.textures().isEmpty() ? null : prepared;
+                if (batch.prepared != null) ACTIVE.add(batch);
+            }
+            if (batch.prepared == null) {
+                statFallbacks++;
+                return false;
             }
             model.setupAnim(state);
             int boneFloats = entry.mesh.boneCount * BONE_FLOATS;
@@ -299,62 +337,100 @@ public final class RentitiesRenderer {
         }
     }
 
-    /** End of the solid entity phase: one instanced draw per (render type, model) batch. */
-    public static void draw(RenderPass pass) {
-        for (GpuBuffer b : FRAME_BUFFERS) b.close();
-        FRAME_BUFFERS.clear();
-        if (DEBUG && ExtraModules.RENTITIES.isEnabled()) {
-            long t = System.currentTimeMillis();
-            if (t - dbgAt >= 3000) { dbgAt = t; LOG.info("[Lads] Rentities debug: inLevel={} disabled={} batches={} recorded={} fallbacks={} lastSkip={}", inLevel, disabled, BATCHES.size(), statEntities, statFallbacks, dbgSkip); }
-        }
-        if (BATCHES.isEmpty()) return;
-        List<Batch> batches = new ArrayList<>(BATCHES.values());
-        BATCHES.clear();
-        if (disabled) return;
-        int entities = 0, draws = 0;
+    /**
+     * After the frame's submits are prepared and before any render pass opens (a buffer write inside an open pass is refused):
+     * this frame's instances and bones go into the ring buffers, one slot per draw.
+     */
+    public static void upload() {
+        if (!inLevel || disabled) return;
+        uploaded = true;
+        if (ACTIVE.isEmpty()) return;
+        ring = (ring + 1) % RING;
         try {
-            if (glBackend) org.lwjgl.opengl.GL11C.glGetError();
-            var device = RenderSystem.getDevice();
-            pass.pushDebugGroup(() -> "Lads Rentities");
-            for (Batch batch : batches) {
-                CompiledRenderPipeline compiled = RenderSystem.getCompiledPipelineNullable(PIPELINES[batch.kind]);
-                if (compiled == null) throw new IllegalStateException("pipeline lost");
+            CommandEncoder encoder = RenderSystem.getDevice().createCommandEncoder();
+            int slot = 0;
+            for (int b = 0; b < ACTIVE.size(); b++) {
+                Batch batch = ACTIVE.get(b);
                 RentitiesMesh mesh = batch.mesh;
                 int perDraw = Math.max(1, MAX_BONES_PER_DRAW / mesh.boneCount);
                 int boneFloats = mesh.boneCount * BONE_FLOATS;
-                for (int start = 0; start < batch.count; start += perDraw) {
+                for (int start = 0; start < batch.count; start += perDraw, slot++) {
                     int c = Math.min(perDraw, batch.count - start);
-                    ByteBuffer inst = ByteBuffer.allocateDirect(c * INSTANCE_BYTES).order(ByteOrder.nativeOrder());
+                    int instBytes = c * INSTANCE_BYTES, boneBytes = c * boneFloats * 4;
+                    if (stageInst.capacity() < instBytes) stageInst = ByteBuffer.allocateDirect(grow(instBytes, Integer.MAX_VALUE)).order(ByteOrder.nativeOrder());
+                    if (stageBones.capacity() < boneBytes) {
+                        stageBones = ByteBuffer.allocateDirect(grow(boneBytes, MAX_BONE_BYTES)).order(ByteOrder.nativeOrder());
+                        stageBonesF = stageBones.asFloatBuffer();
+                    }
+                    ByteBuffer inst = stageInst.clear();
                     for (int j = 0; j < c; j++) {
                         int s = (start + j) * 3;
                         inst.putInt(batch.instances[s]).putInt(batch.instances[s + 1]).putInt(batch.instances[s + 2]).putInt(j * mesh.boneCount);
                     }
                     inst.flip();
-                    ByteBuffer bones = ByteBuffer.allocateDirect(c * boneFloats * 4).order(ByteOrder.nativeOrder());
-                    bones.asFloatBuffer().put(batch.bones, start * boneFloats, c * boneFloats);
-                    GpuBuffer instBuf = device.createBuffer(() -> "Lads Rentities instances", GpuBuffer.USAGE_VERTEX | GpuBuffer.USAGE_COPY_DST, inst);
-                    FRAME_BUFFERS.add(instBuf);
-                    GpuBuffer boneBuf = device.createBuffer(() -> "Lads Rentities bones", GpuBuffer.USAGE_UNIFORM_TEXEL_BUFFER | GpuBuffer.USAGE_COPY_DST, bones);
-                    FRAME_BUFFERS.add(boneBuf);
+                    stageBonesF.clear().put(batch.bones, start * boneFloats, c * boneFloats);
+                    ByteBuffer bones = stageBones.clear().limit(boneBytes);
+                    GpuBuffer instBuf = ringBuffer(RING_INST, slot, instBytes, Integer.MAX_VALUE, "Lads Rentities instances", GpuBuffer.USAGE_VERTEX | GpuBuffer.USAGE_COPY_DST);
+                    GpuBuffer boneBuf = ringBuffer(RING_BONES, slot, boneBytes, MAX_BONE_BYTES, "Lads Rentities bones", GpuBuffer.USAGE_UNIFORM_TEXEL_BUFFER | GpuBuffer.USAGE_COPY_DST);
+                    encoder.writeToBuffer(instBuf.slice(0, instBytes), inst);
+                    encoder.writeToBuffer(boneBuf.slice(0, boneBytes), bones);
+                }
+            }
+        } catch (Throwable t) {
+            disable("error while uploading: " + t);
+        }
+    }
+
+    /** End of the solid entity phase: one instanced draw per (render type, model) batch, from the buffers {@link #upload} filled. */
+    public static void draw(RenderPass pass) {
+        if (DEBUG && ExtraModules.RENTITIES.isEnabled()) {
+            long t = System.currentTimeMillis();
+            if (t - dbgAt >= 3000) { dbgAt = t; LOG.info("[Lads] Rentities debug: inLevel={} disabled={} batches={} recorded={} fallbacks={} lastSkip={}", inLevel, disabled, ACTIVE.size(), statEntities, statFallbacks, dbgSkip); }
+        }
+        if (ACTIVE.isEmpty()) return;
+        int batches = ACTIVE.size();
+        if (disabled) { ACTIVE.clear(); return; }
+        if (!uploaded) { ACTIVE.clear(); disable("the instance upload hook did not run"); return; }
+        int entities = 0, draws = 0;
+        // glGetError makes the CPU wait for the driver: only on the first drawn frame (proves the path once) and with the debug flag.
+        boolean checkGl = glBackend && (DEBUG || !announced);
+        boolean grouped = false;
+        try {
+            if (checkGl) org.lwjgl.opengl.GL11C.glGetError();
+            pass.pushDebugGroup(() -> "Lads Rentities");
+            grouped = true;
+            int slot = 0;
+            for (int b = 0; b < batches; b++) {
+                Batch batch = ACTIVE.get(b);
+                CompiledRenderPipeline compiled = RenderSystem.getCompiledPipelineNullable(PIPELINES[batch.kind]);
+                if (compiled == null) throw new IllegalStateException("pipeline lost");
+                RentitiesMesh mesh = batch.mesh;
+                int perDraw = Math.max(1, MAX_BONES_PER_DRAW / mesh.boneCount);
+                for (int start = 0; start < batch.count; start += perDraw, slot++) {
+                    int c = Math.min(perDraw, batch.count - start);
                     pass.setPipeline(compiled);
                     RenderSystem.bindDefaultUniforms(pass);
                     pass.setUniform("DynamicTransforms", batch.prepared.dynamicTransforms());
                     pass.setVertexBuffer(0, mesh.vertexBuffer().slice());
-                    pass.setVertexBuffer(1, instBuf.slice());
+                    pass.setVertexBuffer(1, RING_INST[ring][slot].slice());
                     for (PreparedRenderType.Texture t : batch.prepared.textures()) pass.setUniform(t.name(), t.textureView(), t.sampler());
-                    pass.setUniform("RentitiesBones", boneBuf);
+                    pass.setUniform("RentitiesBones", RING_BONES[ring][slot]);
                     pass.setIndexBuffer(mesh.indexBuffer(), IndexType.INT);
                     pass.drawIndexed(mesh.indices.length, c, 0, 0, 0);
                     draws++;
                     entities += c;
                 }
             }
+            grouped = false;
             pass.popDebugGroup();
-            if (glBackend) {
+            ACTIVE.clear();
+            if (checkGl) {
                 int err = org.lwjgl.opengl.GL11C.glGetError();
                 if (err != 0) disable("OpenGL error 0x" + Integer.toHexString(err) + " after the instanced draw");
             }
         } catch (Throwable t) {
+            if (grouped) pass.popDebugGroup(); // an open debug group fails the whole frame
+            ACTIVE.clear();
             disable("error while drawing: " + t);
             return;
         }
@@ -363,7 +439,7 @@ public final class RentitiesRenderer {
         statDraws += draws;
         if (!announced) {
             announced = true;
-            LOG.info("[Lads] Rentities active: {} entity types batched, GL {}, {}", batches.size(), driverInfo, vendor);
+            LOG.info("[Lads] Rentities active: {} entity types batched, GL {}, {}", batches, driverInfo, vendor);
         }
         if (DEBUG) {
             long now = System.currentTimeMillis();
@@ -376,5 +452,20 @@ public final class RentitiesRenderer {
                 statDraws = 0;
             }
         }
+    }
+
+    /** Room for {@code need} bytes with headroom, never above {@code cap} (the bone texel buffer limit). */
+    private static int grow(int need, long cap) { return (int) Math.min(cap, Math.max(need, Math.max(16384, (long) need * 3 / 2))); }
+
+    /** This frame's buffer for the slot, replaced by a bigger one when too small. A slot is reused only RING frames later. */
+    private static GpuBuffer ringBuffer(GpuBuffer[][] ringSet, int slot, int bytes, long cap, String label, int usage) {
+        GpuBuffer[] row = ringSet[ring];
+        if (slot >= row.length) ringSet[ring] = row = Arrays.copyOf(row, slot + 8);
+        GpuBuffer b = row[slot];
+        if (b == null || b.isClosed() || b.size() < bytes) {
+            if (b != null && !b.isClosed()) b.close();
+            b = row[slot] = RenderSystem.getDevice().createBuffer(() -> label, usage, grow(bytes, cap));
+        }
+        return b;
     }
 }

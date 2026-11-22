@@ -14,11 +14,14 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Rentities: marks the frame (so models outside the world are never batched) and issues the instanced draws after the solid features. */
+/** Rentities: marks the frame (so models outside the world are never batched), uploads the instances once the features are prepared and issues the instanced draws after the solid features. */
 @Mixin(LevelRenderer.class)
 public class RentitiesLevelRendererMixin {
     @Inject(method = "render", at = @At("HEAD"), require = 0)
     private void ladsRentitiesStart(GraphicsResourceAllocator a, boolean b, CameraRenderState c, GpuBufferSlice d, Vector4f e, boolean f, boolean g, CallbackInfo ci) { RentitiesRenderer.levelStart(); }
+
+    @Inject(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/feature/FeatureRenderDispatcher;prepareFrame(Lnet/minecraft/client/renderer/SubmitNodeStorage;)Lnet/minecraft/client/renderer/feature/FeatureRenderDispatcher$PreparedFrame;", shift = At.Shift.AFTER), require = 0)
+    private void ladsRentitiesUpload(GraphicsResourceAllocator a, boolean b, CameraRenderState c, GpuBufferSlice d, Vector4f e, boolean f, boolean g, CallbackInfo ci) { RentitiesRenderer.upload(); }
 
     @Inject(method = "render", at = @At("RETURN"), require = 0)
     private void ladsRentitiesEnd(GraphicsResourceAllocator a, boolean b, CameraRenderState c, GpuBufferSlice d, Vector4f e, boolean f, boolean g, CallbackInfo ci) { RentitiesRenderer.levelEnd(); }

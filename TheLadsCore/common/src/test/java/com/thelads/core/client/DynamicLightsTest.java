@@ -85,4 +85,25 @@ class DynamicLightsTest {
         assertEquals(DynamicLights.MAX_SOURCES, rebuilt.size(), "only the first " + DynamicLights.MAX_SOURCES + " count");
         assertEquals(0, lights.at((DynamicLights.MAX_SOURCES + 5) * 100, 64, 0));
     }
+
+    /** The section index and the square-root-free levels give exactly the plain formula's light, near section borders too. */
+    @Test void indexedLookupMatchesThePlainFormula() {
+        java.util.Random random = new java.util.Random(42);
+        for (int round = 0; round < 20; round++) {
+            float radius = 5 + random.nextInt(26);
+            int n = 1 + random.nextInt(DynamicLights.MAX_SOURCES);
+            double[][] sources = new double[n][];
+            for (int i = 0; i < n; i++) sources[i] = new double[] {i, random.nextDouble() * 120 - 60, 40 + random.nextDouble() * 50, random.nextDouble() * 120 - 60, 1 + random.nextInt(15)};
+            tick(radius, 0.25f, 1, sources);
+            for (int k = 0; k < 20000; k++) {
+                int x = random.nextInt(160) - 80, y = 20 + random.nextInt(90), z = random.nextInt(160) - 80;
+                float best = 0;
+                for (double[] s : sources) {
+                    float lum = (float) s[4], dx = (float) s[1] - (x + 0.5f), dy = (float) s[2] - (y + 0.5f), dz = (float) s[3] - (z + 0.5f), d = dx * dx + dy * dy + dz * dz;
+                    if (d < radius * radius) best = Math.max(best, lum * (1 - (float) Math.sqrt(d) / radius));
+                }
+                assertEquals(Math.min(15, (int) (best + 0.5f)), lights.at(x, y, z), "round " + round + " at " + x + "," + y + "," + z);
+            }
+        }
+    }
 }
