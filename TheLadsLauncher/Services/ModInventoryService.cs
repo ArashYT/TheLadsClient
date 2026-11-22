@@ -111,8 +111,8 @@ public sealed class ModInventoryService
         var forge = GameVersionPolicy.UsesForge(version);
         var files = (Directory.Exists(mods) ? Directory.EnumerateFiles(mods) : Enumerable.Empty<string>())
             .Where(p => p.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) || p.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
-            .Select(p => (Path: p, Disabled: p.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase), Scan: ForLoader(Scan(p, token), p, forge))).ToList();
+            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase).AsParallel().AsOrdered().WithCancellation(token)
+            .Select(p => (Path: p, Disabled: p.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase), Scan: ForLoader(Scan(p, token, game), p, forge))).ToList();
         var copies = files.Where(f => f.Scan.Info != null).ToLookup(f => f.Scan.Info!.Id, StringComparer.Ordinal);
         // Without an explicit choice an id keeps its disk state; LadsCore defaults to enabled (BundledModInstaller installs it).
         bool Requested(string id, string? projectId) => preferences.GetEnabled(id, projectId)
@@ -208,7 +208,7 @@ public sealed class ModInventoryService
                 manifest!.Mods.FirstOrDefault(m => m.ModId == OptiFineInstaller.PylonModId)?.ProjectId) == false;
             if (needsPylon) requested = false;
             var cached = Path.Combine(cache, entry.Sha512 + ".jar");
-            var scan = File.Exists(cached) ? Scan(cached, token) : null;
+            var scan = File.Exists(cached) ? Scan(cached, token, game) : null;
             var info = scan?.Hash != null && ClientModInstaller.SameHash(scan.Hash, entry.Sha512) ? scan.Info : null;
             var notes = new List<string> { needsPylon ? "Off while Pylon is off (Ionium needs it)" : requested ? "Downloaded at the next launch" : "Disabled — not downloaded" };
             if (info == null) notes.Add("Its dependencies are checked when it is downloaded");
@@ -220,6 +220,8 @@ public sealed class ModInventoryService
                 Join(notes), null, info == null ? Array.Empty<ModInventoryEntry>() : Children(info, entry.Name, false, requested, running ? false : null, running && requested),
                 DependenciesKnown: info != null));
         }
+
+        FileHashCache.Save(game);
 
         // OptiFine may not be redistributed, so no manifest lists it: the launcher downloads it at launch (OptiFineInstaller).
         if (forge && !entries.Any(e => e.Id == OptiFineInstaller.ModId))
@@ -380,21 +382,25 @@ public sealed class ModInventoryService
         return result;
     }
 
-    /// <summary>Hash and metadata of a jar, cached by (path, length, modified time). Unreadable metadata becomes Error.</summary>
-    internal static ScannedJar Scan(string path, CancellationToken token = default)
+    /// <summary>Hash and metadata of a jar, cached by (path, length, modified time). Unreadable metadata becomes Error. With
+    /// <paramref name="game"/> the hash also comes from (and goes to) that folder's <see cref="FileHashCache"/>, shared with the
+    /// installer, so a fresh launcher does not re-read every jar.</summary>
+    internal static ScannedJar Scan(string path, CancellationToken token = default, string? game = null)
     {
         FileInfo file;
         try { file = new FileInfo(path); if (!file.Exists) return new(null, null, "the file no longer exists"); }
         catch (IOException e) { return new(null, null, e.Message); }
         var key = (file.FullName, file.Length, file.LastWriteTimeUtc);
         if (Scans.TryGetValue(key, out var hit)) return hit;
-        string hash;
-        try
-        {
-            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
-            hash = Convert.ToHexString(SHA512.HashData(stream)).ToLowerInvariant();
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return new(null, null, e.Message); } // Not cached: may be transient.
+        string? hash = game == null ? null : FileHashCache.Get(game, "sha512", file);
+        if (hash == null)
+            try
+            {
+                using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+                hash = Convert.ToHexString(SHA512.HashData(stream)).ToLowerInvariant();
+                if (game != null) FileHashCache.Put(game, "sha512", file, hash);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return new(null, null, e.Message); } // Not cached: may be transient.
         ScannedJar result;
         try { result = new(hash, FabricModMetadata.ReadJar(path, token: token) ?? FabricModMetadata.ReadForgeJar(path), null); }
         catch (Exception e) when (e is InvalidDataException or InvalidOperationException) { result = new(hash, null, e.Message); }

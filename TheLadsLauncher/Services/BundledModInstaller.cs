@@ -244,19 +244,21 @@ public static class BundledModInstaller
         bool isFabric = false, isForge = false;
         try
         {
+            // One open for both loaders' metadata (Mods holds ~90 jars).
             using var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
-            using var metadata = ReadMetadata(stream);
-            isFabric = metadata != null && GetModId(metadata.RootElement) == CoreModId;
+            using var zip = new ZipArchive(stream, ZipArchiveMode.Read);
+            try
+            {
+                using var metadata = ReadMetadata(zip);
+                isFabric = metadata != null && GetModId(metadata.RootElement) == CoreModId;
+            }
+            catch (InvalidDataException) { }
+            catch (JsonException) { }
+            try { isForge = FabricModMetadata.ReadForgeJar(zip)?.Id == CoreModId; }
+            catch (InvalidDataException) { }
+            catch (JsonException) { }
         }
         catch (InvalidDataException) { }
-        catch (JsonException) { }
-        try
-        {
-            using var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
-            isForge = FabricModMetadata.ReadForgeJar(stream)?.Id == CoreModId;
-        }
-        catch (InvalidDataException) { }
-        catch (JsonException) { }
         if (fi.Exists)
         {
             _isCoreCache[fullPath] = (fi.Length, fi.LastWriteTimeUtc.Ticks, isFabric, isForge);
@@ -272,6 +274,11 @@ public static class BundledModInstaller
     private static JsonDocument? ReadMetadata(Stream stream)
     {
         using var zip = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: true);
+        return ReadMetadata(zip);
+    }
+
+    private static JsonDocument? ReadMetadata(ZipArchive zip)
+    {
         var entries = zip.Entries.Where(e => e.FullName == "fabric.mod.json").ToList();
         if (entries.Count == 0) return null;
         if (entries.Count != 1 || entries[0].Length > 1024 * 1024)

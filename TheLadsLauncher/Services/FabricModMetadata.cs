@@ -92,6 +92,11 @@ public static class FabricModMetadata
     public static FabricModInfo? ReadForgeJar(Stream stream)
     {
         using var zip = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: true);
+        return ReadForgeJar(zip);
+    }
+
+    public static FabricModInfo? ReadForgeJar(ZipArchive zip)
+    {
         var entry = zip.GetEntry("mcmod.info");
         if (entry == null) return ReadOptiFine(zip) ?? ReadEssential(zip);
         if (entry.Length > MaximumMetadataSize) throw new InvalidDataException("Oversized mcmod.info.");

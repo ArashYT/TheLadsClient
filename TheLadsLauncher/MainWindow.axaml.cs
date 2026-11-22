@@ -5324,6 +5324,11 @@ public partial class MainWindow : Window
             string launchVersionId = GameVersionPolicy.ResolveVersionId(activeProfile);
             if (GameVersionPolicy.RequiresFabric(activeProfile.MinecraftVersion) && string.IsNullOrWhiteSpace(activeProfile.FabricVersion))
                 throw new InvalidOperationException("The Lads Client profile requires a Fabric loader.");
+            // Silent Microsoft sign-in waits on the network: it runs while the launch prepares files below (awaited in SignInAsync).
+            var launchAccount = isOffline ? null : loginHandler.AccountManager.GetAccounts().FirstOrDefault(a => (a as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount)?.Profile?.Username == selectedUser);
+            var silentLogin = launchAccount != null && Guid.TryParse(settings.MicrosoftClientId, out var launchClientId) && launchClientId != Guid.Empty
+                ? loginHandler.AuthenticateSilently(launchAccount, token) : null;
+            silentLogin?.ContinueWith(t => _ = t.Exception, TaskContinuationOptions.OnlyOnFaulted); // observed even when the launch stops before SignInAsync
             // Shared worlds/packs/server list (and options.txt unless isolated). Null: the user cancelled at the sharing prompt.
             if (await PrepareSharedContentForLaunchAsync(activeProfile, gameDirectory, token) is not { } prepared) return;
             // The server list was prepared for this LadsCore state (Core reads the shared list, a profile without it gets a copy).
@@ -5382,75 +5387,79 @@ public partial class MainWindow : Window
             };
 
             GameLaunchStatusText.Text = "Checking version...";
-
-            // The chosen identity was captured before the first asynchronous launch step.
-            if (selectedUser != _selectedAccount)
-                Log($"[Launcher] Launching with alt account '{selectedUser}' (main stays '{_selectedAccount}').");
-            MSession session;
-            if (isOffline)
+            // Awaited once the files are ready (or for Horizon); the silent sign-in started above runs meanwhile.
+            async Task<MSession> SignInAsync()
             {
-                if (!IsDevOfflineAllowed)
-                    throw new AccountVerificationException("Offline accounts are only available in debug builds. Sign in with a Microsoft account that owns Minecraft: Java Edition.");
-                session = AccountIdentity.CreateOfflineSession(selectedUser);
-            }
-            else
-            {
-                var msAccount = loginHandler.AccountManager.GetAccounts().FirstOrDefault(a => (a as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount)?.Profile?.Username == selectedUser);
-
-                try
+                // The chosen identity was captured before the first asynchronous launch step.
+                if (selectedUser != _selectedAccount)
+                    Log($"[Launcher] Launching with alt account '{selectedUser}' (main stays '{_selectedAccount}').");
+                MSession session;
+                if (isOffline)
                 {
-                    if (!Guid.TryParse(settings.MicrosoftClientId, out var registeredId) || registeredId == Guid.Empty)
-                        throw new AccountVerificationException("Configure your approved Microsoft application ID in Settings before launching a Microsoft account.");
-                    if (msAccount == null)
+                    if (!IsDevOfflineAllowed)
+                        throw new AccountVerificationException("Offline accounts are only available in debug builds. Sign in with a Microsoft account that owns Minecraft: Java Edition.");
+                    session = AccountIdentity.CreateOfflineSession(selectedUser);
+                }
+                else
+                {
+                    var msAccount = launchAccount;
+
+                    try
                     {
-                        throw new InvalidOperationException("The selected account is no longer saved. Add it again before launching.");
+                        if (!Guid.TryParse(settings.MicrosoftClientId, out var registeredId) || registeredId == Guid.Empty)
+                            throw new AccountVerificationException("Configure your approved Microsoft application ID in Settings before launching a Microsoft account.");
+                        if (msAccount == null)
+                        {
+                            throw new InvalidOperationException("The selected account is no longer saved. Add it again before launching.");
+                        }
+                        else
+                        {
+                            try
+                            {
+                                // Use cached refresh tokens — no UI
+                                GameLaunchStatusText.Text = "Logging in silently...";
+                                session = await (silentLogin ?? loginHandler.AuthenticateSilently(msAccount, token));
+                            }
+                            catch (Exception silentEx) when (MicrosoftAccountService.NeedsInteractiveLogin(silentEx) && !token.IsCancellationRequested)
+                            {
+                                // Tokens expired/revoked: fall back to the sign-in window
+                                Log("[Auth] The selected account needs Microsoft sign-in again.");
+                                GameLaunchStatusText.Text = "Session expired — please sign in again...";
+                                _authCts?.Cancel();
+                                _authCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+                                _authCts.CancelAfter(TimeSpan.FromMinutes(16));
+                                session = await loginHandler.AuthenticateInteractively(msAccount, cancellationToken: _authCts.Token);
+                            }
+                        }
                     }
-                    else
+                    catch (PlatformNotSupportedException ex)
                     {
-                        try
-                        {
-                            // Use cached refresh tokens — no UI
-                            GameLaunchStatusText.Text = "Logging in silently...";
-                            session = await loginHandler.AuthenticateSilently(msAccount, token);
-                        }
-                        catch (Exception silentEx) when (MicrosoftAccountService.NeedsInteractiveLogin(silentEx) && !token.IsCancellationRequested)
-                        {
-                            // Tokens expired/revoked: fall back to the sign-in window
-                            Log("[Auth] The selected account needs Microsoft sign-in again.");
-                            GameLaunchStatusText.Text = "Session expired — please sign in again...";
-                            _authCts?.Cancel();
-                            _authCts = CancellationTokenSource.CreateLinkedTokenSource(token);
-                            _authCts.CancelAfter(TimeSpan.FromMinutes(16));
-                            session = await loginHandler.AuthenticateInteractively(msAccount, cancellationToken: _authCts.Token);
-                        }
+                        GameLaunchStatusText.Text = "Login failed: default browser could not be opened.";
+                        Log($"[Auth ERROR] Platform not supported: {ex.Message}");
+                        throw;
+                    }
+                    catch (Exception ex) when (!token.IsCancellationRequested)
+                    {
+                        GameLaunchStatusText.Text = "Login failed.";
+                        Log($"[Auth ERROR] {MicrosoftAccountService.DescribeError(ex)}");
+                        throw new InvalidOperationException(MicrosoftAccountService.DescribeError(ex));
+                    }
+                    finally
+                    {
+                        _msalProvider?.CompleteDialog();
+                        _authCts?.Dispose();
+                        _authCts = null;
                     }
                 }
-                catch (PlatformNotSupportedException ex)
-                {
-                    GameLaunchStatusText.Text = "Login failed: default browser could not be opened.";
-                    Log($"[Auth ERROR] Platform not supported: {ex.Message}");
-                    throw;
-                }
-                catch (Exception ex) when (!token.IsCancellationRequested)
-                {
-                    GameLaunchStatusText.Text = "Login failed.";
-                    Log($"[Auth ERROR] {MicrosoftAccountService.DescribeError(ex)}");
-                    throw new InvalidOperationException(MicrosoftAccountService.DescribeError(ex));
-                }
-                finally
-                {
-                    _msalProvider?.CompleteDialog();
-                    _authCts?.Dispose();
-                    _authCts = null;
-                }
+
+                LoadAccounts();
+                await WriteLaunchAccountFilesAsync(session, isOffline, gameDirectory);
+                GameLaunchStatusText.Text = $"Welcome, {session.Username}!";
+                Log($"[Auth] Logged in as {session.Username}");
+
+                return session;
             }
 
-            LoadAccounts();
-            await WriteLaunchAccountFilesAsync(session, isOffline, gameDirectory);
-            GameLaunchStatusText.Text = $"Welcome, {session.Username}!";
-            Log($"[Auth] Logged in as {session.Username}");
-
-            Mark("account");
             Log($"[Launcher] Building process for {launchVersionId}...");
 
             // QuickLaunch: skip asset verification for a faster startup.
@@ -5461,7 +5470,6 @@ public partial class MainWindow : Window
                 MaximumRamMb = Math.Max(1024, settings.MaxRamMb),
                 MinimumRamMb = LaunchService.StartupHeapMb(Math.Clamp(settings.MinRamMb, 256, Math.Max(1024, settings.MaxRamMb)), Math.Max(1024, settings.MaxRamMb)),
                 FullScreen = settings.FullscreenOnLaunch,
-                Session = session,
                 JavaPath = settings.JavaPath
             };
 
@@ -5499,7 +5507,7 @@ public partial class MainWindow : Window
                 throw new InvalidOperationException($"Select a Java {requiredJava} installation for Minecraft {activeProfile.MinecraftVersion}.");
             if (settings.UseHorizon && HorizonEngine.Applies(activeProfile.MinecraftVersion) && await ExperimentalAllowedAsync())
             {
-                await LaunchHorizonAsync(launcher, gameDirectory, launchOpt.JavaPath, session, isOffline, token);
+                await LaunchHorizonAsync(launcher, gameDirectory, launchOpt.JavaPath, await SignInAsync(), isOffline, token);
                 return;
             }
             Mark("java");
@@ -5522,17 +5530,13 @@ public partial class MainWindow : Window
             // The final mod set: the in-game Mods view reads this snapshot, and the running marker records its enabled ids.
             GameLaunchStatusText.Text = "Checking mods...";
             var launchInventory = await _modInventoryService.BuildAsync(AppContext.BaseDirectory, gameDirectory, activeProfile.MinecraftVersion, token);
-            await _modInventoryService.WriteSnapshotAsync(launchInventory, token);
             Mark("mod inventory");
-            // ModSync: the player's own jars, listed for friends who join their world. A request nobody took is dropped.
+            var session = await SignInAsync();
+            launchOpt.Session = session;
+            Mark("account");
+            // ModSync: a request nobody took is dropped. The snapshot and the ModSync list are written once the game has started.
             ModSyncService.DropRelaunch(gameDirectory);
-            if (!forge)
-            {
-                try { await ModSyncService.WriteListAsync(launchInventory, Catalog(), message => Log("[Launcher] " + message), token); }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Log($"[Launcher] ModSync: the mod list was not written ({ex.Message})."); }
-            }
             var loadedMods = ModInventoryView.EnabledJarIds(launchInventory);
-            Mark("modsync list");
 
             // A renderer relaunch goes back where the player was (a world, a server or the title screen) instead.
             if (relaunch?.World is { } world) ModpackLauncher.JoinWorld(launchOpt, world);
@@ -5706,6 +5710,17 @@ public partial class MainWindow : Window
                 afterExit: () => OnGameExitedAsync(process, activeProfile, gameDirectory, sessionMessages));
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
+            // Read only when the player opens the in-game Mods view or hosts a world, long after start: off the launch path (the
+            // ModSync list may ask Modrinth/CurseForge for up to 8 s).
+            var modSyncCatalog = forge ? null : Catalog();
+            _ = Task.Run(async () =>
+            {
+                try { await _modInventoryService.WriteSnapshotAsync(launchInventory); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Log($"[Launcher] The mod snapshot was not written ({ex.Message})."); }
+                if (modSyncCatalog == null) return;
+                try { await ModSyncService.WriteListAsync(launchInventory, modSyncCatalog, message => Log("[Launcher] " + message)); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Log($"[Launcher] ModSync: the mod list was not written ({ex.Message})."); }
+            });
 
             // A next-launch choice is consumed only after a process actually starts.
             // Preserve a different choice made while this launch was preparing.
