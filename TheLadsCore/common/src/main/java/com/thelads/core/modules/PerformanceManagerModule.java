@@ -33,6 +33,7 @@ public class PerformanceManagerModule extends Module {
         addOption(new Mirrored("Aggressive Memory Cleaner", false, v -> MemoryGuard.aggressiveCleaner = v));
         addOption(new Mirrored("Memory Guard", true, v -> MemoryGuard.enabled = v));
         addOption(new Mirrored("Packet Flush Batching", true, v -> FlushBatching.enabled = v));
+        addOption(new Mirrored("Connection Tuning", true, v -> com.thelads.core.perf.ConnectionTuning.enabled = v));
         addOption(new BoolOption("Reduce Background FPS", true));
         addOption(new BoolOption("Global Text Width Caching", true) {
             @Override

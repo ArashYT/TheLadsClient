@@ -24,6 +24,22 @@ public class ConnectionActivityMixin implements PacketActivitySource {
         if (receiving == PacketFlow.CLIENTBOUND) lads$lastPacketNanos = System.nanoTime();
     }
 
+    /** Connection Tuning: nodelay, keepalive and low-delay TOS on the client's TCP socket. */
+    @Inject(method = "channelActive", at = @At("HEAD"))
+    private void lads$tuneSocket(ChannelHandlerContext context, CallbackInfo callback) {
+        io.netty.channel.Channel channel = context.channel();
+        if (receiving != PacketFlow.CLIENTBOUND || channel instanceof io.netty.channel.local.LocalChannel) return;
+        if (!com.thelads.core.perf.ConnectionTuning.shouldApply()) return;
+        try {
+            channel.config().setOption(io.netty.channel.ChannelOption.TCP_NODELAY, true);
+            channel.config().setOption(io.netty.channel.ChannelOption.SO_KEEPALIVE, true);
+            channel.config().setOption(io.netty.channel.ChannelOption.IP_TOS, com.thelads.core.perf.ConnectionTuning.TOS_LOW_DELAY);
+            org.slf4j.LoggerFactory.getLogger("TheLadsCore").info("[Lads] Connection Tuning applied to {}", channel.remoteAddress());
+        } catch (RuntimeException e) {
+            org.slf4j.LoggerFactory.getLogger("TheLadsCore").warn("[Lads] Connection Tuning skipped: {}", e.toString());
+        }
+    }
+
     /** Packet Flush Batching: one socket flush per event-loop pass on the client channel (not LocalChannel; krypton does it itself). */
     @Inject(method = "channelActive", at = @At("HEAD"))
     private void lads$flushBatching(ChannelHandlerContext context, CallbackInfo callback) {

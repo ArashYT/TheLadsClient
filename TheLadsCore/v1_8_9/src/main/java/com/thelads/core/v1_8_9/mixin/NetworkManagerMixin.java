@@ -67,6 +67,22 @@ public abstract class NetworkManagerMixin implements SignalLoss189.PacketActivit
         }
     }
 
+    /** Connection Tuning: nodelay, keepalive and low-delay TOS on the client's TCP socket. */
+    @Inject(method = "channelActive", at = @At("HEAD"))
+    private void ladsTuneSocket(ChannelHandlerContext context, CallbackInfo ci) {
+        io.netty.channel.Channel channel = context.channel();
+        if (direction != EnumPacketDirection.CLIENTBOUND || channel instanceof io.netty.channel.local.LocalChannel) return;
+        if (!com.thelads.core.perf.ConnectionTuning.shouldApply()) return;
+        try {
+            channel.config().setOption(io.netty.channel.ChannelOption.TCP_NODELAY, true);
+            channel.config().setOption(io.netty.channel.ChannelOption.SO_KEEPALIVE, true);
+            channel.config().setOption(io.netty.channel.ChannelOption.IP_TOS, com.thelads.core.perf.ConnectionTuning.TOS_LOW_DELAY);
+            org.apache.logging.log4j.LogManager.getLogger("TheLadsCore").info("[Lads] Connection Tuning applied to {}", channel.remoteAddress());
+        } catch (RuntimeException e) {
+            org.apache.logging.log4j.LogManager.getLogger("TheLadsCore").warn("[Lads] Connection Tuning skipped: {}", e.toString());
+        }
+    }
+
     /** Packet Flush Batching: one socket flush per event-loop pass on the client channel (not LocalChannel; krypton does it itself). */
     @Inject(method = "channelActive", at = @At("HEAD"))
     private void ladsFlushBatching(ChannelHandlerContext context, CallbackInfo ci) {
