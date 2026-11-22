@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Main {
     public static void main(String[] a) throws Exception {
         int preinit = Integer.parseInt(a[0]), missing = Integer.parseInt(a[1]);
+        int late = Integer.getInteger("fake.lateConfig", -1);
         AtomicInteger clCalls = new AtomicInteger();
         ClassLoader cl = new ClassLoader(null) {
             @Override public Class<?> loadClass(String n, boolean r) throws ClassNotFoundException {
@@ -19,6 +20,7 @@ public class Main {
         int total = 2000;
         for (int i = 0; i < total; i++) {
             if (i == preinit) d.initializeTransformers();
+            if (i == late) org.spongepowered.asm.mixin.Mixins.add("late.mixins.json");
             String n = i == 700 ? "net.minecraft.client.main.Main" : i < preinit ? "net.fabricmc.loader.Pre" + i
                     : i % 40 == 0 && i / 40 < missing ? "missing.M" + i : "net.minecraft.C" + i;
             byte[] b = d.tryLoad(n, false);

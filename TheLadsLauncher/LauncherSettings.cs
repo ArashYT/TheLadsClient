@@ -108,6 +108,8 @@ public class LauncherSettings
     public string OptiFinePackRenderer { get; set; } = Services.OptiFinePacks.Auto;
     public bool FullscreenOnLaunch { get; set; } = true;
     public bool QuickLaunch { get; set; } = true;   // skip asset verification if already installed
+    /// <summary>Our startup agent (cached class transforms + preload) on 26.3, 1.20.1 and 1.8.9. See Services/StartupBoost.cs.</summary>
+    public bool StartupBoost { get; set; } = true;
     public string QuickLaunchServerIp { get; set; } = "";  // server to join on launch ("" = auto from logs)
 
     // Sync

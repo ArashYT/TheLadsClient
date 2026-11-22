@@ -23,6 +23,7 @@ public final class KnotClassDelegate {
 
     private byte[] getPostMixinClassByteArray(String name, boolean allowFromParent) {
         ORIG.incrementAndGet();
+        org.spongepowered.asm.mixin.Mixins.visitAll();
         try { Thread.sleep(2); } catch (InterruptedException e) { throw new RuntimeException(e); }
         if (name.startsWith("missing.")) return null;
         boolean t = transformInitialized && canTransformClass(name);

@@ -8,7 +8,7 @@ $out = Join-Path $root "build\classes"
 if (Test-Path $out) { Remove-Item -Recurse -Force $out }
 New-Item -ItemType Directory -Force $out | Out-Null
 $src = Get-ChildItem (Join-Path $root "src") -Recurse -Filter *.java | ForEach-Object FullName
-& "$Jdk\bin\javac.exe" --release 21 -Xlint:all -cp $Asm -d $out $src
+& "$Jdk\bin\javac.exe" --release 17 -Xlint:all -cp $Asm -d $out $src
 if ($LASTEXITCODE) { throw "javac failed" }
 $mf = Join-Path $root "build\manifest.txt"
 "Premain-Class: lads.boost.BoostAgent`nCan-Retransform-Classes: false`nCan-Redefine-Classes: false`n" | Set-Content -NoNewline -Encoding ascii $mf

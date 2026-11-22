@@ -5605,6 +5605,7 @@ public partial class MainWindow : Window
             if (!LaunchService.IsValidLoadingScreenColor(launchSettings.LoadingScreenGlowColor)) launchSettings.LoadingScreenGlowColor = "";
             LaunchService.EnsureLoadingScreenColors(launchOpt, launchSettings);
             LaunchService.EnsureSecurityJvmArguments(launchOpt, requiredJava, gameDirectory, activeProfile.MinecraftVersion);
+            StartupBoost.Apply(launchOpt, settings, gameDirectory, activeProfile.MinecraftVersion, Log);
             AddSocialLaunchArgument(launchOpt);
             AddCrashHookArgument(launchOpt);
             if (!(settings.QuickLaunch && File.Exists(installedMarker)))
