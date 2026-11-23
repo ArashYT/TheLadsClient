@@ -15,7 +15,7 @@ namespace TheLadsLauncher.Services;
 public static class StartupBoost
 {
     /// <summary>SHA-256 of boost/lads-boost.jar. Update together with the jar (StartupBoostTests checks they match).</summary>
-    public const string JarSha256 = "F2CFB81E93901D34F55A73ADDE11083BC901EB0C8979796380181F0915F60240";
+    public const string JarSha256 = "163894F08E81299820C78E43280B620B8211C881337BF8A7860D2574E1DE2550";
 
     /// <summary>Fabric (Knot) and 1.8.9 Forge on RetroFuturaBootstrap: the two class loaders the agent knows how to patch.</summary>
     private static readonly HashSet<string> Versions = new(StringComparer.Ordinal) { "26.3", "1.20.1", "1.8.9" };

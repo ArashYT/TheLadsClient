@@ -156,7 +156,7 @@ public final class BoostHooks {
         List<String> l = new ArrayList<>();
         l.add("jv=" + System.getProperty("java.version") + "|" + System.getProperty("java.vm.version"));
         l.add("salt=" + System.getProperty("lads.boost.salt", ""));
-        l.add("agent=4"); // bump when cache semantics change
+        l.add("agent=5"); // bump when cache semantics change
         // the fabric-loader / RFB jar is on java.class.path, so it is covered here
         for (String e : System.getProperty("java.class.path", "").split(File.pathSeparator)) if (!e.isEmpty()) l.add("cp=" + fp(Paths.get(e)));
         for (String p : new String[] {"fabric.gameJarPath", "fabric.gameJarPath.client"}) {
@@ -365,8 +365,8 @@ public final class BoostHooks {
 
     /** Transformed bytes that reference a class generated at runtime (MixinExtras ref/generated/*) must not be replayed:
      *  the generator only runs while the class is being transformed, so a cache hit leaves the generated class undefined. */
-    static boolean refsGenerated(byte[] b) {
-        final byte[] p = GEN;
+    static boolean refsGenerated(byte[] b) { return has(b, GEN) || has(b, SYN); }
+    private static boolean has(byte[] b, byte[] p) {
         outer:
         for (int i = 0, n = b.length - p.length; i <= n; i++) {
             if (b[i] != p[0]) continue;
@@ -375,6 +375,8 @@ public final class BoostHooks {
         }
         return false;
     }
+    /** Mixin's own runtime classes (ModifyArgs Args$N, ...) are numbered per run: a replay can name a different class. */
+    static final byte[] SYN = "asm/synthetic/".getBytes(StandardCharsets.US_ASCII);
     static final byte[] GEN = "/generated/".getBytes(StandardCharsets.US_ASCII);
 
     static boolean canTransform(Object d, String name) {
