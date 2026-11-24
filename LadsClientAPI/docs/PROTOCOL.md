@@ -52,6 +52,8 @@ Full snapshot. Replaces the previous one entirely (never a diff). Sent after the
  "notice":"Lads SMP: fullbright capped at 10%"}
 ```
 - `rev`: int >= 1, increases per player per connection. Client echoes it in `ack`.
+- `silent` (optional bool, plugin 1.6.0, client 1.14.2): `true` = the client shows no "limits N Lads settings" toast for this snapshot and closes one that is up. Old clients ignore it. Set by `LadsScope.silent(true)` while any active scope is silent.
+  The HUD option `Hide Crosshair` (`options.HUD`, client 1.14.2) hides the vanilla crosshair entirely: `LadsScope.hideCrosshair()`.
 - `unlisted`: `inherit` (default; Lads built-in rules) | `allow` | `block` for modules not in `modules`.
   Since client 1.12.0 `allow` via `unlisted` is the same as `inherit` (anti-ban: it lifted gated automation the list missed):
   a module whose safety block should lift must be listed by name.

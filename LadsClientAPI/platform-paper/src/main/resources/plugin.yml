@@ -1,5 +1,5 @@
 name: LadsClientAPI
-version: '1.5.0'
+version: '1.6.0'
 main: com.thelads.ladsapi.paper.LadsPaperPlugin
 api-version: '1.20'
 softdepend: [PlaceholderAPI]
@@ -9,7 +9,7 @@ commands:
   ladsapi:
     description: Manage LadsClientAPI rules and status
     permission: ladsapi.admin
-    usage: /<command> [reload|status|inspect|set <player> <target> <rule> [--keep]|clear <player> [Module]|scope <player> <name> [seconds|off|--keep]|announce]
+    usage: /<command> [reload|status|inspect|set <player> <target> <rule> [--keep]|clear <player> [Module]|scope <player> <name> [seconds|off|--keep|--silent]|announce]
 permissions:
   ladsapi.admin:
     description: Allows administering LadsClientAPI

@@ -352,9 +352,10 @@ public final class LadsCommandHandler {
     private static List<String> handleScope(LadsCore core, String[] rawArgs) {
         List<String> words = new ArrayList<>(List.of(rawArgs));
         boolean keep = takeKeep(words);
+        boolean silent = words.removeIf(w -> "--silent".equalsIgnoreCase(w));
         String[] args = words.toArray(new String[0]);
         if (args.length < 3) {
-            return List.of("§cUsage: /ladsapi scope <player> <name> [seconds|off|--keep]");
+            return List.of("§cUsage: /ladsapi scope <player> <name> [seconds|off|--keep|--silent]");
         }
         LadsPlayerHandle handle = findOnlinePlayer(core, args[1]);
         if (handle == null) {
@@ -395,6 +396,7 @@ public final class LadsCommandHandler {
             lp.scope(name).expireIn(0);
             return List.of("§aScope " + name + " on for " + handle.name() + " §7(kept: every login)" + note);
         }
+        if (silent) lp.scope(name).silent(true);
         lp.scope(name).expireIn(seconds);
         return List.of("§aScope " + name + " on for " + handle.name() + (seconds > 0 ? " for " + seconds + " s" : "") + note);
     }

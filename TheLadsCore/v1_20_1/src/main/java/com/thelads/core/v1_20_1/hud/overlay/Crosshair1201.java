@@ -152,7 +152,7 @@ public final class Crosshair1201 {
     /** With F1 the HUD is not drawn; "Visible with Hidden HUD" draws the crosshair after the HUD pass anyway (HiddenHudMixin). */
     public static void renderHiddenHud(GuiGraphics graphics) {
         Minecraft mc = Minecraft.getInstance();
-        if (!mc.options.hideGui || !active() || !flag("Visible with Hidden HUD")
+        if (!mc.options.hideGui || !active() || !flag("Visible with Hidden HUD") || com.thelads.core.client.ladsapi.ServerSettings.hideCrosshair()
             || mc.screen instanceof net.minecraft.client.gui.screens.LevelLoadingScreen) return;
         render(graphics);
     }

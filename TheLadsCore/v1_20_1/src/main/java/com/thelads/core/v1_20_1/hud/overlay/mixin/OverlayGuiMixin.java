@@ -20,6 +20,7 @@ public class OverlayGuiMixin {
 
     @Inject(method = "renderCrosshair(Lnet/minecraft/client/gui/GuiGraphics;)V", at = @At("HEAD"), cancellable = true)
     private void lads$crosshair(GuiGraphics graphics, CallbackInfo callback) {
+        if (com.thelads.core.client.ladsapi.ServerSettings.hideCrosshair()) { callback.cancel(); return; }
         if (!Crosshair1201.active()) return;
         Crosshair1201.renderInHud(graphics);
         callback.cancel();

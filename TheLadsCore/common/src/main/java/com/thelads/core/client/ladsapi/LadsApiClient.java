@@ -351,7 +351,12 @@ public final class LadsApiClient {
 
         List<ToastAction> actions = parseToastActions(json.get("actions"));
         // The server re-sends its rules on every backend/mod switch; the toast is for the join only.
-        if (!policyToastShown) {
+        // "silent":true (a transient scope such as a server GUI page): no toast, and the join toast is not owed afterwards either.
+        boolean silent = json.has("silent") && json.get("silent").isJsonPrimitive() && json.get("silent").getAsJsonPrimitive().isBoolean() && json.get("silent").getAsBoolean();
+        if (silent && result.unlocked <= 0) { // lifted safety blocks are never announced silently
+            policyToastShown = true;
+            LadsApiUi.policyCleared();
+        } else if (!policyToastShown) {
             policyToastShown = true;
             LadsApiUi.policyApplied(serverName, result.changedCount, result.unlocked, notice, actions);
         }

@@ -44,9 +44,23 @@ public final class PolicyBuilder {
             Map<String, ModuleRule> apiOverrides,
             int rev
     ) {
+        return buildPolicyJson(rules, config, player, scopes, apiOverrides, rev, false);
+    }
+
+    /** @param silent adds {@code "silent":true}: the client shows no policy toast for this snapshot (PROTOCOL.md "policy"). */
+    public static String buildPolicyJson(
+            LadsRules rules,
+            LadsConfig config,
+            LadsPlayerHandle player,
+            Map<String, Map<String, ModuleRule>> scopes,
+            Map<String, ModuleRule> apiOverrides,
+            int rev,
+            boolean silent
+    ) {
         JsonObject root = new JsonObject();
         root.addProperty("t", "policy");
         root.addProperty("rev", rev);
+        if (silent) root.addProperty("silent", true);
 
         // ladsapi.bypass = empty policy
         if (player != null && player.hasPermission("ladsapi.bypass")) {

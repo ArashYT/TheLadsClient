@@ -104,6 +104,56 @@ class ServerSettingsTest {
     }
 
     @Test
+    void hideCrosshairRuleIsSessionOnlyAndGoneOnReset() {
+        assertFalse(ServerSettings.hideCrosshair());
+        JsonObject ack = policy("", "\"HUD\":{\"Hide Crosshair\":{\"value\":true}}");
+        assertEquals(List.of(), names(ack, "ignored"), ack.toString());
+        assertTrue(ServerSettings.hideCrosshair());
+        assertFalse(ConfigManager.toJson().toString().contains("Hide Crosshair"), "never saved");
+        LadsApiClient.reset();
+        assertFalse(ServerSettings.hideCrosshair());
+    }
+
+    private void snapshot(int rev, String extra, String options) {
+        LadsApiClient.receive(("{\"t\":\"policy\",\"rev\":" + rev + extra + ",\"options\":{" + options + "}}").getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void silentSnapshotShowsNoToastAndClosesAnOpenOne() {
+        String hideOnly = "\"HUD\":{\"Hide Crosshair\":{\"value\":true}}";
+        policy("", "\"HUD\":{\"Text Shadow\":{\"value\":false}}");
+        assertTrue(LadsApiUi.isToastActive(), "control: a normal snapshot at join limits settings and toasts");
+        assertTrue(LadsApiUi.activeToastTitle().contains("limits"));
+        snapshot(2, ",\"silent\":true", hideOnly);
+        assertFalse(LadsApiUi.isToastActive(), "a silent snapshot closes the open toast");
+        assertTrue(ServerSettings.hideCrosshair(), "the rule itself still applies");
+    }
+
+    @Test
+    void silentSnapshotAtJoinShowsNoToastAndNonSilentOnesStayQuietAfterIt() {
+        LadsApiClient.receive("{\"t\":\"hello\",\"v\":1,\"server\":\"Lobby\",\"caps\":[\"policy\",\"reset\"]}".getBytes(StandardCharsets.UTF_8));
+        snapshot(1, ",\"silent\":true", "\"HUD\":{\"Text Shadow\":{\"value\":false}}");
+        assertFalse(LadsApiUi.isToastActive());
+        snapshot(2, "", "\"HUD\":{\"Text Shadow\":{\"value\":false}}");
+        assertFalse(LadsApiUi.isToastActive(), "the join toast is not owed after a silent snapshot");
+    }
+
+    @Test
+    void silentFlagIsOnlyHonouredAsABoolean() {
+        LadsApiClient.receive("{\"t\":\"hello\",\"v\":1,\"server\":\"Lobby\",\"caps\":[\"policy\",\"reset\"]}".getBytes(StandardCharsets.UTF_8));
+        snapshot(1, ",\"silent\":\"true\"", "\"HUD\":{\"Text Shadow\":{\"value\":false}}");
+        assertTrue(LadsApiUi.isToastActive(), "a string is not a boolean: toast as before");
+    }
+
+    @Test
+    void silentSnapshotThatLiftsASafetyBlockStillToasts() {
+        LadsApiClient.receive("{\"t\":\"hello\",\"v\":1,\"server\":\"Lobby\",\"caps\":[\"policy\",\"reset\"]}".getBytes(StandardCharsets.UTF_8));
+        LadsApiClient.receive("{\"t\":\"policy\",\"rev\":1,\"silent\":true,\"modules\":{\"Minimap\":\"allow\"}}".getBytes(StandardCharsets.UTF_8));
+        assertTrue(LadsApiUi.isToastActive(), "anti-ban rule: lifting a safety block is never silent");
+        assertTrue(LadsApiUi.activeToastTitle().contains("unlocks"), LadsApiUi.activeToastTitle());
+    }
+
+    @Test
     void aToggleUnderAForcedValueKeepsWhatThePlayerAskedFor() {
         policy("", "\"HUD\":{\"Text Shadow\":{\"value\":false},\"Scale\":{\"max\":2}}");
         hud.setTextShadow(!hud.isTextShadow()); // the HUD screen's toggle: it shows off, the click asks for on

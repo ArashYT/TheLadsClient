@@ -106,6 +106,12 @@ final class DemoCommand {
                     default -> out.add("§cUsage: /ladsapi demo <player> fx blur|grayscale|sepia|invert|vignette|tint|flash|clear");
                 }
             }
+            case "xhair" -> {
+                boolean on = !"off".equals(a1);
+                if (on) lp.scope("demo-xhair").hideCrosshair().silent(true); else lp.scope("demo-xhair").end();
+                lp.resend();
+                out.add("§aCrosshair " + (on ? "hidden, silent snapshot" : "back") + " (scope demo-xhair)");
+            }
             case "lock" -> out.add(report("lock 5 s (move, jump, attack, use)",
                     lp.lockInput(InputLock.create().move().jump().attack().use(), 5000)));
             case "waypoint" -> {

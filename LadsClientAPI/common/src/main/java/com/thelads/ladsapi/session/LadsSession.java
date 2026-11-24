@@ -32,6 +32,8 @@ public final class LadsSession {
     private final Map<String, Map<String, ModuleRule>> scopes = new LinkedHashMap<>();
     /** Scope name -> its newest timer: an older timer that fires finds another number and does nothing. */
     private final Map<String, Integer> scopeTimers = new java.util.HashMap<>();
+    /** Scopes that asked for a silent policy (no toast on the client). Guarded by apiOverrides; dropped with the scope. */
+    private final java.util.Set<String> silentScopes = new java.util.HashSet<>();
     private final LadsPlayerImpl ladsPlayer;
     private final Features features = new Features(this);
     /** Everything inbound passes this flood guard first, then the limiter of its own type. */
@@ -206,6 +208,7 @@ public final class LadsSession {
         rev++;
         syncedWorld = handle.world();
         Map<String, ModuleRule> overridesCopy;
+        boolean silent;
         Map<String, Map<String, ModuleRule>> scopesCopy = new LinkedHashMap<>();
         Map<String, ModuleRule> keptRules = manager.kept().rules(handle.uuid());
         synchronized (apiOverrides) {
@@ -217,6 +220,7 @@ public final class LadsSession {
             for (Map.Entry<String, Map<String, ModuleRule>> e : scopes.entrySet()) {
                 scopesCopy.put(e.getKey(), new LinkedHashMap<>(e.getValue()));
             }
+            silent = !silentScopes.isEmpty();
         }
         String json = PolicyBuilder.buildPolicyJson(
                 manager.getRules(),
@@ -224,7 +228,8 @@ public final class LadsSession {
                 handle,
                 scopesCopy,
                 overridesCopy,
-                rev
+                rev,
+                silent
         );
         byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
         if (bytes.length > 524_288) {
@@ -327,6 +332,7 @@ public final class LadsSession {
     public boolean endScope(String scope) {
         synchronized (apiOverrides) {
             scopeTimers.remove(scopeKey(scope));
+            silentScopes.remove(scopeKey(scope));
             return scopes.remove(scopeKey(scope)) != null;
         }
     }
@@ -351,10 +357,19 @@ public final class LadsSession {
                 Integer newest = scopeTimers.get(key);
                 if (newest == null || newest != timer) return;
                 scopeTimers.remove(key);
+                silentScopes.remove(key);
                 if (scopes.remove(key) == null) return;
             }
             if (manager.getSessions().get(handle.uuid()) == this) sendPolicy(); // not after the player left
         }, (int) Math.min(Integer.MAX_VALUE, seconds * 20));
+    }
+
+    /** Marks the scope silent (or not): while any active scope is silent, the policy says so. */
+    public void setScopeSilent(String scope, boolean silent) {
+        synchronized (apiOverrides) {
+            layer(scope);
+            if (silent) silentScopes.add(scopeKey(scope)); else silentScopes.remove(scopeKey(scope));
+        }
     }
 
     public void setScopeModuleState(String scope, String module, String state) {

@@ -139,6 +139,12 @@ public final class LadsPlayerImpl implements LadsPlayer {
         }
 
         @Override
+        public LadsScope silent(boolean silent) {
+            session.setScopeSilent(name, silent);
+            return sent();
+        }
+
+        @Override
         public LadsScope expireIn(long seconds) {
             session.expireScope(name, seconds);
             return this;

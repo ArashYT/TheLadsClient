@@ -30,6 +30,17 @@ public interface LadsScope {
     /** The scope ends by itself after this many seconds, counted from this call; 0 or less = no timer (and stops a running one). */
     LadsScope expireIn(long seconds);
 
+    /**
+     * Silent scope (client 1.14.2+): while it is on, the policy carries {@code "silent":true} and the client shows no "limits N
+     * Lads settings" toast (and closes one that is up). For transient scopes such as a server GUI page. Older clients ignore it.
+     */
+    LadsScope silent(boolean silent);
+
+    /** Hides the crosshair completely while the scope is on (client 1.14.2+: HUD "Hide Crosshair"; older clients ignore the rule). */
+    default LadsScope hideCrosshair() {
+        return force("HUD", "Hide Crosshair", Boolean.TRUE);
+    }
+
     /** Ends the scope now. */
     void end();
 }

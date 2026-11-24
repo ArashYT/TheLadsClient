@@ -17,6 +17,7 @@ import java.util.function.Supplier;
  */
 public final class ServerSettings {
     public static final String HUD = "HUD", MINECRAFT = "Minecraft", SODIUM = "Sodium";
+    private static final String HIDE_CROSSHAIR = "Hide Crosshair";
     private static final String ANIMATE_VISIBLE = "Animate Only Visible Textures";
     private static final Module HUD_MODULE = new Module(HUD, "The Lads HUD's global look.");
     private static final Module MINECRAFT_MODULE = new Module(MINECRAFT, "Minecraft's own options.");
@@ -35,6 +36,7 @@ public final class ServerSettings {
         HUD_MODULE.addOption(new BoolOption("Soft Shadow", false));
         HUD_MODULE.addOption(new BoolOption("Backgrounds", true));
         HUD_MODULE.addOption(new SliderOption("FPS Limit", 60, 0, 240, 1)); // 0 = unlimited
+        HUD_MODULE.addOption(new BoolOption(HIDE_CROSSHAIR, false)); // true: no crosshair at all (vanilla or Lads), e.g. while a server GUI page is open
         SODIUM_MODULE.addOption(new BoolOption(ANIMATE_VISIBLE, true));
         MINECRAFT_MODULE.addOption(new SliderOption("FOV", 70, 30, 110, 1));
         MINECRAFT_MODULE.addOption(new SliderOption("Brightness", 50, 0, 100, 1).suffix("%"));
@@ -107,6 +109,11 @@ public final class ServerSettings {
 
     static List<Module> modules() {
         return List.of(HUD_MODULE, MINECRAFT_MODULE, SODIUM_MODULE);
+    }
+
+    /** Whether the server's rules hide the crosshair entirely (HUD.Hide Crosshair): vanilla, Lads Crosshair Tweaks and the reticle alike. Never saved. */
+    public static boolean hideCrosshair() {
+        return ServerPolicy.applyBool(HUD, HIDE_CROSSHAIR, false);
     }
 
     public static boolean hud(String option, boolean own) {

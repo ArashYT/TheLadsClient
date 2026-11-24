@@ -113,7 +113,9 @@ public final class Crosshair189 {
 
     @SubscribeEvent
     public void overlay(RenderGameOverlayEvent.Pre event) {
-        if (event.type != RenderGameOverlayEvent.ElementType.CROSSHAIRS || !active()) return;
+        if (event.type != RenderGameOverlayEvent.ElementType.CROSSHAIRS) return;
+        if (com.thelads.core.client.ladsapi.ServerSettings.hideCrosshair()) { event.setCanceled(true); return; }
+        if (!active()) return;
         event.setCanceled(true);
         render(event.resolution.getScaledWidth(), event.resolution.getScaledHeight(), event.partialTicks);
         GlStateManager.disableBlend(); // as vanilla's crosshair leaves it
@@ -123,7 +125,7 @@ public final class Crosshair189 {
     @SubscribeEvent
     public void frame(TickEvent.RenderTickEvent event) {
         Minecraft mc = Minecraft.getMinecraft();
-        if (event.phase != TickEvent.Phase.END || !mc.gameSettings.hideGUI || mc.currentScreen != null || mc.theWorld == null || !active()) return;
+        if (event.phase != TickEvent.Phase.END || !mc.gameSettings.hideGUI || mc.currentScreen != null || mc.theWorld == null || !active() || com.thelads.core.client.ladsapi.ServerSettings.hideCrosshair()) return;
         mc.entityRenderer.setupOverlayRendering();
         ScaledResolution resolution = new ScaledResolution(mc);
         render(resolution.getScaledWidth(), resolution.getScaledHeight(), event.renderTickTime);
