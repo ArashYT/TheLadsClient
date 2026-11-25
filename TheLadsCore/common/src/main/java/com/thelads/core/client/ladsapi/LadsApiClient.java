@@ -274,6 +274,8 @@ public final class LadsApiClient {
         reply.addProperty("mc", minecraftVersion != null ? minecraftVersion : "");
         java.util.Set<String> all = new java.util.TreeSet<>(capabilities);
         all.addAll(Caps.declared()); // minigame caps a version declared (none: the reply is exactly as before)
+        // "Let servers change my Lads settings" off: the server's view lock would be refused, so keep guiview back and the server keeps its own (shader) cursor
+        if (all.contains("guiview") && ServerPolicy.playerRefusesChanges()) all.remove("guiview");
         if (!all.isEmpty()) {
             com.google.gson.JsonArray caps = new com.google.gson.JsonArray();
             for (String cap : all) caps.add(cap);

@@ -54,6 +54,7 @@ Full snapshot. Replaces the previous one entirely (never a diff). Sent after the
 - `rev`: int >= 1, increases per player per connection. Client echoes it in `ack`.
 - `silent` (optional bool, plugin 1.6.0, client 1.14.2): `true` = the client shows no "limits N Lads settings" toast for this snapshot and closes one that is up. Old clients ignore it. Set by `LadsScope.silent(true)` while any active scope is silent.
   The HUD option `Hide Crosshair` (`options.HUD`, client 1.14.2) hides the vanilla crosshair entirely: `LadsScope.hideCrosshair()`.
+  View lock (client 1.14.9, cap `guiview`, 26.3 only): `HUD` options `Lock View` (bool), `Lock Yaw`/`Lock Pitch` (degrees the camera is frozen at), `Cursor Gain` (canvas px per degree), `Cursor Size` (canvas px), `Click X`/`Click Y` (0..1). While `Lock View` is on the camera shows the frozen rotation and the client draws the page cursor itself (glyph U+E001 of `lads:ladsgui`) at gain times the player's own yaw/pitch; the server must not spawn its shader cursor for such players. Session only, never saved.
 - `unlisted`: `inherit` (default; Lads built-in rules) | `allow` | `block` for modules not in `modules`.
   Since client 1.12.0 `allow` via `unlisted` is the same as `inherit` (anti-ban: it lifted gated automation the list missed):
   a module whose safety block should lift must be listed by name.

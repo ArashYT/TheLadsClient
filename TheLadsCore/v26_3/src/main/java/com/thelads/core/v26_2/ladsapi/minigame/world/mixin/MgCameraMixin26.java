@@ -27,7 +27,12 @@ public abstract class MgCameraMixin26 {
     private void lads$shot(Camera self, float partial, Operation<Void> original) {
         original.call(self, partial);
         CameraState.Pose p = CameraRender26.evaluate(self, Minigame.now());
-        if (p == null) return;
+        if (p == null) {
+            net.minecraft.client.player.LocalPlayer me = net.minecraft.client.Minecraft.getInstance().player;
+            double[] lock = me == null ? null : com.thelads.core.client.ladsapi.GuiViewLock.pose(me.getYRot(), me.getXRot(), System.currentTimeMillis());
+            if (lock != null) setRotation((float) lock[0], (float) lock[1]); // a server GUI page: the view stands still, the mouse only moves the cursor
+            return;
+        }
         setPosition(p.x(), p.y(), p.z());
         setRotation((float) p.yaw(), (float) p.pitch());
         detached = true;

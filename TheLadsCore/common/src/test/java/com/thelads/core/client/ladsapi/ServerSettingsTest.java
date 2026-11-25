@@ -114,6 +114,42 @@ class ServerSettingsTest {
         assertFalse(ServerSettings.hideCrosshair());
     }
 
+    @Test
+    void viewLockRulesAreSessionOnlyAndHoldTheCameraThenRelease() {
+        assertFalse(ServerSettings.viewLocked());
+        assertNull(GuiViewLock.pose(10, 5, 0));
+        JsonObject ack = policy("", "\"HUD\":{\"Lock View\":{\"value\":true},\"Lock Yaw\":{\"value\":-135.5},\"Lock Pitch\":{\"value\":12.25},"
+            + "\"Cursor Gain\":{\"value\":20},\"Cursor Size\":{\"value\":48},\"Click X\":{\"value\":0.1},\"Click Y\":{\"value\":0.2}}");
+        assertEquals(List.of(), names(ack, "ignored"), ack.toString());
+        assertTrue(ServerSettings.viewLocked());
+        assertEquals(-135.5, ServerSettings.lockYaw(), 1e-9);
+        assertEquals(12.25, ServerSettings.lockPitch(), 1e-9);
+        assertEquals(20, ServerSettings.cursorGain(), 1e-9);
+        assertEquals(48, ServerSettings.cursorSize(), 1e-9);
+        assertEquals(0.1, ServerSettings.clickX(), 1e-9);
+        assertArrayEquals(new double[] {-135.5, 12.25}, GuiViewLock.pose(80, -30, 0));
+        assertFalse(ConfigManager.toJson().toString().contains("Lock View"), "never saved");
+        LadsApiClient.reset();
+        assertFalse(ServerSettings.viewLocked());
+        assertNotNull(GuiViewLock.pose(80, -30, 100), "frozen until the player's rotation is back");
+        assertNotNull(GuiViewLock.pose(80, -30, 900));
+        assertNull(GuiViewLock.pose(80, -30, 1200), "grace over");
+        GuiViewLock.reset();
+    }
+
+    @Test
+    void viewLockReleasesAtOnceWhenRotationIsBackAndCursorMathWraps() {
+        policy("", "\"HUD\":{\"Lock View\":{\"value\":true},\"Lock Yaw\":{\"value\":170},\"Lock Pitch\":{\"value\":0}}");
+        assertNotNull(GuiViewLock.pose(0, 0, 0));
+        LadsApiClient.reset();
+        assertNotNull(GuiViewLock.pose(0, 0, 10));
+        assertNull(GuiViewLock.pose(-189.5, 0.5, 20), "-189.5 is 170.5: within a degree of the frozen yaw");
+        assertArrayEquals(new double[] {960, -540}, GuiViewLock.cursor(179, -80, 16));
+        assertArrayEquals(new double[] {16 * 5, 16 * 3}, GuiViewLock.cursor(365, 3, 16), 1e-9);
+        assertEquals(0.5, GuiViewLock.scale(960, 540), 1e-9);
+        GuiViewLock.reset();
+    }
+
     private void snapshot(int rev, String extra, String options) {
         LadsApiClient.receive(("{\"t\":\"policy\",\"rev\":" + rev + extra + ",\"options\":{" + options + "}}").getBytes(StandardCharsets.UTF_8));
     }

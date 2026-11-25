@@ -101,7 +101,10 @@ public final class ServerPolicy {
     }
 
     /** A forced change the player turned off ("Let servers change my Lads settings"): its module is "on" or its rule forces a value. */
-    public boolean refusesChanges() {
+    public boolean refusesChanges() { return playerRefusesChanges(); }
+
+    /** Same answer without a policy (the hello is sent before the first one). */
+    public static boolean playerRefusesChanges() {
         try {
             Module sc = ModuleManager.getInstance().getModule("Server Control");
             if (sc != null) {

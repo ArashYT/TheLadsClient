@@ -18,6 +18,8 @@ import java.util.function.Supplier;
 public final class ServerSettings {
     public static final String HUD = "HUD", MINECRAFT = "Minecraft", SODIUM = "Sodium";
     private static final String HIDE_CROSSHAIR = "Hide Crosshair";
+    private static final String LOCK_VIEW = "Lock View", LOCK_YAW = "Lock Yaw", LOCK_PITCH = "Lock Pitch", CURSOR_GAIN = "Cursor Gain",
+        CURSOR_SIZE = "Cursor Size", CLICK_X = "Click X", CLICK_Y = "Click Y";
     private static final String ANIMATE_VISIBLE = "Animate Only Visible Textures";
     private static final Module HUD_MODULE = new Module(HUD, "The Lads HUD's global look.");
     private static final Module MINECRAFT_MODULE = new Module(MINECRAFT, "Minecraft's own options.");
@@ -37,6 +39,14 @@ public final class ServerSettings {
         HUD_MODULE.addOption(new BoolOption("Backgrounds", true));
         HUD_MODULE.addOption(new SliderOption("FPS Limit", 60, 0, 240, 1)); // 0 = unlimited
         HUD_MODULE.addOption(new BoolOption(HIDE_CROSSHAIR, false)); // true: no crosshair at all (vanilla or Lads), e.g. while a server GUI page is open
+        // Server GUI page "view lock" (cap "guiview"): the camera stands still at Lock Yaw/Pitch while the mouse keeps moving the cursor the client draws itself
+        HUD_MODULE.addOption(new BoolOption(LOCK_VIEW, false));
+        HUD_MODULE.addOption(new SliderOption(LOCK_YAW, 0, -180, 180, 0.01));
+        HUD_MODULE.addOption(new SliderOption(LOCK_PITCH, 0, -90, 90, 0.01));
+        HUD_MODULE.addOption(new SliderOption(CURSOR_GAIN, 16, 1, 64, 1)); // canvas px per degree
+        HUD_MODULE.addOption(new SliderOption(CURSOR_SIZE, 32, 1, 1024, 0.5)); // canvas px (1920x1080 design space)
+        HUD_MODULE.addOption(new SliderOption(CLICK_X, 0, 0, 1, 0.01)); // where the click lands on the cursor image, fraction of its size
+        HUD_MODULE.addOption(new SliderOption(CLICK_Y, 0, 0, 1, 0.01));
         SODIUM_MODULE.addOption(new BoolOption(ANIMATE_VISIBLE, true));
         MINECRAFT_MODULE.addOption(new SliderOption("FOV", 70, 30, 110, 1));
         MINECRAFT_MODULE.addOption(new SliderOption("Brightness", 50, 0, 100, 1).suffix("%"));
@@ -115,6 +125,24 @@ public final class ServerSettings {
     public static boolean hideCrosshair() {
         return ServerPolicy.applyBool(HUD, HIDE_CROSSHAIR, false);
     }
+
+    /** Whether the server freezes the camera while its GUI page is open (HUD.Lock View). Never saved. */
+    public static boolean viewLocked() {
+        return ServerPolicy.applyBool(HUD, LOCK_VIEW, false);
+    }
+
+    /** The frozen camera yaw/pitch in degrees, the cursor gain (canvas px per degree), size (canvas px) and click point (fractions of the size). */
+    public static double lockYaw() { return slider(HUD_MODULE, LOCK_YAW, 0); }
+
+    public static double lockPitch() { return slider(HUD_MODULE, LOCK_PITCH, 0); }
+
+    public static double cursorGain() { return slider(HUD_MODULE, CURSOR_GAIN, 16); }
+
+    public static double cursorSize() { return slider(HUD_MODULE, CURSOR_SIZE, 32); }
+
+    public static double clickX() { return slider(HUD_MODULE, CLICK_X, 0); }
+
+    public static double clickY() { return slider(HUD_MODULE, CLICK_Y, 0); }
 
     public static boolean hud(String option, boolean own) {
         return ServerPolicy.applyBool(HUD, option, own);

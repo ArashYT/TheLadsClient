@@ -21,4 +21,8 @@ public class CrosshairHudMixin {
     private void lads$hiddenHudCrosshair(GuiGraphicsExtractor graphics,DeltaTracker delta,CallbackInfo callback){
         if(Minecraft.getInstance().gui.hud.isHidden()&&NativeCrosshair.active()&&!com.thelads.core.client.ladsapi.ServerSettings.hideCrosshair()&&NativeCrosshair.flag("Visible with Hidden HUD")&&!(Minecraft.getInstance().gui.screen() instanceof net.minecraft.client.gui.screens.LevelLoadingScreen))NativeCrosshair.extract(graphics,delta);
     }
+    @Inject(method="extractRenderState",at=@At("TAIL"),require=1)
+    private void lads$guiCursor(GuiGraphicsExtractor graphics,DeltaTracker delta,CallbackInfo callback){
+        com.thelads.core.v26_2.feature.GuiCursor26.extract(graphics);
+    }
 }

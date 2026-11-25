@@ -37,6 +37,7 @@ public final class MinigameWorld26 {
         LadsApiClient.capability(Caps.WAYPOINT);
         LadsApiClient.capability(Caps.TELEGRAPH);
         LadsApiClient.capability(Caps.GHOST);
+        LadsApiClient.capability("guiview"); // HUD "Lock View": the camera stands still on a server GUI page and we draw the cursor
     }
 
     /** A loaded entity's interpolated feet position (the client's own entity list only: nothing is loaded or learned), else null. */
