@@ -291,7 +291,13 @@ class TitleScreenThemeTest {
                 return true;
             }
         };
-        TitleNoir.renderBackdrop(noirPictures, TitleNoir.layout(640, 360, 12, 2), "LadsQA", "26.3", true);
+        boolean waveBefore = TitleNoir.waveEnabled();
+        TitleNoir.setWaveEnabled(false); // the glow pass draws the logo again; another test may have left the wave on
+        try {
+            TitleNoir.renderBackdrop(noirPictures, TitleNoir.layout(640, 360, 12, 2), "LadsQA", "26.3", true);
+        } finally {
+            TitleNoir.setWaveEnabled(waveBefore);
+        }
         assertEquals(java.util.List.of(TitleScreenTheme.LOGO), noirLogos, "New layout keeps two-line Blockbench logo");
 
         var images = new java.util.ArrayList<TitleScreenTheme.Rect>();
